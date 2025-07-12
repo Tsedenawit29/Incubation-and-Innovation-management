@@ -1,6 +1,6 @@
-package com.iims.iims.auth;
+package com.iims.iims.auth.service;
 
-import com.iims.iims.user.User;
+import com.iims.iims.user.entity.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -80,7 +80,8 @@ public class JwtService {
     }
 
     private Key getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+        // Use the secret key directly as bytes since it's already a long string
+        byte[] keyBytes = secretKey.getBytes();
         return Keys.hmacShaKeyFor(keyBytes);
     }
 } 

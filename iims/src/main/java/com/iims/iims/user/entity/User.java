@@ -1,4 +1,4 @@
-package com.iims.iims.user;
+package com.iims.iims.user.entity;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -34,6 +34,7 @@ public class User implements UserDetails {
 
     private UUID tenantId;
 
+    @Builder.Default
     private boolean isActive = true;
 
     @Override

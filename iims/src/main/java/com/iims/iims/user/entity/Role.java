@@ -1,4 +1,4 @@
-package com.iims.iims.user;
+package com.iims.iims.user.entity;
 
 public enum Role {
     SUPER_ADMIN,

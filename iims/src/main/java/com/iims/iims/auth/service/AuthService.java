@@ -1,11 +1,11 @@
-package com.iims.iims.auth;
+package com.iims.iims.auth.service;
 
 import com.iims.iims.auth.dto.AuthRequest;
 import com.iims.iims.auth.dto.AuthResponse;
 import com.iims.iims.auth.dto.RegisterRequest;
-import com.iims.iims.user.Role;
-import com.iims.iims.user.User;
-import com.iims.iims.user.UserRepository;
+import com.iims.iims.user.entity.Role;
+import com.iims.iims.user.entity.User;
+import com.iims.iims.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -22,15 +22,19 @@ public class AuthService {
     private final AuthenticationManager authManager;
 
     public AuthResponse authenticate(AuthRequest req) {
-        authManager.authenticate(
-            new UsernamePasswordAuthenticationToken(req.getEmail(), req.getPassword())
-        );
+        try {
+            authManager.authenticate(
+                new UsernamePasswordAuthenticationToken(req.getEmail(), req.getPassword())
+            );
 
-        var user = userRepo.findByEmail(req.getEmail())
-            .orElseThrow(() -> new RuntimeException("User not found"));
+            var user = userRepo.findByEmail(req.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        String token = jwtService.generateToken(user);
-        return new AuthResponse(token);
+            String token = jwtService.generateToken(user);
+            return new AuthResponse(token);
+        } catch (Exception e) {
+            throw new RuntimeException("Authentication failed: " + e.getMessage());
+        }
     }
 
     public AuthResponse registerSuperAdmin(RegisterRequest req) {

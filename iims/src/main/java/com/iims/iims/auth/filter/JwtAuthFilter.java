@@ -1,6 +1,6 @@
-package com.iims.iims.auth;
+package com.iims.iims.auth.filter;
 
-import com.iims.iims.user.UserRepository;
+import com.iims.iims.auth.service.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
