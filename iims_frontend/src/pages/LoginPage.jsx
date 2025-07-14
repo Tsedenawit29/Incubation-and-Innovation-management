@@ -33,6 +33,18 @@ export default function LoginPage() {
         navigate("/super-admin/dashboard");
       } else if (userData.role === "TENANT_ADMIN") {
         navigate("/tenant-admin/dashboard");
+      } else if (userData.role === "STARTUP") {
+        navigate(`/startup-dashboard/${userData.id}`);
+      } else if (userData.role === "MENTOR") {
+        navigate(`/mentor-dashboard/${userData.id}`);
+      } else if (userData.role === "COACH") {
+        navigate(`/coach-dashboard/${userData.id}`);
+      } else if (userData.role === "FACILITATOR") {
+        navigate(`/facilitator-dashboard/${userData.id}`);
+      } else if (userData.role === "INVESTOR") {
+        navigate(`/investor-dashboard/${userData.id}`);
+      } else if (userData.role === "ALUMNI") {
+        navigate(`/alumni-dashboard/${userData.id}`);
       } else {
         navigate("/");
       }
