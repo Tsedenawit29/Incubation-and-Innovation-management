@@ -29,6 +29,32 @@ public class AuthController {
 
     @GetMapping("/test-users")
     public ResponseEntity<?> testUsers() {
-        return ResponseEntity.ok(userRepository.findAll());
+        var users = userRepository.findAll();
+        System.out.println("Found " + users.size() + " users in database:");
+        users.forEach(user -> System.out.println("- " + user.getEmail() + " (role: " + user.getRole() + ", active: " + user.isActive() + ")"));
+        return ResponseEntity.ok(users);
+    }
+
+    @DeleteMapping("/cleanup-users")
+    public ResponseEntity<?> cleanupUsers() {
+        var users = userRepository.findAll();
+        System.out.println("Deleting " + users.size() + " users from database");
+        userRepository.deleteAll();
+        return ResponseEntity.ok("All users deleted. Database cleaned up.");
+    }
+
+    @GetMapping("/health")
+    public ResponseEntity<?> health() {
+        return ResponseEntity.ok("Backend is running!");
+    }
+
+    @GetMapping("/test-auth")
+    public ResponseEntity<?> testAuth() {
+        return ResponseEntity.ok("Authentication is working! You are authenticated.");
+    }
+
+    @GetMapping("/ping")
+    public ResponseEntity<?> ping() {
+        return ResponseEntity.ok("Pong! Backend is accessible");
     }
 } 

@@ -23,6 +23,8 @@ public class AuthService {
 
     public AuthResponse authenticate(AuthRequest req) {
         try {
+            System.out.println("Attempting to authenticate user: " + req.getEmail());
+            
             authManager.authenticate(
                 new UsernamePasswordAuthenticationToken(req.getEmail(), req.getPassword())
             );
@@ -30,9 +32,13 @@ public class AuthService {
             var user = userRepo.findByEmail(req.getEmail())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+            System.out.println("User authenticated successfully: " + user.getEmail() + " with role: " + user.getRole());
+            
             String token = jwtService.generateToken(user);
-            return new AuthResponse(token);
+            return new AuthResponse(token, user.getEmail(), user.getRole().name(), user.getFullName(), user.getId());
         } catch (Exception e) {
+            System.err.println("Authentication failed for user " + req.getEmail() + ": " + e.getMessage());
+            e.printStackTrace();
             throw new RuntimeException("Authentication failed: " + e.getMessage());
         }
     }
@@ -45,6 +51,6 @@ public class AuthService {
             .role(Role.SUPER_ADMIN)
             .build();
         userRepo.save(admin);
-        return new AuthResponse(jwtService.generateToken(admin));
+        return new AuthResponse(jwtService.generateToken(admin), admin.getEmail(), admin.getRole().name(), admin.getFullName(), admin.getId());
     }
 } 
