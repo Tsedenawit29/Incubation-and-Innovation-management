@@ -76,14 +76,14 @@ export async function getTenantById(token, id) {
 
 export async function approveTenant(token, tenantId, approvedBy) {
   console.log("Approving tenant:", tenantId);
-  
+  // Backend expects { approved: true, reason: null } as body
   const res = await fetch(`${API_URL}/tenant/approve/${tenantId}?approvedBy=${approvedBy}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ approved: true }),
+    body: JSON.stringify({ approved: true, reason: null }),
   });
   
   if (!res.ok) {
