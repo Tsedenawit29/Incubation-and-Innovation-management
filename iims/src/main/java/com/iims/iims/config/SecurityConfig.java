@@ -45,6 +45,7 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Allow CORS preflight
             .requestMatchers("/api/tenant/**").hasRole("SUPER_ADMIN")
             .requestMatchers("/api/users/pending-admins", "/api/users/admin-requests", "/api/users/approve-admin/**", "/api/users/reject-admin/**").hasRole("SUPER_ADMIN")
+            .requestMatchers("/api/tenant-admin/**").hasRole("TENANT_ADMIN")
             .anyRequest().authenticated()
             .and()
             .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)

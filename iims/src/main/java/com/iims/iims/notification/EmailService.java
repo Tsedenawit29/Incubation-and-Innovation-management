@@ -2,12 +2,16 @@ package com.iims.iims.notification;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class EmailService {
+
+    private final JavaMailSender mailSender;
 
     public void sendTenantApprovalEmail(String tenantEmail, String tenantName, String tenantId, String adminRegistrationUrl) {
         String subject = "Tenant Application Approved - IIMS";
@@ -32,13 +36,16 @@ public class EmailService {
             Best regards,
             IIMS Team
             """, tenantName, tenantName, tenantId, adminRegistrationUrl);
-        
+
         log.info("Sending tenant approval email to: {}", tenantEmail);
         log.info("Email subject: {}", subject);
         log.info("Email content: {}", message);
-        
-        // TODO: Implement actual email sending logic
-        // For now, we just log the email content
+
+        SimpleMailMessage mailMessage = new SimpleMailMessage();
+        mailMessage.setTo(tenantEmail);
+        mailMessage.setSubject(subject);
+        mailMessage.setText(message);
+        mailSender.send(mailMessage);
     }
 
     public void sendTenantRejectionEmail(String tenantEmail, String tenantName, String reason) {
@@ -57,13 +64,16 @@ public class EmailService {
             Best regards,
             IIMS Team
             """, tenantName, reason);
-        
+
         log.info("Sending tenant rejection email to: {}", tenantEmail);
         log.info("Email subject: {}", subject);
         log.info("Email content: {}", message);
-        
-        // TODO: Implement actual email sending logic
-        // For now, we just log the email content
+
+        SimpleMailMessage mailMessage = new SimpleMailMessage();
+        mailMessage.setTo(tenantEmail);
+        mailMessage.setSubject(subject);
+        mailMessage.setText(message);
+        mailSender.send(mailMessage);
     }
 
     public void sendAdminApprovalEmail(String adminEmail, String adminName, String username, String password, String tenantName) {
@@ -86,12 +96,43 @@ public class EmailService {
             Best regards,
             IIMS Team
             """, adminName, tenantName, username, password);
-        
+
         log.info("Sending admin approval email to: {}", adminEmail);
         log.info("Email subject: {}", subject);
         log.info("Email content: {}", message);
-        
-        // TODO: Implement actual email sending logic
-        // For now, we just log the email content
+
+        SimpleMailMessage mailMessage = new SimpleMailMessage();
+        mailMessage.setTo(adminEmail);
+        mailMessage.setSubject(subject);
+        mailMessage.setText(message);
+        mailSender.send(mailMessage);
+    }
+
+    public void sendAdminRejectionEmail(String adminEmail, String adminName, String tenantName, String reason) {
+        String subject = "Admin Application Update - IIMS";
+        String message = String.format("""
+            Dear %s,
+
+            Thank you for your interest in being an admin for %s. After careful review, we regret to inform you that your admin application has not been approved at this time.
+
+            Reason: %s
+
+            You may reapply in the future with updated information.
+
+            If you have any questions, please contact the system administrator.
+
+            Best regards,
+            IIMS Team
+            """, adminName, tenantName, reason);
+
+        log.info("Sending admin rejection email to: {}", adminEmail);
+        log.info("Email subject: {}", subject);
+        log.info("Email content: {}", message);
+
+        SimpleMailMessage mailMessage = new SimpleMailMessage();
+        mailMessage.setTo(adminEmail);
+        mailMessage.setSubject(subject);
+        mailMessage.setText(message);
+        mailSender.send(mailMessage);
     }
 } 
