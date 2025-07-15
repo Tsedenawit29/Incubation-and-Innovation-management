@@ -64,7 +64,7 @@ const HeroSection = () => {
           href="#projects"
           className="inline-block bg-gradient-to-r from-[#299DFF] to-[#0A2D5C] text-white font-semibold px-8 py-3 rounded-full text-lg shadow-lg hover:scale-105 transition-transform duration-300"
         >
-          🚀 Explore Projects
+           Explore Projects
         </a>
         {/* Impact Metrics Bar */}
         <div className="mt-10 flex flex-wrap justify-center gap-6 md:gap-10 items-center w-full max-w-3xl mx-auto bg-white/20 backdrop-blur-md rounded-2xl py-4 px-2 md:px-8 shadow-lg border border-white/30 animate-fade-in-up">
