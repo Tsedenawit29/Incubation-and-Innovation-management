@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { FaRocket, FaMoneyBillWave, FaChalkboardTeacher, FaChartLine, FaLightbulb, FaGlobe, FaUsers, FaTrophy, FaCogs } from 'react-icons/fa';
+import Testimonials from '../components/Testimonials';
+import { motion } from "framer-motion";
+import { Link } from 'react-router-dom';
 
 const metrics = [
   { icon: <FaRocket size={28} />, label: 'Startups Incubated', value: 24 },
@@ -207,6 +210,12 @@ const Home = () => {
         </div>
       </section>
 
+      {/* Testimonials Carousel */}
+      <section className="mb-20 relative z-10 animate-fade-in-up">
+        <h2 className="text-3xl font-extrabold text-[#0A2D5C] mb-8 text-center">Testimonials</h2>
+        <Testimonials />
+      </section>
+
       {/* How It Works */}
       <section className="mb-20 relative z-10 animate-fade-in-up">
         <h2 className="text-2xl font-bold text-[#0A2D5C] mb-8 text-center">How It Works</h2>
@@ -236,8 +245,100 @@ const Home = () => {
           ))}
         </div>
       </section>
+
+      {/* Call to Action Section */}
+      <section className="w-full flex flex-col items-center justify-center py-16">
+        <div className="bg-gradient-to-r from-[#299DFF] to-[#0A2D5C] rounded-2xl shadow-lg px-8 py-12 flex flex-col items-center max-w-2xl w-full">
+          <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4 text-center drop-shadow">Ready to take your innovation to the next level?</h2>
+          <p className="text-lg text-blue-100 mb-8 text-center">Apply now to join our incubation program and turn your ideas into reality!</p>
+          <Link
+            to="/application"
+            className="inline-block bg-white text-[#0A2D5C] font-bold px-8 py-3 rounded-full shadow-md hover:bg-[#299DFF] hover:text-white transition-colors duration-200 text-lg"
+          >
+            Apply Now
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }
 
 export default Home;
+
+const testimonials = [
+  {
+    name: 'Alemu T.',
+    role: 'Startup Founder',
+    image: 'https://randomuser.me/api/portraits/men/32.jpg',
+    feedback: 'The incubation program transformed my idea into a real business. The mentorship and resources were invaluable!'
+  },
+  {
+    name: 'Sara M.',
+    role: 'Entrepreneur',
+    image: 'https://randomuser.me/api/portraits/women/44.jpg',
+    feedback: 'I loved the supportive community and the opportunities to connect with investors and partners.'
+  },
+  {
+    name: 'Kebede G.',
+    role: 'Researcher',
+    image: 'https://randomuser.me/api/portraits/men/65.jpg',
+    feedback: 'The innovation hub helped me turn my research into a product that is now making a difference.'
+  },
+  {
+    name: 'Mekdes A.',
+    role: 'Mentor',
+    image: 'https://randomuser.me/api/portraits/women/68.jpg',
+    feedback: 'It’s inspiring to work with such passionate founders and see their growth firsthand.'
+  },
+];
+
+function TestimonialCarousel() {
+  const [current, setCurrent] = useState(0);
+  const total = testimonials.length;
+
+  const prev = () => setCurrent((prev) => (prev === 0 ? total - 1 : prev - 1));
+  const next = () => setCurrent((prev) => (prev === total - 1 ? 0 : prev + 1));
+
+  return (
+    <div className="flex flex-col items-center justify-center w-full max-w-2xl mx-auto">
+      <div className="relative w-full">
+        <div className="flex flex-col items-center bg-white rounded-2xl shadow-xl p-8 transition-all duration-500 min-h-[260px]">
+          <img
+            src={testimonials[current].image}
+            alt={testimonials[current].name}
+            className="w-20 h-20 rounded-full object-cover border-4 border-[#299DFF] shadow-lg mb-4"
+          />
+          <p className="text-lg text-gray-700 italic mb-4 text-center">“{testimonials[current].feedback}”</p>
+          <div className="font-bold text-[#0A2D5C] text-base">{testimonials[current].name}</div>
+          <div className="text-sm text-[#299DFF]">{testimonials[current].role}</div>
+        </div>
+        {/* Navigation Arrows */}
+        <button
+          onClick={prev}
+          className="absolute left-0 top-1/2 -translate-y-1/2 bg-white border border-[#299DFF] text-[#299DFF] rounded-full w-10 h-10 flex items-center justify-center shadow hover:bg-[#299DFF] hover:text-white transition-colors duration-200"
+          aria-label="Previous testimonial"
+        >
+          <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </button>
+        <button
+          onClick={next}
+          className="absolute right-0 top-1/2 -translate-y-1/2 bg-white border border-[#299DFF] text-[#299DFF] rounded-full w-10 h-10 flex items-center justify-center shadow hover:bg-[#299DFF] hover:text-white transition-colors duration-200"
+          aria-label="Next testimonial"
+        >
+          <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </button>
+      </div>
+      {/* Dots */}
+      <div className="flex gap-2 mt-4">
+        {testimonials.map((_, idx) => (
+          <button
+            key={idx}
+            onClick={() => setCurrent(idx)}
+            className={`w-3 h-3 rounded-full ${current === idx ? 'bg-[#299DFF]' : 'bg-gray-300'} transition-colors duration-200`}
+            aria-label={`Go to testimonial ${idx + 1}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
