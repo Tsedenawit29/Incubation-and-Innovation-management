@@ -25,4 +25,17 @@ public class ApplicationResponseDto {
     private ApplicationStatus status;
     private LocalDateTime submittedAt;
     private List<ApplicationResponseDto> fieldResponses;
+
+    public ApplicationResponseDto(
+            UUID id,
+            UUID formId,
+            UUID tenantId,
+            String email,
+            String firstName,
+            String lastName,
+            ApplicantType applicantType,
+            ApplicationStatus status,
+            LocalDateTime submittedAt,
+            List<ApplicationFieldResponseDto> fieldResponseDtos) {
+    }
 }

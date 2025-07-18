@@ -32,4 +32,36 @@ public class ApplicationResponse {
 
     @Column(name = "response")
     private String response;
+
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public Application getApplication() {
+        return application;
+    }
+
+    public void setApplication(Application application) {
+        this.application = application;
+    }
+
+    public ApplicationFormField getField() {
+        return field;
+    }
+
+    public void setField(ApplicationFormField field) {
+        this.field = field;
+    }
+
+    public String getResponse() {
+        return response;
+    }
+
+    public void setResponse(String response) {
+        this.response = response;
+    }
 }

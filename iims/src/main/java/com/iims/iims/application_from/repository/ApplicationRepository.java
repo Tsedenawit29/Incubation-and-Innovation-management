@@ -11,7 +11,7 @@ import java.util.UUID;
 
 public interface ApplicationRepository extends JpaRepository<Application, UUID> {
 
-    List<Application> findByRormId(UUID formId);
+    List<Application> findByFormId(UUID formId);
     List<Application> findByTenant(Tenant tenant);
     List<Application> findByTenantAndStatus(Tenant tenant, ApplicationStatus status);
     Optional<Application> findByIdAndTenant(UUID id, Tenant tenant);

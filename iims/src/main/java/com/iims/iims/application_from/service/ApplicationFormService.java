@@ -35,15 +35,15 @@ public class ApplicationFormService {
     /**
      * Creates a new application form for a given tenant.
      *
-     * @param id The UUID of the tenant creating the form.
+     * @param tenantId The UUID of the tenant creating the form.
      * @param request  The ApplicationFormRequest DTO containing form details.
      * @return The created ApplicationFormResponseDto.
      * @throws EntityNotFoundException if the tenant is not found.
      */
     @Transactional
-    public ApplicationFormResponseDto createApplicationForm(UUID id, ApplicationFormRequest request){
-        Tenant tenant = tenantRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Tenant not found with ID: " + id));
+    public ApplicationFormResponseDto createApplicationForm(UUID tenantId, ApplicationFormRequest request){
+        Tenant tenant = tenantRepository.findById(tenantId)
+                .orElseThrow(() -> new EntityNotFoundException("Tenant not found with ID: " + tenantId));
         ApplicationForm form = new ApplicationForm();
         form.setTenant(tenant);// Set the Tenant entity
         form.setName(request.getName());
@@ -74,31 +74,31 @@ public class ApplicationFormService {
      * Ensures that a tenant can only access their own forms.
      *
      * @param formId   The UUID of the form.
-     * @param id The UUID of the tenant.
+     * @param tenantId The UUID of the tenant.
      * @return The ApplicationFormResponseDto.
      * @throws EntityNotFoundException if the tenant or form is not found for the given tenant.
      */
     @Transactional(readOnly = true)
-    public ApplicationFormResponseDto getApplicationFormById(UUID formId, UUID id){
-        Tenant tenant = tenantRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException(("Tenant not found with ID: " + id)));
+    public ApplicationFormResponseDto getApplicationFormById(UUID formId, UUID tenantId){
+        Tenant tenant = tenantRepository.findById(tenantId)
+                .orElseThrow(() -> new EntityNotFoundException(("Tenant not found with ID: " + tenantId)));
 
         ApplicationForm form = applicationFormRepository.findByIdAndTenant(formId, tenant)
-                .orElseThrow(() -> new EntityNotFoundException("Application form not found with ID: " + formId + "from tenant" + id));
+                .orElseThrow(() -> new EntityNotFoundException("Application form not found with ID: " + formId + "from tenant" + tenantId));
                 return convertToDto(form);
     }
 
     /**
      * Retrieves all application forms for a specific tenant.
      *
-     * @param id The UUID of the tenant.
+     * @param tenantId The UUID of the tenant.
      * @return A list of ApplicationFormResponseDto.
      * @throws EntityNotFoundException if the tenant is not found.
      */
     @Transactional(readOnly = true)
-    public List<ApplicationFormResponseDto> getAllApplicationFormsByTenant(UUID id){
-        Tenant tenant = tenantRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Tenant not found with ID: " + id));
+    public List<ApplicationFormResponseDto> getAllApplicationFormsByTenant(UUID tenantId){
+        Tenant tenant = tenantRepository.findById(tenantId)
+                .orElseThrow(() -> new EntityNotFoundException("Tenant not found with ID: " + tenantId));
         List<ApplicationForm> forms = applicationFormRepository.findByTenant(tenant);
         return forms.stream()
                 .map(this::convertToDto)
@@ -108,15 +108,15 @@ public class ApplicationFormService {
     /**
      * Retrieves active application forms for a specific tenant and type.
      *
-     * @param id The UUID of the tenant.
+     * @param tenantId The UUID of the tenant.
      * @param type     The type of the form (STARTUP or MENTOR).
      * @return A list of active ApplicationFormResponseDto.
      * @throws EntityNotFoundException if the tenant is not found.
      */
     @Transactional(readOnly = true)
-    public List<ApplicationFormResponseDto> getActiveApplicationFormsByTenantAndType(UUID id, ApplicationFormType type){
-        Tenant tenant = tenantRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Tenant not found with ID: " + id));
+    public List<ApplicationFormResponseDto> getActiveApplicationFormsByTenantAndType(UUID tenantId, ApplicationFormType type){
+        Tenant tenant = tenantRepository.findById(tenantId)
+                .orElseThrow(() -> new EntityNotFoundException("Tenant not found with ID: " + tenantId));
         List<ApplicationForm> forms = applicationFormRepository.findByTenantAndIsActive(tenant, type, true);
         return forms.stream()
                 .map(this::convertToDto)
@@ -127,17 +127,17 @@ public class ApplicationFormService {
      * This method handles adding, updating, and removing fields.
      *
      * @param formId   The UUID of the form to update.
-     * @param id The UUID of the tenant owning the form.
+     * @param tenantId The UUID of the tenant owning the form.
      * @param request  The ApplicationFormRequest DTO with updated details.
      * @return The updated ApplicationFormResponseDto.
      * @throws EntityNotFoundException if the tenant or form is not found for the given tenant.
      */
     @Transactional
-    public ApplicationFormResponseDto updateApplicationForm(UUID formId, UUID id, ApplicationFormRequest request){
-        Tenant tenant = tenantRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Tenant not found with ID: " + id));
+    public ApplicationFormResponseDto updateApplicationForm(UUID formId, UUID tenantId, ApplicationFormRequest request){
+        Tenant tenant = tenantRepository.findById(tenantId)
+                .orElseThrow(() -> new EntityNotFoundException("Tenant not found with ID: " + tenantId));
         ApplicationForm existingForm = applicationFormRepository.findByIdAndTenant(formId, tenant)
-                .orElseThrow(() -> new EntityNotFoundException("Application form not found with ID: " + formId + " for tenant: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Application form not found with ID: " + formId + " for tenant: " + tenantId));
         existingForm.setName(request.getName());
         existingForm.setType(request.getType());
         existingForm.setActive(request.getActive());
@@ -161,15 +161,15 @@ public class ApplicationFormService {
      * Deletes an application form by its ID and tenant ID.
      *
      * @param formId   The UUID of the form to delete.
-     * @param id The UUID of the tenant owning the form.
+     * @param tenantId The UUID of the tenant owning the form.
      * @throws EntityNotFoundException if the tenant or form is not found for the given tenant.
      */
     @Transactional
-    public void deleteApplicationForm(UUID formId, UUID id){
-        Tenant tenant = tenantRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Tenant not found with ID: " + id));
+    public void deleteApplicationForm(UUID formId, UUID tenantId){
+        Tenant tenant = tenantRepository.findById(tenantId)
+                .orElseThrow(() -> new EntityNotFoundException("Tenant not found with ID: " + tenantId));
         ApplicationForm form = applicationFormRepository.findByIdAndTenant(formId, tenant)
-                .orElseThrow(() -> new EntityNotFoundException("Application form not found with ID: " + formId + " for tenant: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Application form not found with ID: " + formId + " for tenant: " + tenantId));
         applicationFormRepository.delete(form);
     }
 
