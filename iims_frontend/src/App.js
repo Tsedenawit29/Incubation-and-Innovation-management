@@ -1,6 +1,7 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import Navbar from './apps/PortfolioApp/components/Navbar';
 import LoginPage from './pages/LoginPage';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import TenantAdminDashboard from './pages/TenantAdminDashboard';
@@ -56,6 +57,13 @@ const PublicRoute = ({ children }) => {
   }
   return children;
 };
+
+function AppNavbar() {
+  const location = useLocation();
+  // Show Sign Up only on /public-landing/:tenantId
+  const showSignUp = location.pathname.startsWith('/public-landing/');
+  return <Navbar showSignUp={showSignUp} />;
+}
 
 function App() {
   return (

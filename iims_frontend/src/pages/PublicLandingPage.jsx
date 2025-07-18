@@ -1,11 +1,25 @@
+// React and library imports
 import React, { useEffect, useState } from 'react';
-import { getLandingPage } from '../api/landingPage';
 import { useParams } from 'react-router-dom';
-import { FaRocket, FaInfoCircle, FaEnvelope, FaFolderOpen, FaCogs, FaUserPlus, FaUserTie, FaQuoteLeft, FaUsers, FaQuestionCircle, FaImages } from 'react-icons/fa';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import 'swiper/css';
+import 'swiper/css/navigation';
+import 'swiper/css/pagination';
+import { Navigation, Pagination, Autoplay } from 'swiper/modules';
+import '../index.css';
+
+// Icon imports
+import {
+  FaRocket, FaInfoCircle, FaEnvelope, FaFolderOpen, FaCogs, FaUserPlus, FaUserTie, FaQuoteLeft, FaUsers, FaQuestionCircle, FaImages,
+  FaFacebook, FaTwitter, FaLinkedin, FaInstagram, FaYoutube, FaGithub
+} from 'react-icons/fa';
+
+// App imports
+import { getLandingPage } from '../api/landingPage';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import { FaFacebook, FaTwitter, FaLinkedin, FaInstagram, FaYoutube, FaGithub } from 'react-icons/fa';
 
+// Constants
 const SOCIALS = [
   { name: "Facebook", color: "#1877F3", icon: FaFacebook },
   { name: "Twitter", color: "#1DA1F2", icon: FaTwitter },
@@ -27,7 +41,79 @@ const SECTION_LABELS = {
   CUSTOM: 'Custom',
 };
 
-export default function PublicLandingPage() {
+// ContactInfoCard: update to show up to 3 social icons in a row, dropdown for extras
+function ContactInfoCard({ socialLinks, address, email, phone, description, themeColor, themeColor2, themeColor3 }) {
+  const SOCIALS_PLATFORMS = [
+    { name: "Facebook", color: "#1877F3", icon: FaFacebook, matcher: url => url.includes('facebook.com') },
+    { name: "Twitter", color: "#1DA1F2", icon: FaTwitter, matcher: url => url.includes('twitter.com') },
+    { name: "LinkedIn", color: "#0077B5", icon: FaLinkedin, matcher: url => url.includes('linkedin.com') },
+    { name: "Instagram", color: "#E4405F", icon: FaInstagram, matcher: url => url.includes('instagram.com') },
+    { name: "YouTube", color: "#FF0000", icon: FaYoutube, matcher: url => url.includes('youtube.com') },
+    { name: "GitHub", color: "#333", icon: FaGithub, matcher: url => url.includes('github.com') },
+  ];
+  // Use the same logic as the Footer for social icons
+  const shownSocials = SOCIALS_PLATFORMS.filter(({ name }) => socialLinks && socialLinks[name]);
+  const mainSocials = shownSocials.slice(0, 3);
+  const extraSocials = shownSocials.slice(3);
+  const [showDropdown, setShowDropdown] = useState(false);
+  return (
+    <div className="bg-white/80 rounded-2xl shadow-xl p-8 mb-8 w-full max-w-md" style={{ borderLeft: `4px solid ${themeColor}` }}>
+      <h3 className="text-2xl font-bold mb-4" style={{ color: themeColor3 || themeColor }}>Get In Touch</h3>
+      {description && <p className="mb-4 text-gray-600 text-sm">{description}</p>}
+      <div className="text-gray-700 space-y-2 mb-4">
+        <div className="flex items-center gap-2"><span style={{ background: themeColor + '22' }} className="rounded-full p-2"><FaInfoCircle style={{ color: themeColor }} /></span><b>Address:</b> {address}</div>
+        <div className="flex items-center gap-2"><span style={{ background: themeColor + '22' }} className="rounded-full p-2"><FaRocket style={{ color: themeColor }} /></span><b>Phone:</b> {phone}</div>
+        <div className="flex items-center gap-2"><span style={{ background: themeColor + '22' }} className="rounded-full p-2"><FaEnvelope style={{ color: themeColor }} /></span><b>E-Mail:</b> {email}</div>
+      </div>
+      <div className="flex items-center gap-3 mb-2 text-gray-700 font-semibold">
+        <span>Follow Us:</span>
+        <div className="flex gap-3 items-center">
+          {mainSocials.map(({ name, icon: Icon, color }) => (
+            <a
+              key={name}
+              href={socialLinks[name]}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ background: color, boxShadow: `0 0 0 2px ${themeColor}33` }}
+              className="rounded-full p-2 hover:scale-110 hover:shadow-lg transition text-white focus:ring-4"
+              aria-label={name}
+              title={name}
+            >
+              <Icon size={24} />
+            </a>
+          ))}
+          {extraSocials.length > 0 && (
+            <div className="relative">
+              <button onClick={() => setShowDropdown(v => !v)} className="rounded-full p-2 bg-gray-200 hover:bg-gray-300 transition focus:ring-2" aria-label="More socials">
+                <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><path d="M5.25 7.5l4.75 4.75 4.75-4.75" stroke={themeColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </button>
+              {showDropdown && (
+                <div className="absolute left-0 mt-2 bg-white rounded shadow-lg z-50 min-w-[48px] flex flex-col">
+                  {extraSocials.map(({ name, icon: Icon, color }) => (
+                    <a
+                      key={name}
+                      href={socialLinks[name]}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ background: color, boxShadow: `0 0 0 2px ${themeColor}33` }}
+                      className="rounded-full p-2 hover:scale-110 hover:shadow-lg transition text-white focus:ring-4 mb-1"
+                      aria-label={name}
+                      title={name}
+                    >
+                      <Icon size={24} />
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PublicLandingPage() {
   const { tenantId } = useParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -41,9 +127,10 @@ export default function PublicLandingPage() {
   if (loading) return <div>Loading...</div>;
   if (!data) return <div>Landing page not found.</div>;
 
-  const themeColor = data.themeColor || '#299DFF';
-  const themeColor2 = data.themeColor2 || '#43a047';
-  const themeColor3 = data.themeColor3 || '#fbc02d';
+  // Use only themeColor(s), white, or black
+  const themeColor = data.themeColor || '#111'; // black as fallback
+  const themeColor2 = data.themeColor2 || themeColor;
+  const themeColor3 = data.themeColor3 || themeColor;
   const logo = data.sections?.find(s => s.type === 'HERO')?.contentJson ? JSON.parse(data.sections.find(s => s.type === 'HERO').contentJson).logo : null;
   const tenantName = data.tenantName || data.sections?.find(s => s.type === 'HERO')?.contentJson ? JSON.parse(data.sections.find(s => s.type === 'HERO').contentJson).title : 'Landing Page';
 
@@ -55,100 +142,91 @@ export default function PublicLandingPage() {
 
   function renderSection(section, idx) {
     const content = section.contentJson ? JSON.parse(section.contentJson) : {};
-    const sectionBg = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+    // Alternate between white and themeColor backgrounds for sections
+    const sectionBg = idx % 2 === 0 ? '#fff' : themeColor + '08'; // very light theme color overlay
     const sectionId = SECTION_LABELS[section.type]?.toLowerCase() || `section${idx}`;
     switch (section.type) {
       case 'HERO':
         return (
-          <section id={sectionId} className="w-full min-h-screen flex items-center justify-center relative" style={{ fontFamily: 'Inter, sans-serif', background: content.bgImage ? `url(${content.bgImage}) center/cover no-repeat` : themeColor }}>
-            <div className="absolute inset-0 bg-black bg-opacity-40" style={{zIndex:1}}></div>
-            <div className="relative z-10 flex flex-col items-center justify-start w-full max-w-3xl mx-auto px-4 text-center pt-10" style={{minHeight: '70vh'}}>
-              {/* Logo removed from here */}
-              <h1 className="text-5xl md:text-7xl font-extrabold mb-2 text-white drop-shadow-lg" style={{letterSpacing: '-0.03em'}}>{content.title}</h1>
-              <h2 className="text-2xl md:text-3xl mb-4 text-white/90 font-medium max-w-4xl mx-auto leading-snug line-clamp-4" style={{minHeight: 'unset'}}>{content.subtitle}</h2>
-              <div className="flex flex-col md:flex-row gap-4 justify-center mt-0">
-                {content.ctas && content.ctas.slice(0,2).map((cta, idx) => (
-                  <a key={idx} href="#" className="px-8 py-4 rounded-full font-bold shadow-lg transition text-white text-lg bg-brand-primary hover:opacity-90 flex items-center gap-2" style={{background: themeColor, minWidth: '180px'}}>
-                    {cta.type === 'startup' ? <FaUserPlus /> : <FaUserTie />} {cta.label}
-                  </a>
-                ))}
+          <section
+            id={sectionId}
+            className="w-full min-h-[80vh] flex items-center justify-center border-b relative"
+            style={{ fontFamily: 'Inter, sans-serif', background: '#111', position: 'relative', overflow: 'hidden' }}
+          >
+            {/* BG image overlay */}
+            {content.bgImage && (
+              <img
+                src={content.bgImage}
+                alt="bg"
+                className="absolute inset-0 w-full h-full object-cover z-0"
+                style={{ opacity: 0.18, filter: 'blur(1px)' }}
+              />
+            )}
+            {/* Floating bulbs/accents */}
+            <svg className="absolute left-10 top-10 w-32 h-32 opacity-30 z-10 animate-float" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill={themeColor} /></svg>
+            <svg className="absolute right-10 bottom-10 w-40 h-40 opacity-20 z-10 animate-float-slow" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill={themeColor2} /></svg>
+            <svg className="absolute left-1/2 top-1/2 w-24 h-24 opacity-10 z-10 animate-float-slow" style={{ transform: 'translate(-50%, -50%)' }} viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill={themeColor3} /></svg>
+            {/* Centered content */}
+            <div className="relative z-20 flex flex-col items-center justify-center w-full px-4" style={{ maxWidth: 900 }}>
+              <h1 className="text-4xl md:text-5xl font-extrabold mb-6 text-center" style={{ color: '#fff', lineHeight: 1.1 }}>
+                {content.title && content.title.split(' ').map((word, i) =>
+                  i === content.title.split(' ').length - 1 ? (
+                    <span key={i} style={{ color: themeColor2 }}> {word}</span>
+                  ) : (
+                    <span key={i}> {word}</span>
+                  )
+                )}
+              </h1>
+              {content.subtitle && (
+                <h2 className="text-2xl md:text-3xl mb-10 text-center" style={{ color: '#fff', fontWeight: 400, maxWidth: 800 }}>{content.subtitle}</h2>
+              )}
+              <div className="flex flex-wrap gap-6 justify-center mt-2">
+                {content.ctas && content.ctas[0] && (
+                  <button
+                    className="px-8 py-4 rounded-xl text-lg font-bold shadow-lg focus:ring-4 transition"
+                    style={{ background: themeColor2, color: '#111', border: 'none' }}
+                  >
+                    {content.ctas[0].label}
+                  </button>
+                )}
+                {content.ctas && content.ctas[1] && (
+                  <button
+                    className="px-8 py-4 rounded-xl text-lg font-bold border-2 focus:ring-4 transition"
+                    style={{ background: 'transparent', color: themeColor2, borderColor: themeColor2 }}
+                  >
+                    {content.ctas[1].label}
+                  </button>
+                )}
               </div>
             </div>
           </section>
         );
       case 'ABOUT':
         return (
-          <section id={sectionId} className={`w-full py-20 ${sectionBg}`} style={{ fontFamily: 'Inter, sans-serif' }}>
-            <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center gap-12 px-4">
-              {content.image && <img src={content.image} alt="about" className="h-40 w-40 mb-8 md:mb-0 rounded-2xl object-cover border-4 border-gray-200 shadow-lg" style={{objectFit: 'cover'}} />}
-              <div className="flex-1">
-                <h2 className="text-4xl font-bold mb-4 flex items-center gap-3 text-brand-primary" style={{color: themeColor2}}><FaInfoCircle /> {content.title}</h2>
-                <p className="text-xl text-gray-700 leading-relaxed">{content.description}</p>
-              </div>
-            </div>
-          </section>
-        );
-      case 'CONTACT':
-        return (
-          <section id={sectionId} className={`w-full py-20 ${sectionBg}`} style={{ fontFamily: 'Inter, sans-serif' }}>
-            <div className="max-w-5xl mx-auto px-4 flex flex-col md:flex-row gap-10 items-start">
-              {/* Contact Form */}
-              <div className="flex-1 bg-white rounded-2xl shadow-lg p-8 mb-8 md:mb-0">
-                <h3 className="text-2xl font-bold mb-4 text-left">Send us a message</h3>
-                <form className="space-y-4">
-                  <div className="flex gap-4">
-                    <input type="text" placeholder="First Name" className="w-1/2 border rounded px-4 py-2" />
-                    <input type="text" placeholder="Last Name" className="w-1/2 border rounded px-4 py-2" />
-                  </div>
-                  <div className="flex gap-4">
-                    <input type="email" placeholder="Email" className="w-1/2 border rounded px-4 py-2" />
-                    <input type="text" placeholder="Phone" className="w-1/2 border rounded px-4 py-2" />
-                  </div>
-                  <textarea placeholder="Message" className="w-full border rounded px-4 py-2 min-h-[100px]" />
-                  <button type="button" className="w-full bg-brand-primary text-white font-bold py-3 rounded-full text-lg hover:opacity-90 transition" style={{background: themeColor}}>Send Message</button>
-                </form>
-              </div>
-              {/* Contact Info Card */}
-              <div className="flex-1 bg-brand-primary text-white rounded-2xl shadow-lg p-8 flex flex-col items-center md:items-start">
-                <h3 className="text-xl font-bold mb-4">Hi! We are always here to help you.</h3>
-                <div className="mb-4 w-full">
-                  {content.phone && <div className="flex items-center gap-2 mb-2"><span className="font-semibold">Hotline:</span> <span>{content.phone}</span></div>}
-                  {content.whatsapp && <div className="flex items-center gap-2 mb-2"><span className="font-semibold">SMS / WhatsApp:</span> <span>{content.whatsapp}</span></div>}
-                  {content.email && <div className="flex items-center gap-2 mb-2"><span className="font-semibold">Email:</span> <span>{content.email}</span></div>}
-                </div>
-                <div className="flex gap-3 mt-2">
-                  {SOCIALS.map(({ name, color, icon: Icon }) =>
-                    data.socialLinks && data.socialLinks[name] ? (
-                      <a
-                        key={name}
-                        href={data.socialLinks[name]}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ background: color }}
-                        className="rounded-full p-2 hover:opacity-80 transition text-white"
-                        aria-label={name}
-                        title={name}
-                      >
-                        <Icon size={20} />
-                      </a>
-                    ) : null
-                  )}
-                </div>
+          <section id={sectionId} className="w-full py-20 border-b" style={{ fontFamily: 'Inter, sans-serif', background: sectionBg }}>
+            <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-12 px-4">
+              {content.image && <img src={content.image} alt="about" className="h-80 w-[32rem] rounded-2xl object-cover" style={{ border: `4px solid ${themeColor}`, boxShadow: `0 8px 32px 0 ${themeColor2}22` }} />}
+              <div className="flex-1 p-10 flex flex-col justify-center">
+                <h2 className="text-4xl font-extrabold mb-4 relative inline-block" style={{ color: themeColor2 }}>
+                  {content.title}
+                  <span className="block h-1 w-24 rounded-full mt-2 animate-fade-in absolute left-0 -bottom-3" style={{ background: `linear-gradient(90deg, ${themeColor}, ${themeColor2})` }} />
+                </h2>
+                <p className="text-black text-lg leading-relaxed animate-fade-in-up delay-100">{content.description}</p>
               </div>
             </div>
           </section>
         );
       case 'PROJECTS':
         return (
-          <section id={sectionId} className={`w-full py-20 ${sectionBg}`} style={{ fontFamily: 'Inter, sans-serif' }}>
+          <section id={sectionId} className="w-full py-20 border-b" style={{ fontFamily: 'Inter, sans-serif', background: sectionBg }}>
             <div className="max-w-6xl mx-auto px-4">
-              <h2 className="text-4xl font-bold mb-10 flex items-center gap-3 text-brand-primary" style={{color: themeColor}}><FaFolderOpen /> Projects</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <h2 className="text-3xl font-bold mb-10 flex items-center gap-2" style={{ color: themeColor2 }}><FaFolderOpen /> Projects</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
                 {(content.projects || []).map((proj, idx) => (
-                  <div key={idx} className="bg-white rounded-2xl p-8 shadow-lg flex flex-col items-center hover:shadow-2xl transition">
-                    {proj.image && <img src={proj.image} alt="proj" className="h-24 mb-4 rounded-xl object-cover" />}
-                    <h3 className="font-bold text-2xl mb-2 text-brand-primary" style={{color: themeColor2}}>{proj.title}</h3>
-                    <p className="text-gray-700 text-lg text-center">{proj.description}</p>
+                  <div key={idx} className="bg-white rounded-xl p-6 shadow flex flex-col items-center hover:scale-105 transition-transform">
+                    {proj.image && <img src={proj.image} alt="proj" className="h-20 w-20 mb-2 rounded-full object-cover border-4" style={{ borderColor: themeColor2 }} />}
+                    <h3 className="font-bold text-lg mb-1" style={{ color: themeColor2 }}>{proj.title}</h3>
+                    <p className="text-black text-center">{proj.description}</p>
                   </div>
                 ))}
               </div>
@@ -157,32 +235,42 @@ export default function PublicLandingPage() {
         );
       case 'TESTIMONIALS':
         return (
-          <section id={sectionId} className={`w-full py-20 ${sectionBg}`} style={{ fontFamily: 'Inter, sans-serif' }}>
+          <section id={sectionId} className="w-full py-20 border-b" style={{ fontFamily: 'Inter, sans-serif', background: sectionBg }}>
             <div className="max-w-4xl mx-auto px-4">
-              <h2 className="text-4xl font-bold mb-10 flex items-center gap-3 text-brand-primary" style={{color: themeColor2}}><FaQuoteLeft /> Testimonials</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <h2 className="text-3xl font-bold mb-10 flex items-center gap-2" style={{ color: themeColor2 }}><FaQuoteLeft /> Testimonials</h2>
+              <Swiper
+                modules={[Navigation, Pagination, Autoplay]}
+                spaceBetween={40}
+                slidesPerView={1}
+                navigation
+                pagination={{ clickable: true }}
+                autoplay={{ delay: 5000 }}
+                loop
+              >
                 {(content.testimonials || []).map((testimonial, idx) => (
-                  <div key={idx} className="bg-white rounded-2xl p-8 shadow-lg flex flex-col items-center">
-                    {testimonial.image && <img src={testimonial.image} alt="testimonial" className="h-20 w-20 mb-4 rounded-full object-cover border-4 border-gray-200 shadow" style={{objectFit: 'cover'}} />}
-                    <p className="text-gray-700 italic text-lg mb-2">"{testimonial.quote}"</p>
-                    <p className="font-bold text-xl" style={{color: themeColor}}>{testimonial.name}</p>
+                  <SwiperSlide key={idx}>
+                    <div className="bg-white rounded-2xl shadow-lg p-8 flex flex-col items-center max-w-xl mx-auto">
+                      {testimonial.image && <img src={testimonial.image} alt="testimonial" className="w-20 h-20 rounded-full mb-4 border-4" style={{ borderColor: themeColor2 }} />}
+                      <p className="text-lg italic text-black mb-4 text-center">"{testimonial.quote}"</p>
+                      <div className="font-semibold" style={{ color: themeColor2 }}>{testimonial.name}</div>
                   </div>
+                  </SwiperSlide>
                 ))}
-              </div>
+              </Swiper>
             </div>
           </section>
         );
       case 'TEAM':
         return (
-          <section id={sectionId} className={`w-full py-20 ${sectionBg}`} style={{ fontFamily: 'Inter, sans-serif' }}>
+          <section id={sectionId} className="w-full py-20 border-b" style={{ fontFamily: 'Inter, sans-serif', background: sectionBg }}>
             <div className="max-w-6xl mx-auto px-4">
-              <h2 className="text-4xl font-bold mb-10 flex items-center gap-3 text-brand-primary" style={{color: themeColor3}}><FaUsers /> Team</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <h2 className="text-3xl font-bold mb-10 flex items-center gap-2" style={{ color: themeColor2 }}><FaUsers /> Team</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
                 {(content.members || []).map((member, idx) => (
-                  <div key={idx} className="bg-white rounded-2xl p-8 shadow-lg flex flex-col items-center">
-                    {member.image && <img src={member.image} alt="team" className="h-20 w-20 mb-4 rounded-full object-cover border-4 border-gray-200 shadow" style={{objectFit: 'cover'}} />}
-                    <p className="font-bold text-xl mb-1" style={{color: themeColor}}>{member.name}</p>
-                    <p className="text-gray-700 text-lg">{member.role}</p>
+                  <div key={idx} className="bg-white rounded-xl p-6 shadow flex flex-col items-center hover:scale-105 transition-transform">
+                    {member.image && <img src={member.image} alt="team" className="h-24 w-24 mb-3 rounded-full object-cover border-4" style={{ borderColor: themeColor2 }} />}
+                    <p className="font-bold text-lg mb-1" style={{ color: themeColor2 }}>{member.name}</p>
+                    <p className="text-black">{member.role}</p>
                   </div>
                 ))}
               </div>
@@ -191,15 +279,17 @@ export default function PublicLandingPage() {
         );
       case 'FAQ':
         return (
-          <section id={sectionId} className={`w-full py-20 ${sectionBg}`} style={{ fontFamily: 'Inter, sans-serif' }}>
+          <section id={sectionId} className="w-full py-20 border-b" style={{ fontFamily: 'Inter, sans-serif', background: sectionBg }}>
             <div className="max-w-4xl mx-auto px-4">
-              <h2 className="text-4xl font-bold mb-10 flex items-center gap-3 text-brand-primary" style={{color: themeColor2}}><FaQuestionCircle /> FAQ</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <h2 className="text-3xl font-bold mb-10 flex items-center gap-2" style={{ color: themeColor2 }}><FaQuestionCircle /> FAQ</h2>
+              <div className="space-y-4">
                 {(content.faqs || []).map((faq, idx) => (
-                  <div key={idx} className="bg-white rounded-2xl p-8 shadow-lg">
-                    <p className="font-bold text-xl mb-2" style={{color: themeColor}}>{faq.question}</p>
-                    <p className="text-gray-700 text-lg">{faq.answer}</p>
-                  </div>
+                  <details key={idx} className="bg-white rounded-xl p-6 shadow group" style={{ borderLeft: `4px solid ${themeColor}` }}>
+                    <summary className="font-semibold flex items-center gap-2 cursor-pointer group-open:underline transition-all" style={{ color: themeColor2 }}>
+                      <span className="transition-transform group-open:rotate-90">▶</span> {faq.question}
+                    </summary>
+                    <div className="text-black mt-2 animate-fade-in-up">{faq.answer}</div>
+                  </details>
                 ))}
               </div>
             </div>
@@ -207,14 +297,12 @@ export default function PublicLandingPage() {
         );
       case 'GALLERY':
         return (
-          <section id={sectionId} className={`w-full py-20 ${sectionBg}`} style={{ fontFamily: 'Inter, sans-serif' }}>
+          <section id={sectionId} className="w-full py-20 border-b" style={{ fontFamily: 'Inter, sans-serif', background: sectionBg }}>
             <div className="max-w-6xl mx-auto px-4">
-              <h2 className="text-4xl font-bold mb-10 flex items-center gap-3 text-brand-primary" style={{color: themeColor}}><FaImages /> Gallery</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <h2 className="text-3xl font-bold mb-10 flex items-center gap-2" style={{ color: themeColor2 }}><FaImages /> Gallery</h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 {(content.images || []).map((image, idx) => (
-                  <div key={idx} className="bg-white rounded-2xl p-8 shadow-lg flex flex-col items-center">
-                    {image && <img src={image} alt="gallery" className="h-40 w-40 object-cover rounded-full border-4 border-gray-200 shadow" style={{objectFit: 'cover'}} />}
-                  </div>
+                  <img key={idx} src={image} alt={`gallery-${idx}`} className="rounded-xl shadow object-cover h-40 w-full hover:scale-105 transition-transform" style={{ border: `2px solid ${themeColor2}` }} />
                 ))}
               </div>
             </div>
@@ -222,10 +310,30 @@ export default function PublicLandingPage() {
         );
       case 'CUSTOM':
         return (
-          <section id={sectionId} className={`w-full py-20 ${sectionBg}`} style={{ fontFamily: 'Inter, sans-serif' }}>
+          <section id={sectionId} className="w-full py-20 border-b" style={{ fontFamily: 'Inter, sans-serif', background: sectionBg }}>
             <div className="max-w-4xl mx-auto px-4">
-              <div className="bg-white rounded-2xl p-8 shadow-lg">
-                <div dangerouslySetInnerHTML={{ __html: content.html }} />
+              <h2 className="text-3xl font-bold mb-10 flex items-center gap-2" style={{ color: themeColor2 }}><FaCogs /> Custom Section</h2>
+              <div className="prose max-w-full animate-fade-in-up" style={{ color: '#111' }} dangerouslySetInnerHTML={{ __html: content.html || '' }} />
+            </div>
+          </section>
+        );
+      case 'CONTACT':
+        return (
+          <section id={sectionId} className="relative py-20 border-b flex flex-col md:flex-row items-center justify-center" style={{ fontFamily: 'Inter, sans-serif', background: sectionBg }}>
+            <div className="max-w-6xl mx-auto w-full flex flex-col md:flex-row items-center justify-between gap-10 px-4">
+              {/* Contact Info Card */}
+              <div className="flex-1 flex flex-col items-center md:items-start justify-center p-10 z-10">
+                <ContactInfoCard socialLinks={data.socialLinks} address={content.address} email={content.email} phone={content.phone} description={content.description} themeColor={themeColor} themeColor2={themeColor2} themeColor3={themeColor3} />
+              </div>
+              {/* Contact Form Card */}
+              <div className="flex-1 flex items-center justify-center p-10 z-10">
+                <form className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md space-y-4" style={{ border: `1px solid ${themeColor}33` }}>
+                  <h3 className="text-2xl font-bold mb-4" style={{ color: themeColor2 }}>Send a Message</h3>
+                  <input type="text" placeholder="Your Name" className="w-full border rounded px-4 py-3" style={{ borderColor: themeColor2, color: '#111' }} />
+                  <input type="email" placeholder="Your Email" className="w-full border rounded px-4 py-3" style={{ borderColor: themeColor2, color: '#111' }} />
+                  <textarea placeholder="Message" className="w-full border rounded px-4 py-3 min-h-[100px]" style={{ borderColor: themeColor2, color: '#111' }} />
+                  <button type="button" style={{ background: `linear-gradient(90deg, ${themeColor}, ${themeColor2})` }} className="w-full text-white font-bold py-3 rounded-full text-lg hover:scale-105 hover:shadow-xl transition">Submit</button>
+                </form>
               </div>
             </div>
           </section>
@@ -234,20 +342,21 @@ export default function PublicLandingPage() {
         return null;
     }
   }
-
   return (
-    <div style={{ background: themeColor + '22', minHeight: '100vh', fontFamily: 'Inter, sans-serif' }}>
-      <Navbar logo={logo} tenantName={tenantName} sections={sectionLinks} themeColor={themeColor} />
+    <div style={{ background: '#fff', minHeight: '100vh', fontFamily: 'Inter, sans-serif' }}>
+      <Navbar logo={logo} tenantName={tenantName} sections={sectionLinks} themeColor={themeColor} themeColor2={themeColor2} themeColor3={themeColor3} showSignUp={true} sectionLinks={sectionLinks} />
       <div style={{ paddingTop: 80 }}>
         {data.sections && data.sections.length > 0 ? (
           data.sections.map((section, idx) => (
             <div key={idx}>{renderSection(section, idx)}</div>
           ))
         ) : (
-          <div className="text-center text-brand-dark text-lg mt-12">No sections to display.</div>
+          <div className="text-center text-lg mt-12" style={{ color: themeColor2 }}>No sections to display.</div>
         )}
       </div>
       <Footer logo={logo} tenantName={tenantName} links={sectionLinks} socialLinks={data.socialLinks || {}} themeColor={themeColor} />
     </div>
   );
 } 
+
+export default PublicLandingPage; 

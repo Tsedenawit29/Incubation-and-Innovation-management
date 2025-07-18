@@ -3,6 +3,12 @@ import { getLandingPage, saveLandingPage, uploadLandingPageImage } from '../api/
 import { useAuth } from '../hooks/useAuth';
 import { FaRocket, FaInfoCircle, FaEnvelope, FaFolderOpen, FaCogs, FaUserPlus, FaUserTie, FaQuoteLeft, FaUsers, FaQuestionCircle, FaImages } from 'react-icons/fa';
 import SocialLinksEditor from '../components/SocialLinksEditor';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import 'swiper/css';
+import 'swiper/css/navigation';
+import 'swiper/css/pagination';
+import { Navigation, Pagination, Autoplay } from 'swiper/modules';
+import '../index.css';
 
 const SECTION_TYPES = [
   { value: 'HERO', label: 'Hero', icon: <FaRocket /> },
@@ -318,84 +324,157 @@ function SectionPreview({ section, themeColors }) {
   const color1 = themeColors[0] || '#1976d2';
   const color2 = themeColors[1] || '#43a047';
   const color3 = themeColors[2] || '#fbc02d';
+
+  // HERO Section: Split, animated border, floating shapes, glassmorphism
   if (section.type === 'HERO') {
     return (
-      <div className="rounded-lg p-8 text-center mb-8" style={{ background: `linear-gradient(90deg, ${color1}, ${color2}, ${color3})`, color: '#fff' }}>
-        {content.logo && <img src={content.logo} alt="logo" className="h-28 w-28 mx-auto mb-4 rounded-full bg-white object-cover border-4 border-white shadow-lg" style={{objectFit: 'cover'}} />}
-        <h1 className="text-4xl font-bold mb-2 flex items-center justify-center gap-2"><FaRocket /> {content.title}</h1>
-        <h2 className="text-xl mb-4">{content.subtitle}</h2>
-        {content.ctas && content.ctas.map((cta, idx) => (
-          <button key={idx} className="bg-white text-blue-700 font-bold px-6 py-2 rounded-full shadow mx-2 mt-2 flex items-center gap-2">
-            {cta.type === 'startup' ? <FaUserPlus /> : <FaUserTie />} {cta.label}
-          </button>
-        ))}
-        {content.bgImage && <div className="mt-4"><img src={content.bgImage} alt="bg" className="rounded-lg w-full object-cover max-h-64 mx-auto" /></div>}
+      <div className="relative rounded-3xl overflow-hidden shadow-2xl mb-12 flex flex-col md:flex-row items-center bg-gradient-to-r from-white via-gray-50 to-gray-100 border-4 border-transparent hover:border-brand-primary transition-all duration-500">
+        {/* Floating shapes */}
+        <div className="absolute -top-10 -left-10 w-40 h-40 bg-brand-primary opacity-20 rounded-full animate-float z-0" />
+        <div className="absolute bottom-[-50px] right-[-50px] w-52 h-52 bg-brand-dark opacity-20 rounded-full animate-float-slow z-0" />
+        {/* Content */}
+        <div className="flex-1 flex flex-col items-center justify-center p-10 text-center z-10">
+          {content.logo && (
+            <div className="relative mb-4">
+              <span className="absolute inset-0 rounded-full border-4 border-gradient-to-tr from-brand-primary to-brand-dark animate-spin-slow" />
+              <img src={content.logo} alt="logo" className="h-28 w-28 rounded-full bg-white object-cover border-4 border-white shadow-xl relative z-10" />
+            </div>
+          )}
+          <h1 className="text-5xl font-extrabold mb-3 flex items-center justify-center gap-2 text-brand-dark animate-fade-in-up">
+            <FaRocket className="text-brand-primary animate-bounce" /> {content.title}
+          </h1>
+          <h2 className="text-2xl mb-6 text-gray-700 animate-fade-in-up delay-100">{content.subtitle}</h2>
+          <div className="flex flex-wrap justify-center gap-4 mt-2">
+            {content.ctas && content.ctas.map((cta, idx) => (
+              <button key={idx} className="bg-gradient-to-r from-brand-primary to-brand-dark text-white font-bold px-8 py-3 rounded-full shadow-lg hover:scale-105 hover:shadow-2xl transition-transform duration-300 text-lg flex items-center gap-2">
+                {cta.type === 'startup' ? <FaUserPlus /> : <FaUserTie />} {cta.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {content.bgImage && (
+          <div className="flex-1 min-h-[260px] w-full relative z-10">
+            <div className="absolute inset-0 bg-white/30 backdrop-blur-md rounded-3xl" />
+            <img src={content.bgImage} alt="bg" className="object-cover w-full h-full rounded-3xl mix-blend-multiply" />
+          </div>
+        )}
       </div>
     );
   }
+
+  // ABOUT Section: Floating image, colored border, animated underline
   if (section.type === 'ABOUT') {
     return (
-      <div className="rounded-lg p-8 mb-8 bg-white shadow text-center">
-        {content.image && <img src={content.image} alt="about" className="h-24 w-24 mx-auto mb-4 rounded-full object-cover border-4 border-gray-200 shadow" style={{objectFit: 'cover'}} />}
-        <h2 className="text-2xl font-bold mb-2 flex items-center justify-center gap-2"><FaInfoCircle /> {content.title}</h2>
-        <p className="text-gray-700 text-lg">{content.description}</p>
+      <div className="relative rounded-3xl overflow-hidden shadow-2xl mb-12 flex flex-col md:flex-row items-center bg-gradient-to-r from-gray-50 via-white to-gray-100 border-l-8 border-brand-primary">
+        {content.image && (
+          <div className="flex-1 flex items-center justify-center p-10">
+            <img src={content.image} alt="about" className="h-40 w-40 rounded-full object-cover border-4 border-brand-primary shadow-xl animate-float-image" />
+          </div>
+        )}
+        <div className="flex-1 p-10 text-center md:text-left">
+          <h2 className="text-4xl font-extrabold mb-3 flex items-center gap-2 text-brand-dark relative inline-block">
+            <FaInfoCircle className="text-brand-primary" /> {content.title}
+            <span className="block h-1 w-24 bg-gradient-to-r from-brand-primary to-brand-dark rounded-full mt-2 animate-fade-in" />
+          </h2>
+          <p className="text-gray-700 text-lg leading-relaxed animate-fade-in-up delay-100">{content.description}</p>
+        </div>
       </div>
     );
   }
+
+  // CONTACT Section: Glassmorphism, icons, animated background
   if (section.type === 'CONTACT') {
     return (
-      <div className="rounded-lg p-8 mb-8 bg-white shadow text-center">
-        <h2 className="text-2xl font-bold mb-2 flex items-center justify-center gap-2"><FaEnvelope /> Contact</h2>
-        <div className="text-gray-700">
-          <div><b>Address:</b> {content.address}</div>
-          <div><b>Email:</b> {content.email}</div>
-          <div><b>Phone:</b> {content.phone}</div>
-          <div><b>Socials:</b> {content.socials}</div>
+      <div className="relative rounded-3xl p-10 mb-12 bg-white/70 shadow-2xl text-center flex flex-col items-center backdrop-blur-md border border-brand-primary">
+        <div className="absolute inset-0 pointer-events-none z-0">
+          <svg width="100%" height="100%">
+            <circle cx="30%" cy="20%" r="60" fill="#299DFF22" />
+            <circle cx="80%" cy="80%" r="40" fill="#0A2D5C22" />
+          </svg>
+        </div>
+        <h2 className="text-3xl font-bold mb-4 flex items-center justify-center gap-2 text-brand-dark z-10 animate-fade-in-up"><FaEnvelope /> Contact</h2>
+        <div className="text-gray-700 space-y-2 z-10 animate-fade-in-up delay-100">
+          <div className="flex items-center gap-2 justify-center"><FaInfoCircle className="text-brand-primary" /><b>Address:</b> {content.address}</div>
+          <div className="flex items-center gap-2 justify-center"><FaEnvelope className="text-brand-primary" /><b>Email:</b> {content.email}</div>
+          <div className="flex items-center gap-2 justify-center"><FaRocket className="text-brand-primary" /><b>Phone:</b> {content.phone}</div>
+          <div className="flex items-center gap-2 justify-center"><FaUsers className="text-brand-primary" /><b>Socials:</b> {content.socials}</div>
         </div>
       </div>
     );
   }
+
+  // PROJECTS Section: Masonry grid, animated overlay
   if (section.type === 'PROJECTS') {
     return (
-      <div className="rounded-lg p-8 mb-8 bg-white shadow">
-        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><FaFolderOpen /> Projects</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="rounded-3xl p-10 mb-12 bg-white shadow-2xl">
+        <h2 className="text-3xl font-bold mb-6 flex items-center gap-2 text-brand-dark animate-fade-in-up"><FaFolderOpen /> Projects</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
           {(content.projects || []).map((proj, idx) => (
-            <div key={idx} className="bg-gray-50 rounded-lg p-4 shadow flex flex-col items-center">
-              {proj.image && <img src={proj.image} alt="proj" className="h-16 mb-2 rounded" />}
-              <h3 className="font-bold text-lg mb-1">{proj.title}</h3>
-              <p className="text-gray-700">{proj.description}</p>
+            <div key={idx} className="relative group bg-gradient-to-br from-gray-50 to-white rounded-2xl p-6 shadow-xl flex flex-col items-center overflow-hidden hover:scale-105 transition-transform">
+              {proj.image && (
+                <div className="relative w-full h-40 mb-4 overflow-hidden rounded-xl">
+                  <img src={proj.image} alt="proj" className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-300" />
+                  <div className="absolute inset-0 bg-brand-primary/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                    <span className="text-white text-lg font-bold">{proj.title}</span>
+                  </div>
+                </div>
+              )}
+              <h3 className="font-bold text-xl mb-2 text-brand-dark group-hover:underline transition-all">{proj.title}</h3>
+              <p className="text-gray-700 text-center">{proj.description}</p>
             </div>
           ))}
         </div>
       </div>
     );
   }
+
+  // TESTIMONIALS Section: 3D carousel, speech bubble, colored ring
   if (section.type === 'TESTIMONIALS') {
     return (
-      <div className="rounded-lg p-8 mb-8 bg-white shadow">
-        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><FaQuoteLeft /> Testimonials</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="rounded-3xl p-10 mb-12 bg-gradient-to-br from-white to-blue-50 shadow-2xl">
+        <h2 className="text-3xl font-bold mb-6 flex items-center gap-2 text-brand-dark animate-fade-in-up"><FaQuoteLeft /> Testimonials</h2>
+        <Swiper
+          modules={[Navigation, Pagination, Autoplay]}
+          spaceBetween={40}
+          slidesPerView={1}
+          navigation
+          pagination={{ clickable: true }}
+          autoplay={{ delay: 5000 }}
+          loop
+        >
           {(content.testimonials || []).map((testimonial, idx) => (
-            <div key={idx} className="bg-gray-50 rounded-lg p-4 shadow flex flex-col items-center">
-              {testimonial.image && <img src={testimonial.image} alt="testimonial" className="h-20 w-20 mb-2 rounded-full object-cover border-4 border-gray-200 shadow" style={{objectFit: 'cover'}} />}
-              <p className="text-gray-700 italic">"{testimonial.quote}"</p>
-              <p className="text-gray-700 font-bold mt-2">{testimonial.name}</p>
-            </div>
+            <SwiperSlide key={idx}>
+              <div className="relative bg-white rounded-2xl shadow-xl p-10 flex flex-col items-center max-w-xl mx-auto group">
+                {testimonial.image && (
+                  <div className="relative mb-4">
+                    <span className="absolute inset-0 rounded-full border-4 border-gradient-to-tr from-brand-primary to-brand-dark animate-spin-slow" />
+                    <img src={testimonial.image} alt="testimonial" className="w-24 h-24 rounded-full border-4 border-brand-primary object-cover shadow-xl relative z-10" />
+                  </div>
+                )}
+                <div className="relative bg-brand-primary/10 rounded-xl px-6 py-4 mb-4 shadow-lg speech-bubble">
+                  <p className="text-xl italic text-brand-dark text-center animate-fade-in-up">"{testimonial.quote}"</p>
+                </div>
+                <div className="text-brand-dark font-semibold text-lg animate-fade-in-up delay-100">{testimonial.name}</div>
+              </div>
+            </SwiperSlide>
           ))}
-        </div>
+        </Swiper>
       </div>
     );
   }
+
+  // TEAM Section: Floating avatars, animated border, hover effect
   if (section.type === 'TEAM') {
     return (
-      <div className="rounded-lg p-8 mb-8 bg-white shadow">
-        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><FaUsers /> Team</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="rounded-3xl p-10 mb-12 bg-white shadow-2xl">
+        <h2 className="text-3xl font-bold mb-6 flex items-center gap-2 text-brand-dark animate-fade-in-up"><FaUsers /> Team</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
           {(content.members || []).map((member, idx) => (
-            <div key={idx} className="bg-gray-50 rounded-lg p-4 shadow flex flex-col items-center">
-              {member.image && <img src={member.image} alt="team" className="h-20 w-20 mb-2 rounded-full object-cover border-4 border-gray-200 shadow" style={{objectFit: 'cover'}} />}
-              <p className="text-gray-700 font-bold">{member.name}</p>
+            <div key={idx} className="relative bg-gradient-to-br from-gray-50 to-white rounded-2xl p-6 shadow-xl flex flex-col items-center hover:scale-105 transition-transform group border-2 border-transparent hover:border-brand-primary">
+              {member.image && (
+                <img src={member.image} alt="team" className="h-24 w-24 mb-3 rounded-full object-cover border-4 border-brand-primary shadow-xl group-hover:scale-110 transition-transform" />
+              )}
+              <p className="text-brand-dark font-bold text-lg mb-1">{member.name}</p>
               <p className="text-gray-700">{member.role}</p>
             </div>
           ))}
@@ -403,39 +482,51 @@ function SectionPreview({ section, themeColors }) {
       </div>
     );
   }
+
+  // FAQ Section: Accordion, animated chevron, colored border
   if (section.type === 'FAQ') {
     return (
-      <div className="rounded-lg p-8 mb-8 bg-white shadow">
-        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><FaQuestionCircle /> FAQ</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="rounded-3xl p-10 mb-12 bg-white shadow-2xl">
+        <h2 className="text-3xl font-bold mb-6 flex items-center gap-2 text-brand-dark animate-fade-in-up"><FaQuestionCircle /> FAQ</h2>
+        <div className="space-y-4">
           {(content.faqs || []).map((faq, idx) => (
-            <div key={idx} className="bg-gray-50 rounded-lg p-4 shadow">
-              <p className="text-gray-700 font-bold">{faq.question}</p>
-              <p className="text-gray-700 mt-2">{faq.answer}</p>
-            </div>
+            <details key={idx} className="bg-gray-50 rounded-2xl p-6 shadow group border-l-4 border-brand-primary">
+              <summary className="font-semibold text-brand-dark flex items-center gap-2 cursor-pointer group-open:underline group-open:text-brand-primary transition-all">
+                <span className="transition-transform group-open:rotate-90">▶</span> {faq.question}
+              </summary>
+              <div className="text-gray-700 mt-2 animate-fade-in-up">{faq.answer}</div>
+            </details>
           ))}
         </div>
       </div>
     );
   }
+
+  // GALLERY Section: Responsive grid, lightbox-ready, animated overlay
   if (section.type === 'GALLERY') {
     return (
-      <div className="rounded-lg p-8 mb-8 bg-white shadow">
-        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><FaImages /> Gallery</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="rounded-3xl p-10 mb-12 bg-white shadow-2xl">
+        <h2 className="text-3xl font-bold mb-6 flex items-center gap-2 text-brand-dark animate-fade-in-up"><FaImages /> Gallery</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           {(content.images || []).map((image, idx) => (
-            <div key={idx} className="bg-gray-50 rounded-lg p-4 shadow flex flex-col items-center">
-              {image && <img src={image} alt="gallery" className="h-40 w-40 object-cover rounded-full border-4 border-gray-200 shadow" style={{objectFit: 'cover'}} />}
+            <div key={idx} className="relative group overflow-hidden rounded-2xl shadow-xl hover:scale-105 transition-transform">
+              <img src={image} alt={`gallery-${idx}`} className="object-cover h-40 w-full rounded-2xl group-hover:rotate-2 group-hover:scale-110 transition-transform duration-300" />
+              <div className="absolute inset-0 bg-brand-primary/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <span className="text-white text-lg font-bold">Image {idx + 1}</span>
+              </div>
             </div>
           ))}
         </div>
       </div>
     );
   }
+
+  // CUSTOM Section: Glassmorphism, animated border
   if (section.type === 'CUSTOM') {
     return (
-      <div className="rounded-lg p-8 mb-8 bg-white shadow">
-        <div dangerouslySetInnerHTML={{ __html: content.html }} />
+      <div className="rounded-3xl p-10 mb-12 bg-white/80 shadow-2xl border-4 border-brand-primary/30 backdrop-blur-md">
+        <h2 className="text-3xl font-bold mb-6 flex items-center gap-2 text-brand-dark animate-fade-in-up"><FaCogs /> Custom Section</h2>
+        <div className="prose max-w-full animate-fade-in-up" dangerouslySetInnerHTML={{ __html: content.html || '' }} />
       </div>
     );
   }
