@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:8081/api";
+const API_URL = "http://localhost:8080/api";
 
 // Admin Request Management APIs
 export async function requestAdmin(adminData) {
