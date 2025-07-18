@@ -76,11 +76,11 @@ public class ApplicationFormField {
         this.fieldType = fieldType;
     }
 
-    public Boolean getRequired() {
+    public Boolean getIsRequired() {
         return isRequired;
     }
 
-    public void setRequired(Boolean required) {
+    public void setIsRequired(Boolean required) {
         isRequired = required;
     }
 

@@ -91,7 +91,7 @@ public class ApplicationController {
      * @param reviewDto The ApplicationReviewDto containing the application ID and new status.
      * @return ResponseEntity with the updated ApplicationResponseDto and HTTP status 200.
      */
-    @PatchMapping("/tenants/{tenantId}/applications/status")
+    @PutMapping("/tenants/{tenantId}/applications/status")
     public ResponseEntity<ApplicationResponseDto> updateApplicationStatus(
             @PathVariable UUID tenantId,
             @Valid @RequestBody ApplicationReviewDto reviewDto) {

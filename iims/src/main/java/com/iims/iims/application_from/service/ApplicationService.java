@@ -82,7 +82,7 @@ public class ApplicationService {
 
         // Validate required fields
         for (ApplicationFormField formField : form.getFields()) {
-            if (formField.getRequired()) {
+            if (formField.getIsRequired()) {
                 boolean hasResponse = responses.stream()
                         .anyMatch(appResponse -> appResponse.getField().getId().equals(formField.getId()) &&
                                 appResponse.getResponse() != null && !appResponse.getResponse().trim().isEmpty());
