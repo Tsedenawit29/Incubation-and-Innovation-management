@@ -33,4 +33,52 @@ public class SubmitApplicationRequest {
     @Valid
     @NotNull(message = "Field responses cannot be null")
     private List<ApplicationFieldResponseRequest> fieldResponses;
+
+    public UUID getFormId() {
+        return formId;
+    }
+
+    public void setFormId(UUID formId) {
+        this.formId = formId;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    public ApplicantType getApplicantType() {
+        return applicantType;
+    }
+
+    public void setApplicantType(ApplicantType applicantType) {
+        this.applicantType = applicantType;
+    }
+
+    public List<ApplicationFieldResponseRequest> getFieldResponses() {
+        return fieldResponses;
+    }
+
+    public void setFieldResponses(List<ApplicationFieldResponseRequest> fieldResponses) {
+        this.fieldResponses = fieldResponses;
+    }
 }

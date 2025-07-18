@@ -18,4 +18,20 @@ public class ApplicationReviewDto {
 
     @NotNull(message = "New status cannot be null")
     private ApplicationStatus newStatus;
+
+    public UUID getApplicationId() {
+        return applicationId;
+    }
+
+    public void setApplicationId(UUID applicationId) {
+        this.applicationId = applicationId;
+    }
+
+    public ApplicationStatus getNewStatus() {
+        return newStatus;
+    }
+
+    public void setNewStatus(ApplicationStatus newStatus) {
+        this.newStatus = newStatus;
+    }
 }
