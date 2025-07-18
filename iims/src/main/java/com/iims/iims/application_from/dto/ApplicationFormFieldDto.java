@@ -24,5 +24,64 @@ public class ApplicationFormFieldDto {
 
     private List<String> options;
 
+    private Boolean isRequired = false;
+
     private Integer orderIndex;
+
+    public ApplicationFormFieldDto(
+            UUID id,
+            String label,
+            FieldType fieldType,
+            Boolean required,
+            List<String> options,
+            Integer orderIndex) {
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public Boolean getRequired() {
+        return isRequired;
+    }
+
+    public void setRequired(Boolean required) {
+        isRequired = required;
+    }
+
+    public String getLabel() {
+        return label;
+    }
+
+    public void setLabel(String label) {
+        this.label = label;
+    }
+
+    public FieldType getFieldType() {
+        return fieldType;
+    }
+
+    public void setFieldType(FieldType fieldType) {
+        this.fieldType = fieldType;
+    }
+
+    public List<String> getOptions() {
+        return options;
+    }
+
+    public void setOptions(List<String> options) {
+        this.options = options;
+    }
+
+    public Integer getOrderIndex() {
+        return orderIndex;
+    }
+
+    public void setOrderIndex(Integer orderIndex) {
+        this.orderIndex = orderIndex;
+    }
 }

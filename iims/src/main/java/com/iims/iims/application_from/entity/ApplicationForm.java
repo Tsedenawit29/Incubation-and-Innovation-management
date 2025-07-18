@@ -4,9 +4,7 @@ import com.iims.iims.tenant.entity.Tenant;
 import jakarta.persistence.Entity;
 import jakarta.persistence.*;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.GenericGenerator;
 
 import java.time.LocalDateTime;
@@ -46,4 +44,60 @@ public class ApplicationForm {
     @OneToMany(mappedBy = "form", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @OrderBy("orderIndex ASC")
     private List<ApplicationFormField> fields;
+
+    public UUID getId() {
+        return id;
+    }
+
+    public Tenant getTenant() {
+        return tenant;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public ApplicationFormType getType() {
+        return type;
+    }
+
+    public Boolean getActive() {
+        return isActive;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public List<ApplicationFormField> getFields() {
+        return fields;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public void setTenant(Tenant tenant) {
+        this.tenant = tenant;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setType(ApplicationFormType type) {
+        this.type = type;
+    }
+
+    public void setActive(Boolean active) {
+        isActive = active;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public void setFields(List<ApplicationFormField> fields) {
+        this.fields = fields;
+    }
 }

@@ -31,4 +31,44 @@ public class ApplicationFormRequest {
     @NotNull(message = "Form fields cannot be null")
     @Size(min = 1, message = "A form must have at least one field")
     private List<ApplicationFormFieldDto> fields;
+
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public ApplicationFormType getType() {
+        return type;
+    }
+
+    public void setType(ApplicationFormType type) {
+        this.type = type;
+    }
+
+    public Boolean getActive() {
+        return isActive;
+    }
+
+    public void setActive(Boolean active) {
+        isActive = active;
+    }
+
+    public List<ApplicationFormFieldDto> getFields() {
+        return fields;
+    }
+
+    public void setFields(List<ApplicationFormFieldDto> fields) {
+        this.fields = fields;
+    }
 }
