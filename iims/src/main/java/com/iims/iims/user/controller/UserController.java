@@ -7,6 +7,7 @@ import com.iims.iims.user.dto.UserProfileUpdateRequest;
 import com.iims.iims.user.dto.PasswordUpdateRequest;
 import com.iims.iims.user.dto.StatusUpdateRequest;
 import com.iims.iims.user.dto.AdminRegistrationRequest;
+import com.iims.iims.user.dto.TenantUserCreationRequest;
 import com.iims.iims.tenant.entity.AdminRequest;
 import com.iims.iims.tenant.service.AdminRequestService;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 
 import java.util.List;
 import java.util.Map;
@@ -149,6 +151,30 @@ public class UserController {
             @RequestParam String reason) {
         AdminRequest adminRequest = adminRequestService.rejectAdminRequest(id, rejectedBy, reason);
         return ResponseEntity.ok(adminRequest);
+    }
+
+    // Tenant admin creates a user for their tenant
+    @PostMapping("/tenant-create")
+    @PreAuthorize("hasRole('TENANT_ADMIN')")
+    public ResponseEntity<?> createTenantUser(@RequestBody TenantUserCreationRequest request, Authentication authentication) {
+        User tenantAdmin = (User) authentication.getPrincipal();
+        return ResponseEntity.ok(userService.createTenantUser(request, tenantAdmin));
+    }
+
+    // List all users for the current tenant
+    @GetMapping("/tenant-users")
+    @PreAuthorize("hasRole('TENANT_ADMIN')")
+    public ResponseEntity<List<User>> getUsersByTenant(Authentication authentication) {
+        User tenantAdmin = (User) authentication.getPrincipal();
+        return ResponseEntity.ok(userService.getUsersByTenantId(tenantAdmin.getTenantId()));
+    }
+
+    // List users for the current tenant by role
+    @GetMapping("/tenant-users/role/{role}")
+    @PreAuthorize("hasRole('TENANT_ADMIN')")
+    public ResponseEntity<List<User>> getUsersByTenantAndRole(@PathVariable Role role, Authentication authentication) {
+        User tenantAdmin = (User) authentication.getPrincipal();
+        return ResponseEntity.ok(userService.getUsersByTenantIdAndRole(tenantAdmin.getTenantId(), role));
     }
 
     // Debug endpoint to check current user's role
