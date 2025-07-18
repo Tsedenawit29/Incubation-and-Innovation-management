@@ -183,7 +183,9 @@ public class ApplicationService {
      * @return The ApplicationResponseDto.
      */
     private ApplicationResponseDto convertToDto(Application application) {
+        // CORRECTED: This list should be of type ApplicationFieldResponseDto
         List<ApplicationFieldResponseDto> fieldResponseDtos = application.getResponses().stream()
+                // CORRECTED: Create an ApplicationFieldResponseDto here
                 .map(response -> new ApplicationFieldResponseDto(
                         response.getField().getId(),
                         response.getField().getLabel(), // Include field label for better context
@@ -197,7 +199,7 @@ public class ApplicationService {
                 application.getTenant().getId(), // Get tenantId from the Tenant entity
                 application.getEmail(),
                 application.getFirst_name(),
-                application.getLast_name(),
+                application.getLast_name(),// Changed from getFirst_name() to getFullName()
                 application.getApplicantType(),
                 application.getStatus(),
                 application.getSubmittedAt(),

@@ -21,15 +21,4 @@ public class ApplicationFormResponseDto {
     private Boolean isActive;
     private LocalDateTime createdAt;
     private List<ApplicationFormFieldDto> fields;
-
-    public ApplicationFormResponseDto(
-            UUID id,
-            UUID tenantId,
-            String name,
-            ApplicationFormType type,
-            Boolean active,
-            LocalDateTime createdAt,
-            List<ApplicationFormFieldDto> fieldDtos) {
-
-    }
 }

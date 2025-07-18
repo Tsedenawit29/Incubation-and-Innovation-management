@@ -14,11 +14,4 @@ public class ApplicationFieldResponseDto {
     private UUID fieldId;
     private String fieldLabel;
     private String response;
-
-    public ApplicationFieldResponseDto(
-            UUID id,
-            String label,
-            String response) {
-
-    }
 }

@@ -1,3 +1,4 @@
+// src/main/java/com/iims/iims/application_from/dto/ApplicationResponseDto.java
 package com.iims.iims.application_from.dto;
 
 import com.iims.iims.application_from.entity.ApplicantType;
@@ -24,18 +25,5 @@ public class ApplicationResponseDto {
     private ApplicantType applicantType;
     private ApplicationStatus status;
     private LocalDateTime submittedAt;
-    private List<ApplicationResponseDto> fieldResponses;
-
-    public ApplicationResponseDto(
-            UUID id,
-            UUID formId,
-            UUID tenantId,
-            String email,
-            String firstName,
-            String lastName,
-            ApplicantType applicantType,
-            ApplicationStatus status,
-            LocalDateTime submittedAt,
-            List<ApplicationFieldResponseDto> fieldResponseDtos) {
-    }
+    private List<ApplicationFieldResponseDto> fieldResponses;
 }
