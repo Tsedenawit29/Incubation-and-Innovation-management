@@ -11,7 +11,6 @@ import com.iims.iims.tenant.entity.Tenant;
 import com.iims.iims.tenant.repository.TenantRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.transaction.annotation.Transactional;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -20,7 +19,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class ApplicationFormService {
 
     private final ApplicationFormRepository applicationFormRepository;
@@ -113,11 +111,20 @@ public class ApplicationFormService {
      * @return A list of active ApplicationFormResponseDto.
      * @throws EntityNotFoundException if the tenant is not found.
      */
+    /**
+     * Retrieves active application forms for a specific tenant and type.
+     *
+     * @param tenantId The UUID of the tenant.
+     * @param type     The type of the form (STARTUP or MENTOR).
+     * @return A list of active ApplicationFormResponseDto.
+     * @throws EntityNotFoundException if the tenant is not found.
+     */
     @Transactional(readOnly = true)
-    public List<ApplicationFormResponseDto> getActiveApplicationFormsByTenantAndType(UUID tenantId, ApplicationFormType type){
+    public List<ApplicationFormResponseDto> getActiveApplicationFormsByTenantAndType(UUID tenantId, ApplicationFormType type) {
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new EntityNotFoundException("Tenant not found with ID: " + tenantId));
-        List<ApplicationForm> forms = applicationFormRepository.findByTenantAndIsActive(tenant, type, true);
+        // CORRECTED: Call the method with the updated name
+        List<ApplicationForm> forms = applicationFormRepository.findByTenantAndTypeAndIsActive(tenant, type, true);
         return forms.stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());

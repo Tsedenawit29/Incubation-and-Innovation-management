@@ -13,5 +13,5 @@ public interface ApplicationFormRepository extends JpaRepository<ApplicationForm
 
     List<ApplicationForm> findByTenant(Tenant tenant);
     Optional<ApplicationForm> findByIdAndTenant(UUID id, Tenant tenant);
-    List<ApplicationForm> findByTenantAndIsActive(Tenant tenant, ApplicationFormType type, Boolean isActive);
+    List<ApplicationForm> findByTenantAndTypeAndIsActive(Tenant tenant, ApplicationFormType type, Boolean isActive);
 }

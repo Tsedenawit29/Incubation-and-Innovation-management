@@ -43,6 +43,7 @@ public class SecurityConfig {
             .requestMatchers("/api/tenant/apply").permitAll()
             .requestMatchers("/api/users/request-admin").permitAll()
             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Allow CORS preflight
+                .requestMatchers("/api/v1/applications/submit").permitAll()
             .requestMatchers("/api/tenant/**").hasRole("SUPER_ADMIN")
             .requestMatchers("/api/users/pending-admins", "/api/users/admin-requests", "/api/users/approve-admin/**", "/api/users/reject-admin/**").hasRole("SUPER_ADMIN")
             .anyRequest().authenticated()
