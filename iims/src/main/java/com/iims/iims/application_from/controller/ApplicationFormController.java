@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -31,6 +32,7 @@ public class ApplicationFormController {
      * @return ResponseEntity with the created ApplicationFormResponseDto and HTTP status 201.
      */
     @PostMapping
+   // @PreAuthorize("hasAuthority('TENANT_ADMIN') and @tenantSecurity.isCurrentUserInTenant(#tenantId)")
     public ResponseEntity<ApplicationFormResponseDto> createApplicationForm(
             @PathVariable UUID tenantId,
             @Valid @RequestBody ApplicationFormRequest request
@@ -47,6 +49,7 @@ public class ApplicationFormController {
      * @return ResponseEntity with the ApplicationFormResponseDto and HTTP status 200.
      */
     @GetMapping("/{formId}")
+   // @PreAuthorize("hasAuthority('TENANT_ADMIN') and @tenantSecurity.isCurrentUserInTenant(#tenantId)")
     private ResponseEntity<ApplicationFormResponseDto> getApplicationFormById(
             @PathVariable UUID tenantId,
             @PathVariable UUID formId) {
@@ -61,6 +64,7 @@ public class ApplicationFormController {
      * @return ResponseEntity with a list of ApplicationFormResponseDto and HTTP status 200.
      */
     @GetMapping
+   // @PreAuthorize("hasAuthority('TENANT_ADMIN') and @tenantSecurity.isCurrentUserInTenant(#tenantId)")
     public ResponseEntity<List<ApplicationFormResponseDto>> getAllApplicationFormsByTenant(
             @PathVariable UUID tenantId) {
         List<ApplicationFormResponseDto> forms = applicationFormService.getAllApplicationFormsByTenant(tenantId);
@@ -75,6 +79,7 @@ public class ApplicationFormController {
      * @return ResponseEntity with a list of ApplicationFormResponseDto and HTTP status 200.
      */
     @GetMapping("/type/{type}")
+   // @PreAuthorize("hasAuthority('TENANT_ADMIN') and @tenantSecurity.isCurrentUserInTenant(#tenantId)")
     public ResponseEntity<List<ApplicationFormResponseDto>> getActiveApplicationFormsByType(
             @PathVariable UUID tenantId,
             @PathVariable ApplicationFormType type) {
@@ -91,6 +96,7 @@ public class ApplicationFormController {
      * @return ResponseEntity with the updated ApplicationFormResponseDto and HTTP status 200.
      */
     @PutMapping("/{formId}")
+   // @PreAuthorize("hasAuthority('TENANT_ADMIN') and @tenantSecurity.isCurrentUserInTenant(#tenantId)")
     public ResponseEntity<ApplicationFormResponseDto> updateApplicationForm(
             @PathVariable UUID tenantId,
             @PathVariable UUID formId,
@@ -107,6 +113,7 @@ public class ApplicationFormController {
      * @return ResponseEntity with no content and HTTP status 204.
      */
     @DeleteMapping("/{formId}")
+   // @PreAuthorize("hasAuthority('TENANT_ADMIN') and @tenantSecurity.isCurrentUserInTenant(#tenantId)")
     public ResponseEntity<Void> deleteApplicationForm(
             @PathVariable UUID tenantId,
             @PathVariable UUID formId) {

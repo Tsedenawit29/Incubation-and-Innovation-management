@@ -54,7 +54,7 @@ public class ApplicationFormService {
                     ApplicationFormField field = new ApplicationFormField();
                     field.setLabel(fieldDto.getLabel());
                     field.setFieldType(fieldDto.getFieldType());
-                    field.setRequired(fieldDto.getRequired());
+                    field.setIsRequired(fieldDto.getIsRequired());
                     field.setOptions(fieldDto.getOptions());
                     field.setOrderIndex(fieldDto.getOrderIndex());
                     field.setForm(form);
@@ -155,7 +155,7 @@ public class ApplicationFormService {
             ApplicationFormField field = new ApplicationFormField();
             field.setLabel(fieldDto.getLabel());
             field.setFieldType(fieldDto.getFieldType());
-            field.setRequired(fieldDto.getRequired());
+            field.setIsRequired(fieldDto.getIsRequired());
             field.setOptions(fieldDto.getOptions());
             field.setOrderIndex(fieldDto.getOrderIndex());
             field.setForm(existingForm); // Set the back-reference
@@ -192,7 +192,7 @@ public class ApplicationFormService {
                         field.getId(),
                         field.getLabel(),
                         field.getFieldType(),
-                        field.getRequired(),
+                        field.getIsRequired(),
                         field.getOptions(),
                         field.getOrderIndex()
                 ))
