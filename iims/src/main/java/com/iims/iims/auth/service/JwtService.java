@@ -35,7 +35,9 @@ public class JwtService {
     }
 
     public String generateToken(User user) {
-        return generateToken(new HashMap<>(), user);
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("role", user.getRole().name()); // Add role to claims
+        return generateToken(claims, user);
     }
 
     public String generateToken(Map<String, Object> extraClaims, User user) {
@@ -70,7 +72,7 @@ public class JwtService {
         return extractClaim(token, Claims::getExpiration);
     }
 
-    private Claims extractAllClaims(String token) {
+    public Claims extractAllClaims(String token) {
         return Jwts
                 .parserBuilder()
                 .setSigningKey(getSignInKey())

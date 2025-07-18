@@ -8,13 +8,14 @@ import TenantManagementPage from './pages/TenantManagementPage';
 import AdminRequestManagementPage from './pages/AdminRequestManagementPage';
 import TenantApplicationForm from './components/TenantApplicationForm';
 import AdminRegistrationForm from './components/AdminRegistrationForm';
-import LandingPage from './pages/LandingPage';
 import StartupDashboard from './pages/StartupDashboard';
 import MentorDashboard from './pages/MentorDashboard';
 import CoachDashboard from './pages/CoachDashboard';
 import FacilitatorDashboard from './pages/FacilitatorDashboard';
 import InvestorDashboard from './pages/InvestorDashboard';
 import AlumniDashboard from './pages/AlumniDashboard';
+import LandingPageManagement from './pages/LandingPageManagement';
+import PublicLandingPage from './pages/PublicLandingPage';
 import './App.css';
 
 // Protected Route Component
@@ -110,8 +111,6 @@ function App() {
             <Route path="/apply-tenant" element={<TenantApplicationForm />} />
             <Route path="/register-admin" element={<AdminRegistrationForm />} />
             <Route path="/register-admin/:tenantId" element={<AdminRegistrationForm />} />
-            {/* Default redirect */}
-            <Route path="/" element={<LandingPage />} />
             {/* Startup Dashboard */}
             <Route
               path="/startup-dashboard/:id"
@@ -166,6 +165,10 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            {/* Landing Page Management */}
+            <Route path="/tenant-admin/:tenantId/landing-page-management" element={<LandingPageManagement />} />
+            {/* Public Landing Page */}
+            <Route path="/public-landing/:tenantId" element={<PublicLandingPage />} />
             {/* Catch all route - must be last */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
