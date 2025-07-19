@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:8080/api";
+const API_URL = "http://localhost:8081/api";
 
 export async function login(email, password) {
   try {
@@ -192,4 +192,39 @@ export async function testAuth(token) {
     throw new Error(`Auth test failed: ${res.status} ${res.statusText}`);
   }
   return res.text();
+} 
+
+export async function createTenantUser(token, user) {
+  const res = await fetch(`${API_URL}/users/tenant-create`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(user),
+  });
+  if (!res.ok) throw new Error("Failed to create tenant user");
+  return res.json();
+}
+
+export async function getTenantUsers(token) {
+  const res = await fetch(`${API_URL}/users/tenant-users`, {
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!res.ok) throw new Error("Failed to fetch tenant users");
+  return res.json();
+}
+
+export async function getTenantUsersByRole(token, role) {
+  const res = await fetch(`${API_URL}/users/tenant-users/role/${role}`, {
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!res.ok) throw new Error("Failed to fetch tenant users by role");
+  return res.json();
 } 
