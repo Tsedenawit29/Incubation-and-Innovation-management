@@ -5,6 +5,7 @@ import com.iims.iims.user.entity.Role;
 import com.iims.iims.user.repository.UserRepository;
 import com.iims.iims.user.dto.UserProfileUpdateRequest;
 import com.iims.iims.user.dto.PasswordUpdateRequest;
+import com.iims.iims.user.dto.TenantUserCreationRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -14,6 +15,10 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
+import org.apache.commons.lang3.RandomStringUtils;
+import com.iims.iims.tenant.entity.Tenant;
+import com.iims.iims.tenant.repository.TenantRepository;
+import com.iims.iims.notification.EmailService;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +26,8 @@ public class UserService implements UserDetailsService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder encoder;
+    private final EmailService emailService;
+    private final TenantRepository tenantRepository;
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
@@ -105,5 +112,40 @@ public class UserService implements UserDetailsService {
         User user = getUserById(id);
         user.setRole(role);
         return userRepository.save(user);
+    }
+
+    public User createTenantUser(TenantUserCreationRequest request, User tenantAdmin) {
+        // Ensure email is unique
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new RuntimeException("Email already exists");
+        }
+        // Generate random password
+        String rawPassword = RandomStringUtils.randomAlphanumeric(10);
+        User user = User.builder()
+                .fullName(request.getFullName())
+                .email(request.getEmail())
+                .role(request.getRole())
+                .tenantId(tenantAdmin.getTenantId())
+                .password(encoder.encode(rawPassword))
+                .isActive(true)
+                .build();
+        userRepository.save(user);
+        // Get tenant name for email
+        Tenant tenant = tenantRepository.findById(tenantAdmin.getTenantId())
+                .orElse(null);
+        String tenantName = tenant != null ? tenant.getName() : "Your Center";
+        // Send email with credentials
+        emailService.sendAdminApprovalEmail(user.getEmail(), user.getFullName(), user.getEmail(), rawPassword, tenantName);
+        // Return user info without password
+        user.setPassword(null);
+        return user;
+    }
+
+    public List<User> getUsersByTenantId(UUID tenantId) {
+        return userRepository.findByTenantId(tenantId);
+    }
+
+    public List<User> getUsersByTenantIdAndRole(UUID tenantId, Role role) {
+        return userRepository.findByTenantIdAndRole(tenantId, role);
     }
 } 

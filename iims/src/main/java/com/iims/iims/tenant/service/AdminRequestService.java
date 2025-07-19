@@ -10,6 +10,7 @@ import com.iims.iims.user.entity.Role;
 import com.iims.iims.user.entity.User;
 import com.iims.iims.user.repository.UserRepository;
 import com.iims.iims.user.dto.AdminRegistrationRequest;
+import com.iims.iims.notification.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,7 @@ public class AdminRequestService {
     private final TenantRepository tenantRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
 
     public AdminRequest createAdminRequest(AdminRegistrationRequest requestDto) {
         // Check if tenant exists and is approved
@@ -100,8 +102,18 @@ public class AdminRequestService {
         adminRequest.setGeneratedPassword(generatedPassword);
         adminRequestRepository.save(adminRequest);
 
-        // Send email with credentials (for now, just log)
-        sendAdminCredentialsEmail(adminRequest.getEmail(), adminRequest.getFullName(), generatedPassword);
+        // Fetch tenant name for email
+        Tenant tenant = tenantRepository.findById(adminRequest.getTenantId())
+            .orElse(null);
+        String tenantName = tenant != null ? tenant.getName() : "your organization";
+        // Send approval email with credentials
+        emailService.sendAdminApprovalEmail(
+            adminRequest.getEmail(),
+            adminRequest.getFullName(),
+            adminRequest.getEmail(),
+            generatedPassword,
+            tenantName
+        );
 
         return savedUser;
     }
@@ -114,9 +126,21 @@ public class AdminRequestService {
         }
 
         adminRequest.setStatus(AdminRequestStatus.REJECTED);
-        // You might want to store the rejection reason somewhere
+        // Optionally store the rejection reason
+        adminRequestRepository.save(adminRequest);
 
-        return adminRequestRepository.save(adminRequest);
+        // Fetch tenant name for email
+        Tenant tenant = tenantRepository.findById(adminRequest.getTenantId())
+            .orElse(null);
+        String tenantName = tenant != null ? tenant.getName() : "your organization";
+        // Send rejection email
+        emailService.sendAdminRejectionEmail(
+            adminRequest.getEmail(),
+            adminRequest.getFullName(),
+            tenantName,
+            reason
+        );
+        return adminRequest;
     }
 
     private String generateRandomPassword() {

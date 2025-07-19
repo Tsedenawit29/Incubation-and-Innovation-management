@@ -35,7 +35,7 @@ public class AuthService {
             System.out.println("User authenticated successfully: " + user.getEmail() + " with role: " + user.getRole());
             
             String token = jwtService.generateToken(user);
-            return new AuthResponse(token, user.getEmail(), user.getRole().name(), user.getFullName(), user.getId());
+            return new AuthResponse(token, user.getEmail(), user.getRole().name(), user.getFullName(), user.getId(), user.getRole() == Role.TENANT_ADMIN ? user.getTenantId() : null);
         } catch (Exception e) {
             System.err.println("Authentication failed for user " + req.getEmail() + ": " + e.getMessage());
             e.printStackTrace();
@@ -51,6 +51,6 @@ public class AuthService {
             .role(Role.SUPER_ADMIN)
             .build();
         userRepo.save(admin);
-        return new AuthResponse(jwtService.generateToken(admin), admin.getEmail(), admin.getRole().name(), admin.getFullName(), admin.getId());
+        return new AuthResponse(jwtService.generateToken(admin), admin.getEmail(), admin.getRole().name(), admin.getFullName(), admin.getId(), null);
     }
 } 

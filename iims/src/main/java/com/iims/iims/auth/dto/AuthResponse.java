@@ -14,4 +14,5 @@ public class AuthResponse {
     private String role;
     private String fullName;
     private UUID userId;
+    private UUID tenantId;
 } 
