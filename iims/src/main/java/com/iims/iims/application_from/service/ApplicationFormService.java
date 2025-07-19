@@ -111,14 +111,6 @@ public class ApplicationFormService {
      * @return A list of active ApplicationFormResponseDto.
      * @throws EntityNotFoundException if the tenant is not found.
      */
-    /**
-     * Retrieves active application forms for a specific tenant and type.
-     *
-     * @param tenantId The UUID of the tenant.
-     * @param type     The type of the form (STARTUP or MENTOR).
-     * @return A list of active ApplicationFormResponseDto.
-     * @throws EntityNotFoundException if the tenant is not found.
-     */
     @Transactional(readOnly = true)
     public List<ApplicationFormResponseDto> getActiveApplicationFormsByTenantAndType(UUID tenantId, ApplicationFormType type) {
         Tenant tenant = tenantRepository.findById(tenantId)
