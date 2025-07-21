@@ -110,6 +110,8 @@ export async function updateUserProfile(token, id, profileData) {
 }
 
 export async function deleteUser(token, id) {
+  console.log(`Deleting user: ${id}`);
+  
   const res = await fetch(`${API_URL}/users/${id}`, {
     method: "DELETE",
     headers: { 
@@ -117,23 +119,43 @@ export async function deleteUser(token, id) {
       "Content-Type": "application/json"
     },
   });
-  if (!res.ok) throw new Error("Failed to delete user");
+  
+  console.log("Delete user response status:", res.status);
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error("Delete user error response:", errorText);
+    throw new Error(`Failed to delete user: ${res.status} ${res.statusText}`);
+  }
 }
 
 export async function updateUserStatus(token, id, isActive) {
+  console.log(`Updating user status: ${id}, isActive: ${isActive}`);
+  console.log("Request body:", JSON.stringify({ isActive: isActive }));
+  
   const res = await fetch(`${API_URL}/users/${id}/status`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ active: isActive, isActive }),
+    body: JSON.stringify({ isActive: isActive }),
   });
-  if (!res.ok) throw new Error("Failed to update user status");
+  
+  console.log("Update status response status:", res.status);
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error("Update status error response:", errorText);
+    throw new Error(`Failed to update user status: ${res.status} ${res.statusText}`);
+  }
   return res.json();
 }
 
 export async function updateUserRole(token, id, role) {
+  console.log(`Updating user role: ${id}, role: ${role}`);
+  console.log("Request body:", JSON.stringify(role));
+  
   const res = await fetch(`${API_URL}/users/${id}/role`, {
     method: "PUT",
     headers: {
@@ -142,7 +164,14 @@ export async function updateUserRole(token, id, role) {
     },
     body: JSON.stringify(role),
   });
-  if (!res.ok) throw new Error("Failed to update user role");
+  
+  console.log("Update role response status:", res.status);
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error("Update role error response:", errorText);
+    throw new Error(`Failed to update user role: ${res.status} ${res.statusText}`);
+  }
   return res.json();
 }
 
