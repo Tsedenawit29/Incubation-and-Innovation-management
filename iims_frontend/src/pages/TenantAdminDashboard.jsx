@@ -1,7 +1,19 @@
 import { useAuth } from "../hooks/useAuth";
 import { useEffect, useState } from "react";
-import { getTenantUsersByRole, createTenantUser } from "../api/users";
+import { 
+  getTenantUsersByRole, 
+  createTenantUser,
+  updateUserProfile,
+  deleteUser,
+  updateUserStatus,
+  updateUserRole,
+  updateUserPassword
+} from "../api/users";
 import UserTable from "../components/UserTable";
+import EditUserModal from '../components/EditUserModal';
+import DeleteConfirmModal from '../components/DeleteConfirmModal';
+import ChangeRoleModal from '../components/ChangeRoleModal';
+import ChangePasswordModal from '../components/ChangePasswordModal';
 
 const ROLES = [
   "STARTUP",
@@ -21,6 +33,12 @@ export default function TenantAdminDashboard() {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ fullName: "", email: "", role: ROLES[0] });
   const [activeTab, setActiveTab] = useState(ROLES[0]);
+
+  // Modal states
+  const [editModal, setEditModal] = useState({ isOpen: false, user: null });
+  const [roleModal, setRoleModal] = useState({ isOpen: false, user: null });
+  const [passwordModal, setPasswordModal] = useState({ isOpen: false, user: null });
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, user: null });
 
   const fetchUsers = async (role) => {
     setLoading(true);
@@ -72,6 +90,89 @@ export default function TenantAdminDashboard() {
     }
   };
 
+  const showSuccessMessage = (message) => {
+    setSuccess(message);
+    setTimeout(() => setSuccess(""), 3000);
+  };
+
+  const handleEdit = (user) => {
+    setEditModal({ isOpen: true, user });
+  };
+
+  const handleEditSave = async (formData) => {
+    try {
+      const profileData = {};
+      if (formData.fullName !== undefined && formData.fullName !== '') {
+        profileData.fullName = formData.fullName;
+      }
+      if (formData.email !== undefined && formData.email !== '') {
+        profileData.email = formData.email;
+      }
+      
+      await updateUserProfile(token, editModal.user.id, profileData);
+      fetchUsers(activeTab);
+      setEditModal({ isOpen: false, user: null });
+      showSuccessMessage("User updated successfully!");
+    } catch (err) {
+      throw new Error("Failed to update user: " + err.message);
+    }
+  };
+
+  const handleDelete = (user) => {
+    setDeleteModal({ isOpen: true, user });
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      await deleteUser(token, deleteModal.user.id);
+      fetchUsers(activeTab);
+      setDeleteModal({ isOpen: false, user: null });
+      showSuccessMessage("User deleted successfully!");
+    } catch (err) {
+      throw new Error("Failed to delete user: " + err.message);
+    }
+  };
+
+  const handleStatus = async (user) => {
+    try {
+      await updateUserStatus(token, user.id, !user.active);
+      fetchUsers(activeTab);
+      const action = user.active ? "deactivated" : "activated";
+      showSuccessMessage(`User ${action} successfully!`);
+    } catch (err) {
+      alert("Failed to update user status: " + err.message);
+    }
+  };
+
+  const handleRole = (user) => {
+    setRoleModal({ isOpen: true, user });
+  };
+
+  const handleRoleSave = async (newRole) => {
+    try {
+      await updateUserRole(token, roleModal.user.id, newRole);
+      fetchUsers(activeTab);
+      setRoleModal({ isOpen: false, user: null });
+      showSuccessMessage("User role updated successfully!");
+    } catch (err) {
+      throw new Error("Failed to update user role: " + err.message);
+    }
+  };
+
+  const handleChangePassword = (user) => {
+    setPasswordModal({ isOpen: true, user });
+  };
+
+  const handlePasswordSave = async (currentPassword, newPassword) => {
+    try {
+      await updateUserPassword(token, passwordModal.user.id, currentPassword, newPassword);
+      setPasswordModal({ isOpen: false, user: null });
+      showSuccessMessage("Password updated successfully!");
+    } catch (err) {
+      throw new Error("Failed to update password: " + err.message);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
       {/* Header/Profile */}
@@ -119,7 +220,14 @@ export default function TenantAdminDashboard() {
           {loading && <div>Loading users...</div>}
           {error && <div className="text-red-600 mb-2">{error}</div>}
           {success && <div className="text-green-600 mb-2">{success}</div>}
-          <UserTable users={users} />
+          <UserTable 
+            users={users}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onStatus={handleStatus}
+            onRole={handleRole}
+            onChangePassword={handleChangePassword}
+          />
         </div>
       </div>
       {/* Modal */}
@@ -185,6 +293,36 @@ export default function TenantAdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* Modals */}
+      <EditUserModal
+        isOpen={editModal.isOpen}
+        onClose={() => setEditModal({ isOpen: false, user: null })}
+        user={editModal.user}
+        onSave={handleEditSave}
+      />
+
+      <ChangeRoleModal
+        isOpen={roleModal.isOpen}
+        onClose={() => setRoleModal({ isOpen: false, user: null })}
+        user={roleModal.user}
+        onSave={handleRoleSave}
+        roles={ROLES} 
+      />
+
+      <ChangePasswordModal
+        isOpen={passwordModal.isOpen}
+        onClose={() => setPasswordModal({ isOpen: false, user: null })}
+        user={passwordModal.user}
+        onSave={handlePasswordSave}
+      />
+
+      <DeleteConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false, user: null })}
+        user={deleteModal.user}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 } 
