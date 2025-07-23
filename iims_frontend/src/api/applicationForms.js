@@ -65,14 +65,35 @@ export async function updateApplicationForm(token, tenantId, formId, formData) {
 
 // Get a single application form by ID
 export async function getApplicationFormById(token, tenantId, formId) {
-  const res = await fetch(`${API_URL}/tenants/${tenantId}/application-forms/${formId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json"
-    },
+  const API_URL = "http://localhost:8081/api/v1";
+  const headers = {
+    "Content-Type": "application/json",
+  };
+
+  let url;
+  if (token && tenantId) { 
+    headers["Authorization"] = `Bearer ${token}`;
+    url = `${API_URL}/tenants/${tenantId}/application-forms/${formId}`;
+  } else { 
+    url = `${API_URL}/public/application-forms/${formId}`;
+  }
+
+  console.log("Fetching form from URL:", url);
+  console.log("With headers:", headers); 
+
+
+  const res = await fetch(url, {
+    method: "GET",
+    headers: headers,
   });
+
   if (!res.ok) {
-    const errorText = await res.text();
+    let errorText = await res.text();
+    try {
+        const errorJson = JSON.parse(errorText);
+        errorText = errorJson.message || errorText;
+    } catch (e) {
+    }
     throw new Error(`Failed to fetch application form: ${errorText}`);
   }
   return res.json();

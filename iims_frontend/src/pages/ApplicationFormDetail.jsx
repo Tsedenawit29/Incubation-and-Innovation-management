@@ -23,6 +23,7 @@ export default function ApplicationFormDetail() {
   const [applyLoading, setApplyLoading] = useState(false);
   const [applyError, setApplyError] = useState("");
   const [applySuccess, setApplySuccess] = useState("");
+  const [copied, setCopied] = useState(false); // New state for copy feedback
 
   useEffect(() => {
     if (!token || !user?.tenantId || !id) return;
@@ -37,10 +38,12 @@ export default function ApplicationFormDetail() {
   useEffect(() => {
     if (form) {
       setApplicant(a => ({ ...a, applicantType: form.type }));
+      // Ensure responses are correctly initialized even if form.fields changes during edit
       setResponses(form.fields.map(f => ({ fieldId: f.id, response: "" })));
     }
   }, [form]);
 
+  // --- Handlers for editing form (no changes needed here for your request) ---
   const handleEditChange = (key, value) => {
     setEditForm(f => ({ ...f, [key]: value }));
   };
@@ -58,7 +61,7 @@ export default function ApplicationFormDetail() {
   };
 
   const addOption = (fieldIdx) => {
-    setEditForm(f => ({ ...f, fields: f.fields.map((fld, i) => i === fieldIdx ? { ...fld, options: [...(fld.options || []), ""] } : fld) }));
+    setEditForm(f => ({ ...f, fields: [...f.fields.map((fld, i) => i === fieldIdx ? { ...fld, options: [...(fld.options || []), ""] } : fld)] }));
   };
 
   const removeOption = (fieldIdx, optIdx) => {
@@ -108,7 +111,10 @@ export default function ApplicationFormDetail() {
       setSaving(false);
     }
   };
+  // --- End of handlers for editing form ---
 
+
+  // --- Handlers for submitting application (no changes needed here for your request) ---
   const handleApplicantChange = (key, value) => {
     setApplicant(a => ({ ...a, [key]: value }));
   };
@@ -152,11 +158,29 @@ export default function ApplicationFormDetail() {
       });
       setApplySuccess("Application submitted successfully!");
       setShowApply(false);
+      // Reset form fields after successful submission
+      setApplicant({ email: "", firstName: "", lastName: "", applicantType: form.type });
+      setResponses(form.fields.map(f => ({ fieldId: f.id, response: "" })));
     } catch (err) {
       setApplyError(err.message || "Failed to submit application");
     } finally {
       setApplyLoading(false);
     }
+  };
+  // --- End of handlers for submitting application ---
+
+  // --- New function to handle copying the link ---
+  const handleCopyLink = () => {
+    const publicFormUrl = `${window.location.origin}/apply/${form.id}`; // This is the public URL path
+    navigator.clipboard.writeText(publicFormUrl)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000); // Reset "copied" state after 2 seconds
+      })
+      .catch(err => {
+        console.error("Failed to copy text: ", err);
+        setError("Failed to copy link."); // Optionally set an error state for user feedback
+      });
   };
 
   if (loading) return <div className="p-10 text-center text-blue-600">Loading...</div>;
@@ -177,6 +201,7 @@ export default function ApplicationFormDetail() {
         {success && <div className="text-green-600 mb-2 text-center">{success}</div>}
         {editMode ? (
           <form onSubmit={handleSave}>
+            {/* ... (Existing edit mode form content) ... */}
             <div className="mb-4">
               <input
                 className="w-full text-2xl font-bold border-b-2 border-blue-300 focus:border-blue-600 outline-none bg-transparent mb-2 text-blue-900 placeholder-blue-400"
@@ -309,7 +334,36 @@ export default function ApplicationFormDetail() {
                 </div>
               ))}
             </div>
-            <div className="flex justify-end">
+            <div className="flex justify-between items-center"> {/* Use flex justify-between here */}
+              {/* Copy Link Section */}
+              <div className="flex items-center space-x-2">
+                <span className="font-semibold text-blue-700">Public Application Link:</span>
+                <span className="font-mono text-xs bg-blue-50 px-2 py-1 rounded">
+                  {`${window.location.origin}/apply/${form.id}`}
+                </span>
+                <button
+                  className="ml-2 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md text-sm font-semibold flex items-center"
+                  onClick={handleCopyLink}
+                >
+                  {copied ? (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v10a2 2 0 002 2h6M15 3h3a2 2 0 012 2v10a2 2 0 01-2 2h-3M9 13l3-3m0 0l3 3m-3-3v8" />
+                      </svg>
+                      Copy Link
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Edit Button */}
               <button
                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-bold shadow"
                 onClick={() => setEditMode(true)}
@@ -317,64 +371,68 @@ export default function ApplicationFormDetail() {
                 Edit
               </button>
             </div>
-            {/* Application link and apply area */}
-            <div className="mb-8">
-              <div className="flex items-center space-x-2 mb-2">
-                <span className="font-semibold text-blue-700">Application Link:</span>
-                <span className="font-mono text-xs bg-blue-50 px-2 py-1 rounded">{`${window.location.origin}/apply/${form.id}`}</span>
-                <button className="ml-2 text-blue-600 hover:underline text-sm" onClick={() => setShowApply(v => !v)}>{showApply ? "Hide" : "Apply Now"}</button>
-              </div>
-              {showApply && (
-                <form className="bg-blue-50 rounded-lg p-4 mt-2" onSubmit={handleApplySubmit}>
-                  <div className="mb-2 flex flex-col sm:flex-row sm:space-x-4">
-                    <input className="flex-1 mb-2 sm:mb-0 border rounded px-3 py-2" type="email" placeholder="Email" value={applicant.email} onChange={e => handleApplicantChange("email", e.target.value)} required />
-                    <input className="flex-1 mb-2 sm:mb-0 border rounded px-3 py-2" placeholder="First Name" value={applicant.firstName} onChange={e => handleApplicantChange("firstName", e.target.value)} />
-                    <input className="flex-1 border rounded px-3 py-2" placeholder="Last Name" value={applicant.lastName} onChange={e => handleApplicantChange("lastName", e.target.value)} />
-                  </div>
-                  <div className="mb-2">
-                    <label className="block text-sm font-medium mb-1">Applicant Type</label>
-                    <select className="w-full border rounded px-3 py-2" value={applicant.applicantType} onChange={e => handleApplicantChange("applicantType", e.target.value)} required>
-                      {['STARTUP','MENTOR','COACH','FACILITATOR'].map(type => <option key={type} value={type}>{type.charAt(0) + type.slice(1).toLowerCase()}</option>)}
-                    </select>
-                  </div>
-                  <div className="mb-4">
-                    {form.fields.map((field, idx) => (
-                      <div key={field.id} className="mb-3">
-                        <label className="block text-blue-700 font-medium mb-1">{field.label}{field.isRequired && <span className="text-red-500">*</span>}</label>
-                        {(() => {
-                          switch (field.fieldType) {
-                            case "TEXT":
-                              return <input className="w-full border rounded px-3 py-2" value={responses[idx]?.response || ""} onChange={e => handleResponseChange(idx, e.target.value)} required={field.isRequired} />;
-                            case "TEXTAREA":
-                              return <textarea className="w-full border rounded px-3 py-2" value={responses[idx]?.response || ""} onChange={e => handleResponseChange(idx, e.target.value)} required={field.isRequired} />;
-                            case "SELECT":
-                              return <select className="w-full border rounded px-3 py-2" value={responses[idx]?.response || ""} onChange={e => handleOptionResponseChange(idx, e.target.value)} required={field.isRequired}><option value="">Select...</option>{field.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select>;
-                            case "RADIO":
-                              return <div className="flex flex-wrap gap-4">{field.options.map(opt => <label key={opt} className="flex items-center"><input type="radio" name={`radio-${field.id}`} value={opt} checked={responses[idx]?.response === opt} onChange={e => handleOptionResponseChange(idx, opt)} required={field.isRequired} className="mr-2" />{opt}</label>)}</div>;
-                            case "CHECKBOX":
-                              return <div className="flex flex-wrap gap-4">{field.options.map(opt => <label key={opt} className="flex items-center"><input type="checkbox" checked={(responses[idx]?.response || "").split(";;;").includes(opt)} onChange={() => handleCheckboxResponseChange(idx, opt)} className="mr-2" />{opt}</label>)}</div>;
-                            case "DATE":
-                              return <input type="date" className="w-full border rounded px-3 py-2" value={responses[idx]?.response || ""} onChange={e => handleResponseChange(idx, e.target.value)} required={field.isRequired} />;
-                            case "FILE":
-                              return <input type="file" className="w-full border rounded px-3 py-2" disabled title="File upload not implemented" />;
-                            default:
-                              return null;
-                          }
-                        })()}
-                      </div>
-                    ))}
-                  </div>
-                  {applyError && <div className="text-red-600 mb-2 text-center">{applyError}</div>}
-                  {applySuccess && <div className="text-green-600 mb-2 text-center">{applySuccess}</div>}
-                  <div className="flex justify-end">
-                    <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-bold shadow" disabled={applyLoading}>{applyLoading ? "Submitting..." : "Submit Application"}</button>
-                  </div>
-                </form>
-              )}
+
+
+            {/* The "Apply Now" form area - moved to its own component or page for clarity */}
+            {/* You might want to remove this inline "Apply Now" section from the admin's form detail view.
+                It's generally not needed here as admins primarily manage forms, not apply to them directly.
+                Public users will access the form via the copied link.
+            */}
+            {/* The following section is kept for now as per your original code, but consider removing it */}
+            <div className="mb-8 mt-4"> {/* Added some margin-top for spacing */}
+                <button className="text-blue-600 hover:underline text-sm" onClick={() => setShowApply(v => !v)}>{showApply ? "Hide Apply Form Preview" : "Show Apply Form Preview"}</button>
             </div>
+            {showApply && (
+                <form className="bg-blue-50 rounded-lg p-4 mt-2" onSubmit={handleApplySubmit}>
+                    <h3 className="text-xl font-semibold text-blue-700 mb-4">Preview: Public Application Form</h3>
+                    <div className="mb-2 flex flex-col sm:flex-row sm:space-x-4">
+                        <input className="flex-1 mb-2 sm:mb-0 border rounded px-3 py-2" type="email" placeholder="Email" value={applicant.email} onChange={e => handleApplicantChange("email", e.target.value)} required />
+                        <input className="flex-1 mb-2 sm:mb-0 border rounded px-3 py-2" placeholder="First Name" value={applicant.firstName} onChange={e => handleApplicantChange("firstName", e.target.value)} />
+                        <input className="flex-1 border rounded px-3 py-2" placeholder="Last Name" value={applicant.lastName} onChange={e => handleApplicantChange("lastName", e.target.value)} />
+                    </div>
+                    <div className="mb-2">
+                        <label className="block text-sm font-medium mb-1">Applicant Type</label>
+                        <select className="w-full border rounded px-3 py-2" value={applicant.applicantType} onChange={e => handleApplicantChange("applicantType", e.target.value)} required>
+                            {['STARTUP','MENTOR','COACH','FACILITATOR'].map(type => <option key={type} value={type}>{type.charAt(0) + type.slice(1).toLowerCase()}</option>)}
+                        </select>
+                    </div>
+                    <div className="mb-4">
+                        {form.fields.map((field, idx) => (
+                            <div key={field.id} className="mb-3">
+                                <label className="block text-blue-700 font-medium mb-1">{field.label}{field.isRequired && <span className="text-red-500">*</span>}</label>
+                                {(() => {
+                                    switch (field.fieldType) {
+                                        case "TEXT":
+                                            return <input className="w-full border rounded px-3 py-2" value={responses[idx]?.response || ""} onChange={e => handleResponseChange(idx, e.target.value)} required={field.isRequired} />;
+                                        case "TEXTAREA":
+                                            return <textarea className="w-full border rounded px-3 py-2" value={responses[idx]?.response || ""} onChange={e => handleResponseChange(idx, e.target.value)} required={field.isRequired} />;
+                                        case "SELECT":
+                                            return <select className="w-full border rounded px-3 py-2" value={responses[idx]?.response || ""} onChange={e => handleOptionResponseChange(idx, e.target.value)} required={field.isRequired}><option value="">Select...</option>{field.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select>;
+                                        case "RADIO":
+                                            return <div className="flex flex-wrap gap-4">{field.options.map(opt => <label key={opt} className="flex items-center"><input type="radio" name={`radio-${field.id}`} value={opt} checked={responses[idx]?.response === opt} onChange={e => handleOptionResponseChange(idx, opt)} required={field.isRequired} className="mr-2" />{opt}</label>)}</div>;
+                                        case "CHECKBOX":
+                                            return <div className="flex flex-wrap gap-4">{field.options.map(opt => <label key={opt} className="flex items-center"><input type="checkbox" checked={(responses[idx]?.response || "").split(";;;").includes(opt)} onChange={() => handleCheckboxResponseChange(idx, opt)} className="mr-2" />{opt}</label>)}</div>;
+                                        case "DATE":
+                                            return <input type="date" className="w-full border rounded px-3 py-2" value={responses[idx]?.response || ""} onChange={e => handleResponseChange(idx, e.target.value)} required={field.isRequired} />;
+                                        case "FILE":
+                                            return <input type="file" className="w-full border rounded px-3 py-2" disabled title="File upload not implemented" />;
+                                        default:
+                                            return null;
+                                    }
+                                })()}
+                            </div>
+                        ))}
+                    </div>
+                    {applyError && <div className="text-red-600 mb-2 text-center">{applyError}</div>}
+                    {applySuccess && <div className="text-green-600 mb-2 text-center">{applySuccess}</div>}
+                    <div className="flex justify-end">
+                        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-bold shadow" disabled={applyLoading}>{applyLoading ? "Submitting..." : "Submit Application"}</button>
+                    </div>
+                </form>
+            )}
           </>
         )}
       </div>
     </div>
   );
-} 
+}
