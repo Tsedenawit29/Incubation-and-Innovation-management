@@ -13,6 +13,7 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.util.List;
 import java.util.UUID;
@@ -170,6 +171,24 @@ public class ApplicationFormService {
         ApplicationForm form = applicationFormRepository.findByIdAndTenant(formId, tenant)
                 .orElseThrow(() -> new EntityNotFoundException("Application form not found with ID: " + formId + " for tenant: " + tenantId));
         applicationFormRepository.delete(form);
+    }
+
+    /**
+     * Deletes an application form by its ID and tenant ID.
+     *
+     * @param formId   The UUID of the form to delete.
+     * @throws AccessDeniedException if application form is not active for public use.
+     */
+    @Transactional
+    public ApplicationFormResponseDto getPublicApplicationForm(UUID formId) {
+        ApplicationForm form = applicationFormRepository.findById(formId)
+                .orElseThrow(() -> new EntityNotFoundException("Application form not found with ID: " + formId));
+
+        // Use getActive() method as defined in your entity
+        if (!form.getActive()) { // <--- CHANGE THIS LINE
+            throw new AccessDeniedException("This application form is not active for public access.");
+        }
+        return convertToDto(form);
     }
 
     /**

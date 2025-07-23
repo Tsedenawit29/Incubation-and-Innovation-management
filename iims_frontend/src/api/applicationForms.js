@@ -1,3 +1,5 @@
+// src/api/applicationForms.js
+
 const API_URL = "http://localhost:8081/api/v1";
 
 // Create a new application form for a tenant
@@ -63,24 +65,22 @@ export async function updateApplicationForm(token, tenantId, formId, formData) {
   return res.json();
 }
 
-// Get a single application form by ID
+// Get a single application form by ID (handles both public and authenticated)
 export async function getApplicationFormById(token, tenantId, formId) {
-  const API_URL = "http://localhost:8081/api/v1";
   const headers = {
     "Content-Type": "application/json",
   };
 
   let url;
-  if (token && tenantId) { 
+  if (token && tenantId) {
     headers["Authorization"] = `Bearer ${token}`;
     url = `${API_URL}/tenants/${tenantId}/application-forms/${formId}`;
-  } else { 
+  } else {
     url = `${API_URL}/public/application-forms/${formId}`;
   }
 
   console.log("Fetching form from URL:", url);
-  console.log("With headers:", headers); 
-
+  console.log("With headers:", headers);
 
   const res = await fetch(url, {
     method: "GET",
@@ -101,7 +101,6 @@ export async function getApplicationFormById(token, tenantId, formId) {
 
 // Submit an application to a form
 export async function submitApplication(applicationData) {
-  const API_URL = "http://localhost:8081/api/v1";
   const res = await fetch(`${API_URL}/applications/submit`, {
     method: "POST",
     headers: {
@@ -129,17 +128,17 @@ export async function getAllApplicationsForTenant(token, tenantId) {
     throw new Error(`Failed to fetch applications: ${errorText}`);
   }
   return res.json();
-} 
+}
 
-//aprove and reject applicantes
+// Approve and reject applicants
 export async function updateApplicationStatus(token, tenantId, applicationId, newStatus) {
-   const res = await fetch(`${API_URL}/tenants/${tenantId}/applications/status`, {
+  const res = await fetch(`${API_URL}/tenants/${tenantId}/applications/status`, {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json"
     },
-     body: JSON.stringify({
+    body: JSON.stringify({
       applicationId: applicationId,
       newStatus: newStatus,
     }),
