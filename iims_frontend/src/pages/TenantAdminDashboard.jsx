@@ -113,6 +113,8 @@ export default function TenantAdminDashboard() {
               onClick={() => {
                 if (tab === "APPLICATION_FORMS") {
                   navigate("/application-forms");
+                } else if (tab === "APPLICATIONS") {
+                  navigate("/applications");
                 } else {
                   setActiveTab(tab);
                 }
