@@ -2,6 +2,9 @@ import { useAuth } from "../hooks/useAuth";
 import { useEffect, useState } from "react";
 import { getTenantUsersByRole, createTenantUser } from "../api/users";
 import UserTable from "../components/UserTable";
+import { getAllApplicationForms } from "../api/applicationForms";
+import ApplicationFormsList from "../components/ApplicationFormsList";
+import { useNavigate } from "react-router-dom";
 
 const ROLES = [
   "STARTUP",
@@ -12,6 +15,8 @@ const ROLES = [
   "ALUMNI"
 ];
 
+const TABS = [...ROLES, "APPLICATIONS", "APPLICATION_FORMS"];
+
 export default function TenantAdminDashboard() {
   const { user, token, logout } = useAuth();
   const [users, setUsers] = useState([]);
@@ -21,6 +26,7 @@ export default function TenantAdminDashboard() {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ fullName: "", email: "", role: ROLES[0] });
   const [activeTab, setActiveTab] = useState(ROLES[0]);
+  const navigate = useNavigate();
 
   const fetchUsers = async (role) => {
     setLoading(true);
@@ -35,10 +41,14 @@ export default function TenantAdminDashboard() {
     }
   };
 
+  // Only fetch users for real roles
   useEffect(() => {
-    if (token) fetchUsers(activeTab);
-    // eslint-disable-next-line
+    if (token && ROLES.includes(activeTab)) {
+      fetchUsers(activeTab);
+    }
   }, [token, activeTab]);
+
+  // Remove Application Forms fetching logic and UI
 
   const openModal = () => {
     setForm({ fullName: "", email: "", role: activeTab });
@@ -96,30 +106,44 @@ export default function TenantAdminDashboard() {
       {/* Tabs for roles */}
       <div className="flex-1 max-w-5xl mx-auto w-full mt-8">
         <div className="flex space-x-2 mb-6 border-b">
-          {ROLES.map((role) => (
+          {TABS.map((tab) => (
             <button
-              key={role}
-              className={`px-4 py-2 font-semibold rounded-t-md focus:outline-none transition-colors duration-200 ${activeTab === role ? 'bg-white border-l border-t border-r border-blue-400 text-blue-700 -mb-px' : 'bg-blue-100 text-blue-600 hover:bg-white'}`}
-              onClick={() => setActiveTab(role)}
+              key={tab}
+              className={`px-4 py-2 font-semibold rounded-t-md focus:outline-none transition-colors duration-200 ${activeTab === tab ? 'bg-white border-l border-t border-r border-blue-400 text-blue-700 -mb-px' : 'bg-blue-100 text-blue-600 hover:bg-white'}`}
+              onClick={() => {
+                if (tab === "APPLICATION_FORMS") {
+                  navigate("/application-forms");
+                } else {
+                  setActiveTab(tab);
+                }
+              }}
             >
-              {role.charAt(0) + role.slice(1).toLowerCase()}s
+              {tab === "APPLICATIONS"
+                ? "Applications"
+                : tab === "APPLICATION_FORMS"
+                ? "Application Forms"
+                : tab.charAt(0) + tab.slice(1).toLowerCase() + "s"}
             </button>
           ))}
         </div>
         <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold text-blue-700">{activeTab.charAt(0) + activeTab.slice(1).toLowerCase()}s</h2>
-            <button
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow"
-              onClick={openModal}
-            >
-              + Create {activeTab.charAt(0) + activeTab.slice(1).toLowerCase()}
-            </button>
-          </div>
-          {loading && <div>Loading users...</div>}
-          {error && <div className="text-red-600 mb-2">{error}</div>}
-          {success && <div className="text-green-600 mb-2">{success}</div>}
-          <UserTable users={users} />
+          {activeTab !== "APPLICATION_FORMS" ? (
+            <>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-bold text-blue-700">{activeTab.charAt(0) + activeTab.slice(1).toLowerCase()}s</h2>
+                <button
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow"
+                  onClick={openModal}
+                >
+                  + Create {activeTab.charAt(0) + activeTab.slice(1).toLowerCase()}
+                </button>
+              </div>
+              {loading && <div>Loading users...</div>}
+              {error && <div className="text-red-600 mb-2">{error}</div>}
+              {success && <div className="text-green-600 mb-2">{success}</div>}
+              <UserTable users={users} />
+            </>
+          ) : null}
         </div>
       </div>
       {/* Modal */}

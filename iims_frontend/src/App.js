@@ -15,6 +15,9 @@ import CoachDashboard from './pages/CoachDashboard';
 import FacilitatorDashboard from './pages/FacilitatorDashboard';
 import InvestorDashboard from './pages/InvestorDashboard';
 import AlumniDashboard from './pages/AlumniDashboard';
+import ApplicationFormsPage from './pages/ApplicationFormsPage';
+import CreateApplicationFormPage from './pages/CreateApplicationFormPage';
+import ApplicationFormDetail from './pages/ApplicationFormDetail';
 import './App.css';
 
 // Protected Route Component
@@ -86,6 +89,31 @@ function App() {
               element={
                 <ProtectedRoute role="TENANT_ADMIN">
                   <TenantAdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            {/* Application Forms Routes */}
+            <Route
+              path="/application-forms"
+              element={
+                <ProtectedRoute role="TENANT_ADMIN">
+                  <ApplicationFormsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/application-forms/new"
+              element={
+                <ProtectedRoute role="TENANT_ADMIN">
+                  <CreateApplicationFormPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/application-forms/:id"
+              element={
+                <ProtectedRoute role="TENANT_ADMIN">
+                  <ApplicationFormDetail />
                 </ProtectedRoute>
               }
             />
