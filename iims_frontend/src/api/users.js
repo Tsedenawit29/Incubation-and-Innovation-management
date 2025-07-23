@@ -219,6 +219,9 @@ export async function getTenantUsers(token) {
 }
 
 export async function getTenantUsersByRole(token, role) {
+  if (!token || typeof token !== 'string' || token.split('.').length !== 3) {
+    throw new Error('No valid auth token found. Please log in again.');
+  }
   const res = await fetch(`${API_URL}/users/tenant-users/role/${role}`, {
     headers: {
       "Content-Type": "application/json",

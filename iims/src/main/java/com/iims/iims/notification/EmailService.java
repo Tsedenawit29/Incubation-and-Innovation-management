@@ -76,36 +76,21 @@ public class EmailService {
         mailSender.send(mailMessage);
     }
 
-    public void sendAdminApprovalEmail(String adminEmail, String adminName, String username, String password, String tenantName) {
-        String subject = "Admin Account Created - IIMS";
-        String message = String.format("""
-            Dear %s,
-            
-            Your admin account has been created successfully for %s.
-            
-            Login Credentials:
-            - Username: %s
-            - Password: %s
-            
-            Please change your password after your first login.
-            
-            Login URL: http://localhost:3000/login
-            
-            If you have any questions, please contact the system administrator.
-            
-            Best regards,
-            IIMS Team
-            """, adminName, tenantName, username, password);
-
-        log.info("Sending admin approval email to: {}", adminEmail);
-        log.info("Email subject: {}", subject);
-        log.info("Email content: {}", message);
-
-        SimpleMailMessage mailMessage = new SimpleMailMessage();
-        mailMessage.setTo(adminEmail);
-        mailMessage.setSubject(subject);
-        mailMessage.setText(message);
-        mailSender.send(mailMessage);
+    public void sendAdminApprovalEmail(String to, String name, String username, String password, String tenantName) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(to);
+        message.setSubject("Account Created for " + tenantName);
+        message.setText(
+            "Hello " + name + ",\n\n" +
+            "An administrator account has been created for you for the tenant '" + tenantName + "'.\n\n" +
+            "Your login credentials are:\n" +
+            "Username: " + username + "\n" +
+            "Password: " + password + "\n\n" +
+            "Please log in and change your password immediately.\n\n" +
+            "Thank you,\n" +
+            "The IIMS Team"
+        );
+        mailSender.send(message);
     }
 
     public void sendAdminRejectionEmail(String adminEmail, String adminName, String tenantName, String reason) {
@@ -131,6 +116,27 @@ public class EmailService {
 
         SimpleMailMessage mailMessage = new SimpleMailMessage();
         mailMessage.setTo(adminEmail);
+        mailMessage.setSubject(subject);
+        mailMessage.setText(message);
+        mailSender.send(mailMessage);
+    }
+
+    public void sendUserAccountEmail(String to, String name, String username, String password, String tenantName, String role) {
+        String prettyRole = role.substring(0, 1).toUpperCase() + role.substring(1).toLowerCase();
+        String subject = "Your " + prettyRole + " Account for " + tenantName;
+        String message = String.format(
+            "Hello %s,\n\n" +
+            "A %s account has been created for you for the tenant '%s'.\n\n" +
+            "Your login credentials are:\n" +
+            "Username: %s\n" +
+            "Password: %s\n\n" +
+            "Please log in and change your password immediately.\n\n" +
+            "Login URL: http://localhost:3000/login\n\n" +
+            "Thank you,\nThe IIMS Team",
+            name, prettyRole, tenantName, username, password
+        );
+        SimpleMailMessage mailMessage = new SimpleMailMessage();
+        mailMessage.setTo(to);
         mailMessage.setSubject(subject);
         mailMessage.setText(message);
         mailSender.send(mailMessage);
