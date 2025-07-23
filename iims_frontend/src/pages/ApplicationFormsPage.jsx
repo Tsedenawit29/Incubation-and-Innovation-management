@@ -9,7 +9,7 @@ export default function ApplicationFormsPage() {
   const [forms, setForms] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [actionLoading, setActionLoading] = useState({}); // { [formId]: true/false }
+  const [actionLoading, setActionLoading] = useState({}); 
 
   useEffect(() => {
     if (!token || !user?.tenantId) return;

@@ -93,4 +93,19 @@ export async function submitApplication(applicationData) {
     throw new Error(`Failed to submit application: ${errorText}`);
   }
   return res.json();
+}
+
+// Get all applications for a tenant
+export async function getAllApplicationsForTenant(token, tenantId) {
+  const res = await fetch(`${API_URL}/tenants/${tenantId}/applications`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to fetch applications: ${errorText}`);
+  }
+  return res.json();
 } 

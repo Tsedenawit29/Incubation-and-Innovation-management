@@ -19,6 +19,7 @@ import ApplicationFormsPage from './pages/ApplicationFormsPage';
 import CreateApplicationFormPage from './pages/CreateApplicationFormPage';
 import ApplicationFormDetail from './pages/ApplicationFormDetail';
 import SubmitApplicationPage from './pages/SubmitApplicationPage';
+import ApplicationsPage from './pages/ApplicationsPage';
 import './App.css';
 
 // Protected Route Component
@@ -193,6 +194,15 @@ function App() {
               element={
                 <ProtectedRoute role="ALUMNI">
                   <AlumniDashboard />
+                </ProtectedRoute>
+              }
+            />
+            {/* Applications Page */}
+            <Route
+              path="/applications"
+              element={
+                <ProtectedRoute role="TENANT_ADMIN">
+                  <ApplicationsPage />
                 </ProtectedRoute>
               }
             />
