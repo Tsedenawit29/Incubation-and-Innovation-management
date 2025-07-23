@@ -109,3 +109,24 @@ export async function getAllApplicationsForTenant(token, tenantId) {
   }
   return res.json();
 } 
+
+//aprove and reject applicantes
+export async function updateApplicationStatus(token, tenantId, applicationId, newStatus) {
+   const res = await fetch(`${API_URL}/tenants/${tenantId}/applications/status`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+     body: JSON.stringify({
+      applicationId: applicationId,
+      newStatus: newStatus,
+    }),
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to update applicants status: ${errorText}`);
+  }
+  const updatedApplication = await res.json();
+  return updatedApplication;
+}
