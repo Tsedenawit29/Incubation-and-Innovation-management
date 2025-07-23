@@ -18,6 +18,7 @@ import AlumniDashboard from './pages/AlumniDashboard';
 import ApplicationFormsPage from './pages/ApplicationFormsPage';
 import CreateApplicationFormPage from './pages/CreateApplicationFormPage';
 import ApplicationFormDetail from './pages/ApplicationFormDetail';
+import SubmitApplicationPage from './pages/SubmitApplicationPage';
 import './App.css';
 
 // Protected Route Component
@@ -138,6 +139,7 @@ function App() {
             <Route path="/apply-tenant" element={<TenantApplicationForm />} />
             <Route path="/register-admin" element={<AdminRegistrationForm />} />
             <Route path="/register-admin/:tenantId" element={<AdminRegistrationForm />} />
+            <Route path="/apply/:formId" element={<SubmitApplicationPage />} />
             {/* Default redirect */}
             <Route path="/" element={<LandingPage />} />
             {/* Startup Dashboard */}
