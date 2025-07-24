@@ -4,9 +4,6 @@ import { getApplicationFormById, submitApplication } from "../api/applicationFor
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 
-const FIELD_TYPES = ["TEXT", "TEXTAREA", "SELECT", "RADIO", "CHECKBOX", "DATE", "FILE"];
-
-
 export default function PublicApplicationFormView() {
   const { id: formId } = useParams();
   const [form, setForm] = useState(null);

@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.security.access.AccessDeniedException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -189,6 +190,52 @@ public class ApplicationFormService {
             throw new AccessDeniedException("This application form is not active for public access.");
         }
         return convertToDto(form);
+    }
+
+    /**
+     * Clones an existing application form, creating a new form with a new ID.
+     * All details including fields are copied, but new UUIDs are assigned.
+     * The cloned form is set to be active and its creation/update timestamps are current.
+     *
+     * @param tenantId The UUID of the tenant to which the original form belongs.
+     * @param originalFormId The UUID of the form to clone.
+     * @return The created ApplicationFormResponseDto for the cloned form.
+     * @throws EntityNotFoundException if the original form or tenant is not found.
+     */
+    @Transactional
+    public ApplicationFormResponseDto cloneApplicationForm(UUID tenantId, UUID originalFormId) {
+        Tenant tenant = tenantRepository.findById(tenantId)
+                .orElseThrow(() -> new EntityNotFoundException("Tenant not found with ID: " + tenantId));
+
+        ApplicationForm originalForm = applicationFormRepository.findByIdAndTenant(originalFormId, tenant)
+                .orElseThrow(() -> new EntityNotFoundException("Original application form not found with ID: " + originalFormId + " for tenant: " + tenantId));
+
+        ApplicationForm clonedForm = new ApplicationForm();
+        clonedForm.setTenant(originalForm.getTenant()); // Link to the same tenant
+        clonedForm.setName(originalForm.getName() + " (Cloned)"); // Add suffix to name
+        clonedForm.setType(originalForm.getType());
+        clonedForm.setActive(true); // Cloned forms are typically active by default
+        clonedForm.setCreatedAt(LocalDateTime.now()); // New creation timestamp
+
+        // Deep copy fields
+        List<ApplicationFormField> clonedFields = originalForm.getFields().stream()
+                .map(originalField -> {
+                    ApplicationFormField newField = new ApplicationFormField();
+                    // ID will be generated automatically for newField as it's a new entity
+                    newField.setLabel(originalField.getLabel());
+                    newField.setFieldType(originalField.getFieldType());
+                    newField.setIsRequired(originalField.getIsRequired());
+                    newField.setOptions(originalField.getOptions());
+                    newField.setOrderIndex(originalField.getOrderIndex());
+                    newField.setForm(clonedForm); // Link to the new cloned form
+                    return newField;
+                })
+                .collect(Collectors.toList());
+
+        clonedForm.setFields(clonedFields);
+
+        ApplicationForm savedClonedForm = applicationFormRepository.save(clonedForm);
+        return convertToDto(savedClonedForm);
     }
 
     /**

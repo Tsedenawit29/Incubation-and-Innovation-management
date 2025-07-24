@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import { getApplicationFormById, updateApplicationForm, submitApplication } from "../api/applicationForms";
+import { getApplicationFormById, updateApplicationForm, submitApplication, cloneApplicationForm } from "../api/applicationForms"; // Import cloneApplicationForm
 
 const FORM_TYPES = ["STARTUP", "MENTOR", "COACH", "FACILITATOR"];
 const FIELD_TYPES = ["TEXT", "TEXTAREA", "SELECT", "RADIO", "CHECKBOX", "DATE", "FILE"];
@@ -24,6 +24,7 @@ export default function ApplicationFormDetail() {
   const [applyError, setApplyError] = useState("");
   const [applySuccess, setApplySuccess] = useState("");
   const [copied, setCopied] = useState(false);
+  const [cloning, setCloning] = useState(false); // New state for cloning process
 
   useEffect(() => {
     if (!token || !user?.tenantId || !id) return;
@@ -75,10 +76,10 @@ export default function ApplicationFormDetail() {
     setEditForm(f => ({ ...f, fields: [...f.fields, { label: "", fieldType: "TEXT", isRequired: false, options: [], orderIndex: f.fields.length }] }));
   };
 
-  // IMPORTANT: Modified removeField to prevent deleting existing fields
+  // Modified removeField to prevent deleting existing fields
   const removeField = (idx) => {
     if (editForm.fields[idx].id !== undefined) { // Check if the field already has a backend ID (i.e., it's saved)
-      setError("Cannot delete a field that has already been saved and might have associated responses. Consider marking the form inactive if this field is crucial.");
+      setError("Cannot delete a field that has already been saved and might have associated responses. Please clone this form to make structural changes.");
       setSuccess(""); // Clear success message if there was one
       return;
     }
@@ -192,8 +193,32 @@ export default function ApplicationFormDetail() {
       });
   };
 
+  // --- NEW: Handle Clone Form ---
+  const handleCloneForm = async () => {
+    if (!token || !user?.tenantId || !id) {
+      setError("Authentication missing to clone form.");
+      return;
+    }
+    setCloning(true);
+    setError("");
+    setSuccess("");
+    try {
+      const cloned = await cloneApplicationForm(token, user.tenantId, id);
+      setSuccess("Form cloned successfully! Redirecting to new form.");
+      setTimeout(() => {
+        navigate(`/application-forms/${cloned.id}`); // Navigate to the new form's detail page
+      }, 1500);
+    } catch (err) {
+      setError(err.message || "Failed to clone form.");
+    } finally {
+      setCloning(false);
+    }
+  };
+  // --- END NEW: Handle Clone Form ---
+
+
   if (loading) return <div className="flex justify-center items-center min-h-screen bg-gray-50 text-blue-600 text-xl">Loading form details...</div>;
-  if (error) return <div className="flex justify-center items-center min-h-screen bg-red-50 text-red-600 text-xl">{error}</div>;
+  if (error && !cloning && !saving) return <div className="flex justify-center items-center min-h-screen bg-red-50 text-red-600 text-xl">{error}</div>; // Display error unless cloning/saving
   if (!form) return <div className="flex justify-center items-center min-h-screen bg-gray-50 text-gray-600 text-xl">Form not found</div>;
 
   return (
