@@ -1,12 +1,9 @@
-// src/pages/PublicApplicationFormView.jsx
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getApplicationFormById, submitApplication } from "../api/applicationForms";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 
-// Define these if they are not imported from a constants file
-const FORM_TYPES = ["STARTUP", "MENTOR", "COACH", "FACILITATOR"];
 const FIELD_TYPES = ["TEXT", "TEXTAREA", "SELECT", "RADIO", "CHECKBOX", "DATE", "FILE"];
 
 
@@ -15,13 +12,12 @@ export default function PublicApplicationFormView() {
   const [form, setForm] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  // ADD THESE LINES:
-  const [applicant, setApplicant] = useState({ email: "", firstName: "", lastName: "", applicantType: "STARTUP" });
+
+  const [applicant, setApplicant] = useState({ email: "", firstName: "", lastName: "", applicantType: "" });
   const [responses, setResponses] = useState([]);
   const [applyLoading, setApplyLoading] = useState(false);
   const [applyError, setApplyError] = useState("");
   const [applySuccess, setApplySuccess] = useState("");
-  // END ADDED LINES
 
   useEffect(() => {
     if (!formId) {
@@ -32,12 +28,11 @@ export default function PublicApplicationFormView() {
 
     setLoading(true);
     setError("");
+    // Call the API without token/tenantId for public access
     getApplicationFormById(null, null, formId)
       .then(data => {
         setForm(data);
-        // Initialize applicantType from the fetched form data
         setApplicant(a => ({ ...a, applicantType: data.type }));
-        // Initialize responses for each field from the fetched form data
         setResponses(data.fields.map(f => ({ fieldId: f.id, response: "" })));
       })
       .catch(err => {
@@ -47,9 +42,6 @@ export default function PublicApplicationFormView() {
       .finally(() => setLoading(false));
   }, [formId]);
 
-  // Include all the handler functions (handleApplicantChange, handleResponseChange, etc.)
-  // and the full JSX from the previous PublicApplicationFormView.jsx code block.
-  // I won't repeat them here to keep this response concise.
   const handleApplicantChange = (key, value) => {
     setApplicant(a => ({ ...a, [key]: value }));
   };
@@ -86,12 +78,13 @@ export default function PublicApplicationFormView() {
         firstName: applicant.firstName,
         lastName: applicant.lastName,
         applicantType: applicant.applicantType,
-        fieldResponses: responses.map((r, idx) => ({
+        fieldResponses: responses.map((r) => ({
           fieldId: r.fieldId,
           response: r.response
         }))
       });
       setApplySuccess("Application submitted successfully! You can close this window.");
+      // Reset form, ensuring applicantType is reset to the form's type, not a default
       setApplicant({ email: "", firstName: "", lastName: "", applicantType: form.type });
       setResponses(form.fields.map(f => ({ fieldId: f.id, response: "" })));
     } catch (err) {
@@ -104,60 +97,167 @@ export default function PublicApplicationFormView() {
 
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorMessage message={error} />;
-  if (!form) return <div className="p-10 text-center">Application form not found or is inactive.</div>;
+  if (!form) return <div className="p-10 text-center text-gray-700">Application form not found or is inactive.</div>;
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center py-10">
-      <div className="w-full max-w-2xl bg-white rounded-lg shadow p-6 border-t-8 border-blue-600">
-        <h1 className="text-3xl font-bold text-blue-700 mb-6 text-center">{form.name}</h1>
-        <p className="text-gray-600 mb-6 text-center">Please fill out the form below to apply.</p>
-        {applySuccess && <div className="text-green-600 mb-2 text-center text-lg font-semibold">{applySuccess}</div>}
-        {applyError && <div className="text-red-600 mb-2 text-center text-lg font-semibold">{applyError}</div>}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col items-center py-10 px-4 font-inter"> {/* Background and font */}
+      <div className="w-full max-w-3xl bg-white rounded-xl shadow-2xl p-8 border-t-8 border-blue-600"> {/* Wider, shadows, border */}
+        <h1 className="text-4xl font-extrabold text-blue-800 mb-2 text-center tracking-wide"> {/* Title style */}
+          {form.name}
+        </h1>
+        <p className="text-lg text-gray-600 mb-8 text-center leading-relaxed"> {/* Description style */}
+          Please fill out the form below to apply for our {form.type.toLowerCase()} program.
+        </p>
 
-        <form className="bg-blue-50 rounded-lg p-6" onSubmit={handleApplySubmit}>
-          <h2 className="text-xl font-semibold text-blue-700 mb-4">Applicant Information</h2>
-          <div className="mb-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {applySuccess && (
+          <div className="bg-green-100 border border-green-400 text-green-700 px-6 py-4 rounded-lg mb-6 text-center text-lg font-semibold shadow-md" role="alert">
+            {applySuccess}
+          </div>
+        )}
+        {applyError && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded-lg mb-6 text-center text-lg font-semibold shadow-md" role="alert">
+            {applyError}
+          </div>
+        )}
+
+        <form className="bg-white rounded-lg p-7 border border-gray-200 shadow-inner" onSubmit={handleApplySubmit}> {/* Form container style */}
+          <h2 className="text-2xl font-bold text-blue-700 mb-5 pb-2 border-b border-blue-200">Applicant Information</h2> {/* Section header */}
+          <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-5"> {/* Grid for applicant info */}
             <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email <span className="text-red-500">*</span></label>
-                <input id="email" className="w-full border rounded px-3 py-2 mt-1" type="email" placeholder="Email" value={applicant.email} onChange={e => handleApplicantChange("email", e.target.value)} required />
+                <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-1">Email <span className="text-red-500">*</span></label>
+                <input
+                  id="email"
+                  className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 ease-in-out text-gray-800"
+                  type="email"
+                  placeholder="Your email address"
+                  value={applicant.email}
+                  onChange={e => handleApplicantChange("email", e.target.value)}
+                  required
+                />
             </div>
             <div>
-                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">First Name</label>
-                <input id="firstName" className="w-full border rounded px-3 py-2 mt-1" placeholder="First Name" value={applicant.firstName} onChange={e => handleApplicantChange("firstName", e.target.value)} />
+                <label htmlFor="firstName" className="block text-sm font-semibold text-gray-700 mb-1">First Name</label>
+                <input
+                  id="firstName"
+                  className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 ease-in-out text-gray-800"
+                  placeholder="Your first name"
+                  value={applicant.firstName}
+                  onChange={e => handleApplicantChange("firstName", e.target.value)}
+                />
             </div>
             <div>
-                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">Last Name</label>
-                <input id="lastName" className="w-full border rounded px-3 py-2 mt-1" placeholder="Last Name" value={applicant.lastName} onChange={e => handleApplicantChange("lastName", e.target.value)} />
+                <label htmlFor="lastName" className="block text-sm font-semibold text-gray-700 mb-1">Last Name</label>
+                <input
+                  id="lastName"
+                  className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 ease-in-out text-gray-800"
+                  placeholder="Your last name"
+                  value={applicant.lastName}
+                  onChange={e => handleApplicantChange("lastName", e.target.value)}
+                />
             </div>
           </div>
-          <div className="mb-6">
-            <label htmlFor="applicantType" className="block text-sm font-medium text-gray-700">Applicant Type <span className="text-red-500">*</span></label>
-            <select id="applicantType" className="w-full border rounded px-3 py-2 mt-1" value={applicant.applicantType} onChange={e => handleApplicantChange("applicantType", e.target.value)} required>
-              {FORM_TYPES.map(type => <option key={type} value={type}>{type.charAt(0) + type.slice(1).toLowerCase()}</option>)}
-            </select>
-          </div>
 
-          <h2 className="text-xl font-semibold text-blue-700 mb-4">Form Questions</h2>
-          <div className="mb-4">
+          <h2 className="text-2xl font-bold text-blue-700 mb-5 pb-2 border-b border-blue-200">Form Questions</h2> {/* Section header */}
+          <div className="space-y-6 mb-6"> {/* Consistent vertical spacing */}
             {form.fields.map((field, idx) => (
-              <div key={field.id} className="mb-4 p-3 bg-white rounded shadow-sm border border-blue-100">
-                <label className="block text-blue-700 font-medium mb-1">{field.label}{field.isRequired && <span className="text-red-500">*</span>}</label>
+              <div key={field.id} className="p-5 bg-white rounded-lg shadow-md border border-blue-50 transition-all duration-200 hover:shadow-lg"> {/* Card-like questions */}
+                <label className="block text-blue-800 font-semibold mb-2 text-base">
+                  {field.label}{field.isRequired && <span className="text-red-500 ml-1">*</span>}
+                </label>
                 {(() => {
+                  const inputClass = "w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 ease-in-out text-gray-800";
+                  const currentResponse = responses[idx]?.response || "";
+
                   switch (field.fieldType) {
                     case "TEXT":
-                      return <input className="w-full border rounded px-3 py-2" value={responses[idx]?.response || ""} onChange={e => handleResponseChange(idx, e.target.value)} required={field.isRequired} />;
+                      return (
+                        <input
+                          type="text"
+                          className={inputClass}
+                          value={currentResponse}
+                          onChange={e => handleResponseChange(idx, e.target.value)}
+                          required={field.isRequired}
+                        />
+                      );
                     case "TEXTAREA":
-                      return <textarea className="w-full border rounded px-3 py-2" value={responses[idx]?.response || ""} onChange={e => handleResponseChange(idx, e.target.value)} required={field.isRequired} />;
+                      return (
+                        <textarea
+                          className={`${inputClass} h-24`}
+                          value={currentResponse}
+                          onChange={e => handleResponseChange(idx, e.target.value)}
+                          required={field.isRequired}
+                        ></textarea> // Corrected textarea value prop
+                      );
                     case "SELECT":
-                      return <select className="w-full border rounded px-3 py-2" value={responses[idx]?.response || ""} onChange={e => handleOptionResponseChange(idx, e.target.value)} required={field.isRequired}><option value="">Select...</option>{field.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select>;
+                      return (
+                        <select
+                          className={inputClass}
+                          value={currentResponse}
+                          onChange={e => handleOptionResponseChange(idx, e.target.value)}
+                          required={field.isRequired}
+                        >
+                          <option value="">Select...</option>
+                          {field.options.map(opt => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      );
                     case "RADIO":
-                      return <div className="flex flex-wrap gap-4">{field.options.map(opt => <label key={opt} className="flex items-center"><input type="radio" name={`radio-${field.id}`} value={opt} checked={responses[idx]?.response === opt} onChange={e => handleOptionResponseChange(idx, opt)} required={field.isRequired} className="mr-2" />{opt}</label>)}</div>;
+                      return (
+                        <div className="flex flex-col space-y-2 mt-2"> {/* Vertical layout for radio options */}
+                          {field.options.map(opt => (
+                            <label key={opt} className="flex items-center text-gray-700">
+                              <input
+                                type="radio"
+                                name={`radio-${field.id}`}
+                                value={opt}
+                                checked={currentResponse === opt}
+                                onChange={() => handleOptionResponseChange(idx, opt)}
+                                required={field.isRequired}
+                                className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                              />
+                              {opt}
+                            </label>
+                          ))}
+                        </div>
+                      );
                     case "CHECKBOX":
-                      return <div className="flex flex-wrap gap-4">{field.options.map(opt => <label key={opt} className="flex items-center"><input type="checkbox" checked={(responses[idx]?.response || "").split(";;;").includes(opt)} onChange={() => handleCheckboxResponseChange(idx, opt)} className="mr-2" />{opt}</label>)}</div>;
+                      return (
+                        <div className="flex flex-col space-y-2 mt-2"> {/* Vertical layout for checkbox options */}
+                          {field.options.map(opt => (
+                            <label key={opt} className="flex items-center text-gray-700">
+                              <input
+                                type="checkbox"
+                                checked={currentResponse.split(";;;").includes(opt)}
+                                onChange={() => handleCheckboxResponseChange(idx, opt)}
+                                className="mr-2 h-4 w-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300"
+                              />
+                              {opt}
+                            </label>
+                          ))}
+                        </div>
+                      );
                     case "DATE":
-                      return <input type="date" className="w-full border rounded px-3 py-2" value={responses[idx]?.response || ""} onChange={e => handleResponseChange(idx, e.target.value)} required={field.isRequired} />;
+                      return (
+                        <input
+                          type="date"
+                          className={inputClass}
+                          value={currentResponse}
+                          onChange={e => handleResponseChange(idx, e.target.value)}
+                          required={field.isRequired}
+                        />
+                      );
                     case "FILE":
-                      return <input type="file" className="w-full border rounded px-3 py-2" disabled title="File upload not implemented" />;
+                      return (
+                        <div className="relative border border-gray-300 rounded-md px-4 py-2 bg-gray-50">
+                          <input
+                            type="file"
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            title="Upload a file"
+                          />
+                          <span className="block text-gray-700">Choose File</span>
+                        </div>
+                      );
                     default:
                       return null;
                   }
@@ -166,8 +266,12 @@ export default function PublicApplicationFormView() {
             ))}
           </div>
 
-          <div className="flex justify-end">
-            <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg" disabled={applyLoading}>
+          <div className="flex justify-center mt-8">
+            <button
+              type="submit"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-bold shadow-xl hover:shadow-2xl transition-all duration-300 ease-in-out transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={applyLoading}
+            >
               {applyLoading ? "Submitting..." : "Submit Application"}
             </button>
           </div>
