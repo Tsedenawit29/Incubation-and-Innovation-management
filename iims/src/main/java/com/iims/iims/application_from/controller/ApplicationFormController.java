@@ -120,4 +120,22 @@ public class ApplicationFormController {
         applicationFormService.deleteApplicationForm(formId, tenantId);
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * Clones an existing application form for a specific tenant.
+     * The cloned form will have a new ID and is initially active.
+     *
+     * @param tenantId The UUID of the tenant.
+     * @param formId   The UUID of the form to clone.
+     * @return ResponseEntity with the cloned ApplicationFormResponseDto and HTTP status 201.
+     */
+    @PostMapping("/{formId}/clone") // New endpoint for cloning
+    // @PreAuthorize("hasAuthority('TENANT_ADMIN') and @tenantSecurity.isCurrentUserInTenant(#tenantId)") // Uncomment if you use method security
+    public ResponseEntity<ApplicationFormResponseDto> cloneApplicationForm(
+            @PathVariable UUID tenantId,
+            @PathVariable UUID formId
+    ) {
+        ApplicationFormResponseDto clonedForm = applicationFormService.cloneApplicationForm(tenantId, formId);
+        return new ResponseEntity<>(clonedForm, HttpStatus.CREATED);
+    }
 }

@@ -150,3 +150,19 @@ export async function updateApplicationStatus(token, tenantId, applicationId, ne
   const updatedApplication = await res.json();
   return updatedApplication;
 }
+
+// Cloning an exesting application to reuse it
+export async function cloneApplicationForm(token, tenantId, formId) {
+  const res = await fetch(`${API_URL}/tenants/${tenantId}/application-forms/${formId}/clone`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to clone application form: ${errorText}`);
+  }
+  return res.json();
+}
