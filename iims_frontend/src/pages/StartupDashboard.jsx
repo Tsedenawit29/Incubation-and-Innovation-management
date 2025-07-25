@@ -1,26 +1,1116 @@
-import { useParams, useNavigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
-export default function StartupDashboard() {
-  const { id } = useParams();
-  const { logout } = useAuth();
-  const navigate = useNavigate();
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
+import React, { useEffect, useState, useRef } from "react";
+// Assuming these are correctly configured and imported from your project
+import { useAuth } from "../hooks/useAuth"; // THIS IS YOUR ACTUAL useAuth HOOK
+import {
+  getStartupProfile,
+  updateStartupProfile,
+  createStartupProfile
+} from "../api/users"; // or from startupProfile.js
+
+// Import Lucide React icons
+import {
+  Globe,
+  Phone,
+  MapPin,
+  Linkedin,
+  Twitter,
+  Building,
+  Save,
+  Edit,
+  Loader2,
+  XCircle,
+  CheckCircle,
+  Info,
+  ExternalLink,
+  Eye, // For view mode toggle
+  Image, // For logo URL input
+  Share2, // For social presence section
+  BookOpenText, // For description/about us section
+  LogOut, // For logout button
+  Zap, // New icon for a "feature" or "vision" section
+  Lightbulb, // Another new icon for ideas
+  Rocket, // For a launch/growth feel
+  TrendingUp, // For growth/metrics
+  Users, // For team/community
+  Award, // For achievements
+  Star, // For general emphasis
+  Mail, // For messages
+  Bell, // For notifications
+  ChevronDown, // For dropdowns
+  Plus, // For "Create New Pitch"
+  Trash2, // For delete button in pitch list
+  Target, // For mission
+  EyeIcon, // For vision
+  Home, // For Dashboard
+  User, // For My Profile
+  CheckCircle2, // For Incubation Progress
+  GraduationCap, // For My Mentor
+  Briefcase, // For Opportunities
+  BellRing, // For Notifications (using BellRing for sidebar)
+  Calendar, // For Upcoming Task
+  Quote, // For motivational quote
+  Upload, // For upload button
+  FileText, // For documents
+  File, // Generic file icon
+  Filter, // For filter dropdown
+  CalendarDays // For apply by date
+} from 'lucide-react';
+
+// Animated Counter Component (kept for potential future use, though not used in current dashboard view)
+const AnimatedCounter = ({ targetValue, duration = 2000, prefix = "", suffix = "" }) => {
+  const [count, setCount] = useState(0);
+  const ref = useRef(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect(); // Stop observing once visible
+        }
+      },
+      { threshold: 0.5 } // Trigger when 50% of the component is visible
+    );
+
+    if (ref.current) {
+      observer.observe(ref.current);
+    }
+
+    return () => {
+      if (ref.current) {
+        observer.unobserve(ref.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isVisible) return;
+
+    let start = 0;
+    const end = targetValue;
+    const increment = end / (duration / 16); // ~60 frames per second
+
+    const animate = () => {
+      start += increment;
+      if (start < end) {
+        setCount(Math.ceil(start));
+        requestAnimationFrame(animate);
+      } else {
+        setCount(end);
+      }
+    };
+
+    requestAnimationFrame(animate);
+  }, [targetValue, duration, isVisible]);
+
+  return <p ref={ref} className="text-4xl font-extrabold text-green-800">{prefix}{count.toLocaleString()}{suffix}</p>;
+};
+
+// Circular Progress Bar Component
+const CircularProgressBar = ({ progress, size = 100, strokeWidth = 10 }) => {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const offset = circumference - (progress / 100) * circumference;
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white p-8 rounded shadow">
-        <h1 className="text-2xl font-bold mb-4">Startup Dashboard</h1>
-        <p>Welcome, Startup user!</p>
-        <p>Your ID: <span className="font-mono">{id}</span></p>
-        <button
-          onClick={handleLogout}
-          className="mt-6 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded"
-        >
-          Logout
-        </button>
+    <svg width={size} height={size} className="transform -rotate-90">
+      <circle
+        stroke="#e6e6e6"
+        fill="transparent"
+        strokeWidth={strokeWidth}
+        r={radius}
+        cx={size / 2}
+        cy={size / 2}
+      />
+      <circle
+        stroke="#4CAF50" // Green color for progress
+        fill="transparent"
+        strokeWidth={strokeWidth}
+        strokeDasharray={circumference + ' ' + circumference}
+        strokeDashoffset={offset}
+        strokeLinecap="round"
+        r={radius}
+        cx={size / 2}
+        cy={size / 2}
+        className="transition-all duration-1000 ease-out"
+      />
+      <text
+        x="50%"
+        y="50%"
+        dominantBaseline="middle"
+        textAnchor="middle"
+        className="transform rotate-90" // Rotate text back
+        fill="#4CAF50"
+        fontSize="20"
+        fontWeight="bold"
+      >
+        {progress}%
+      </text>
+    </svg>
+  );
+};
+
+
+export default function StartupDashboard() {
+  const { user, token, logout } = useAuth();
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [editMsg, setEditMsg] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [activeTab, setActiveTab] = useState('basicInfo');
+  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [currentDateTime, setCurrentDateTime] = useState(new Date()); // State for current date and time
+
+
+  // Mock data for dashboard elements not directly from profile
+  const dashboardMetrics = {
+    incubationProgress: 45, // Example progress for circular chart
+    // Removed other metrics as per request
+  };
+
+  const mockMentor = {
+    name: "Dr. Alex Chen",
+    role: "AI & SaaS Expert",
+    photo: "https://placehold.co/80x80/A7F3D0/065F46?text=AC",
+    bio: "Dr. Chen is a seasoned entrepreneur with 15+ years in AI product development and scaling SaaS businesses. Passionate about guiding early-stage startups.",
+    latestAdvice: "Focus on your core value proposition and iterate quickly based on user feedback. Don't be afraid to pivot!",
+    contact: {
+      email: "alex.chen@example.com",
+      linkedin: "https://linkedin.com/in/alexchen"
+    }
+  };
+
+  const mockNotifications = [
+    { id: 1, type: "system", icon: <Info size={16} />, message: "Your Q2 progress report is due next week.", time: "2 hours ago" },
+    { id: 2, type: "mentor", icon: <GraduationCap size={16} />, message: "Dr. Chen left feedback on your MVP pitch deck.", time: "Yesterday" },
+    { id: 3, type: "admin", icon: <Building size={16} />, message: "New grant opportunity: 'Innovate Fund 2025' is open!", time: "3 days ago" },
+  ];
+
+  const mockUpcomingTask = {
+    title: "Submit Q2 Progress Report",
+    deadline: "2025-08-01",
+    description: "Ensure all metrics and activities are updated for the second quarter.",
+    link: "#"
+  };
+
+  const mockIncubationPhases = [
+    { id: 1, title: "Idea Validation", description: "Confirm market need and problem-solution fit.", status: "Approved", feedback: "Excellent market research!", files: [{ name: "Market Research.pdf", type: "pdf" }] },
+    { id: 2, title: "Prototype Development", description: "Build a basic working model of your solution.", status: "Submitted", feedback: "Awaiting review.", files: [{ name: "Prototype Plan.docx", type: "docx" }] },
+    { id: 3, title: "MVP Launch", description: "Release your Minimum Viable Product to early users.", status: "Pending", feedback: null, files: [] },
+    { id: 4, title: "Market Entry Strategy", description: "Plan your go-to-market and initial customer acquisition.", status: "Pending", feedback: null, files: [] },
+  ];
+
+  const mockOpportunities = [
+    { id: 1, name: "Innovate Fund 2025", description: "Seed funding for disruptive tech startups.", applyBy: "2025-09-15", status: "Open" },
+    { id: 2, name: "Growth Accelerator Program", description: "Mentorship and capital for scaling businesses.", applyBy: "2025-08-30", status: "Open" },
+    { id: 3, name: "Green Tech Grant", description: "Funding for sustainable technology solutions.", applyBy: "2025-07-20", status: "Closed" },
+  ];
+
+  const mockTeamMembers = [
+    { id: 1, name: "Jane Doe", role: "CEO", avatar: "https://placehold.co/60x60/FFD700/000000?text=JD" },
+    { id: 2, name: "John Smith", role: "CTO", avatar: "https://placehold.co/60x60/87CEEB/000000?text=JS" },
+    { id: 3, name: "Emily White", role: "CMO", avatar: "https://placehold.co/60x60/DA70D6/000000?text=EW" },
+  ];
+
+  const mockDocuments = [
+    { id: 1, name: "Business Plan.pdf", type: "pdf", url: "#" },
+    { id: 2, name: "Pitch Deck v2.pptx", type: "docx", url: "#" }, // Using docx icon for pptx
+    { id: 3, name: "Financial Projections.xlsx", type: "file", url: "#" },
+  ];
+
+  // Update current time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentDateTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+
+  // Fetch or create profile on mount
+  useEffect(() => {
+    async function fetchOrCreateProfile() {
+      if (!user || !user.id || !token) {
+        setLoading(false);
+        setError("User not authenticated or ID/token missing.");
+        return;
+      }
+
+      setLoading(true);
+      setError("");
+      setEditMsg("");
+      try {
+        let prof = await getStartupProfile(token, user.id);
+        setProfile(prof);
+        setIsEditing(false); // Set to view mode if profile exists
+      } catch (err) {
+        console.error("Error fetching profile:", err);
+        // Check if the error is due to authentication (e.g., 403 Forbidden or expired JWT)
+        // This assumes your getStartupProfile or underlying fetch might throw an error object
+        // that contains a 'status' property or an error message indicating JWT expiration.
+        // You might need to adjust this check based on how your API client handles errors.
+        if (err.message && err.message.includes("Failed to fetch profile") || err.message.includes("JWT expired")) {
+          setError("Session expired or unauthorized. Please log in again.");
+          logout(); // Force logout to clear invalid token and redirect to login
+        } else {
+          try {
+            let prof = await createStartupProfile(token, user.id);
+            setProfile(prof);
+            setEditMsg("New profile created successfully. Please fill in details!");
+            setCurrentPage('myProfile'); // Navigate to profile to fill details
+            setIsEditing(true); // Automatically go to edit mode for new profile
+          } catch (e) {
+            console.error("Error creating profile:", e);
+            setError("Could not load or create profile: " + e.message);
+          }
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchOrCreateProfile();
+  }, [token, user?.id, logout]); // Added logout to dependency array
+
+  const handleChange = (e) => {
+    setProfile({ ...profile, [e.target.name]: e.target.value });
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setEditMsg("");
+    setError("");
+
+    if (!user || !user.id || !token) {
+      setError('User not authenticated or ID/token missing. Cannot save profile.');
+      setSaving(false);
+      return;
+    }
+
+    try {
+      const payload = {
+        startupName: profile?.startupName || '',
+        description: profile?.description || '',
+        website: profile?.website || '',
+        phone: profile?.phone || '',
+        address: profile?.address || '',
+        linkedin: profile?.linkedin || '',
+        twitter: profile?.twitter || '',
+        logoUrl: profile?.logoUrl || '',
+        mission: profile?.mission || '',
+        vision: profile?.vision || '',
+        industry: profile?.industry || '', // New field
+        country: profile?.country || '',   // New field
+        city: profile?.city || '',         // New field
+      };
+      const updated = await updateStartupProfile(token, user.id, payload);
+      setProfile(updated);
+      setEditMsg("Profile updated successfully!");
+      setIsEditing(false); // Switch to view mode after saving
+    } catch (err) {
+      console.error("Failed to update profile:", err);
+      setError(`Failed to update profile: ${err.message}`);
+      // Also check for authentication error on save
+      if (err.message && err.message.includes("Failed to update profile") || err.message.includes("JWT expired")) {
+        setError("Session expired or unauthorized. Please log in again.");
+        logout(); // Force logout to clear invalid token and redirect to login
+      }
+    } finally {
+      setSaving(false);
+      setTimeout(() => {
+        setEditMsg("");
+        setError("");
+      }, 5000);
+    }
+  };
+
+  // Helper function to render an input field with consistent styling
+  const renderInputField = (id, label, type, name, value, placeholder, Icon) => (
+    <div className="mb-5">
+      <label htmlFor={id} className="block text-gray-700 text-sm font-semibold mb-2 flex items-center">
+        {Icon && <Icon size={16} className="mr-2 text-brand-primary" />}
+        {label}
+      </label>
+      <input
+        type={type}
+        id={id}
+        name={name}
+        className="shadow-sm appearance-none border border-gray-200 rounded-lg w-full py-2.5 px-3 text-gray-800 leading-tight focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition duration-200 ease-in-out bg-white/90 text-sm"
+        placeholder={placeholder}
+        value={value}
+        onChange={handleChange}
+        disabled={saving}
+      />
+    </div>
+  );
+
+  // Helper function to render a textarea field with consistent styling
+  const renderTextareaField = (id, label, name, value, placeholder, Icon) => (
+    <div className="mb-5">
+      <label htmlFor={id} className="block text-gray-700 text-sm font-semibold mb-2 flex items-center">
+        {Icon && <Icon size={16} className="mr-2 text-brand-primary" />}
+        {label}
+      </label>
+      <textarea
+        id={id}
+        name={name}
+        rows="4"
+        className="shadow-sm appearance-none border border-gray-200 rounded-lg w-full py-2.5 px-3 text-gray-800 leading-tight focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition duration-200 ease-in-out bg-white/90 text-sm"
+        placeholder={placeholder}
+        value={value}
+        onChange={handleChange}
+        disabled={saving}
+      ></textarea>
+    </div>
+  );
+
+  // Helper function to render a display item with an icon and link support
+  const renderDisplayItem = (label, value, Icon, isLink = false) => {
+    if (!value) return null;
+    return (
+      <div className="flex items-start text-gray-700 mb-3">
+        <Icon size={18} className="mr-3 text-brand-primary flex-shrink-0 mt-0.5" />
+        <div className="flex flex-col">
+          <span className="font-medium text-xs text-gray-500">{label}:</span>
+          {isLink ? (
+            <a
+              href={value.startsWith('http') ? value : `https://${value}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-brand-primary hover:underline flex items-center break-all text-sm font-semibold"
+            >
+              {value} <ExternalLink size={12} className="ml-1" />
+            </a>
+          ) : (
+            <span className="break-all text-sm font-semibold">{value}</span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Placeholder for the default logo if logoUrl is empty or invalid
+  const defaultLogo = "https://placehold.co/100x100/E0E7FF/0A2D5C?text=Logo";
+
+  // Render loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-100 p-4 sm:p-8 flex items-center justify-center font-inter relative overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-48 h-48 bg-brand-primary rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slow"></div>
+        <div className="absolute bottom-1/3 right-1/4 w-64 h-64 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slower"></div>
+        <div className="absolute top-1/2 left-1/2 w-32 h-32 bg-pink-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float"></div>
+        <div className="absolute top-1/10 right-1/10 w-24 h-24 bg-teal-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slow delay-1000"></div>
+        <div className="absolute bottom-1/5 left-1/5 w-40 h-40 bg-orange-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slower delay-2000"></div>
+
+        <div className="flex flex-col items-center justify-center p-16 bg-white rounded-3xl shadow-2xl border border-blue-200 z-10 animate-fade-in transform scale-105">
+          <Loader2 className="animate-spin-slow text-brand-primary mb-8" size={80} />
+          <p className="text-3xl font-extrabold text-brand-dark text-center">Loading your amazing dashboard...</p>
+          <p className="text-lg text-gray-600 mt-2">Preparing the investor-ready view.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Render error state if profile is null and there's an error
+  if (!profile && error) {
+    return (
+      <div className="min-h-screen bg-gray-100 p-4 sm:p-8 flex items-center justify-center font-inter relative overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-48 h-48 bg-red-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slow"></div>
+        <div className="absolute bottom-1/3 right-1/4 w-64 h-64 bg-red-400 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slower"></div>
+
+        <div className="flex flex-col items-center p-16 bg-white rounded-3xl shadow-2xl border border-red-200 z-10 animate-fade-in transform scale-105">
+          <XCircle className="mb-8 text-red-600" size={80} />
+          <p className="text-3xl font-extrabold mb-4 text-red-800 text-center">Error Loading Profile</p>
+          <p className="text-center text-lg text-gray-700 mb-8">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="flex items-center px-10 py-5 bg-red-600 text-white font-bold rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 text-xl"
+          >
+            <Loader2 className="animate-spin mr-3" size={24} /> Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Helper for sidebar navigation items
+  const navItems = [
+    { name: 'Dashboard', icon: Home, page: 'dashboard' },
+    { name: 'My Profile', icon: User, page: 'myProfile' },
+    { name: 'Incubation Progress', icon: CheckCircle2, page: 'incubationProgress' },
+    { name: 'My Mentor', icon: GraduationCap, page: 'myMentor' },
+    { name: 'Opportunities', icon: Briefcase, page: 'opportunities' },
+    { name: 'Notifications', icon: BellRing, page: 'notifications' },
+  ];
+
+  // Main component rendering
+  return (
+    <div className="min-h-screen bg-gray-100 font-inter flex items-center justify-center p-4 sm:p-8 relative overflow-hidden">
+      {/* Background animated shapes */}
+      <div className="absolute top-1/4 left-1/4 w-48 h-48 bg-brand-primary rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slow"></div>
+      <div className="absolute bottom-1/3 right-1/4 w-64 h-64 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slower"></div>
+      <div className="absolute top-1/2 left-1/2 w-32 h-32 bg-pink-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float"></div>
+      <div className="absolute top-1/10 right-1/10 w-24 h-24 bg-teal-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slow delay-1000"></div>
+      <div className="absolute bottom-1/5 left-1/5 w-40 h-40 bg-orange-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slower delay-2000"></div>
+      <div className="absolute top-3/4 left-1/10 w-56 h-56 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float delay-500"></div>
+
+      {/* Main Dashboard Container */}
+      <div className="flex w-full max-w-7xl h-[90vh] bg-white rounded-3xl shadow-2xl overflow-hidden custom-shadow">
+        {/* Custom CSS for animations and variables */}
+        <style>
+          {`
+            @tailwind base;
+            @tailwind components;
+            @tailwind utilities;
+
+            @keyframes float {
+              0% { transform: translateY(0); }
+              50% { transform: translateY(-16px); }
+              100% { transform: translateY(0); }
+            }
+            @keyframes float-slow {
+              0% { transform: translateY(0); }
+              50% { transform: translateY(-32px); }
+              100% { transform: translateY(0); }
+            }
+            @keyframes float-slower {
+              0% { transform: translateY(0); }
+              50% { transform: translateY(-48px); }
+              100% { transform: translateY(0); }
+            }
+            @keyframes fade-in {
+              from { opacity: 0; transform: translateY(20px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+            @keyframes spin-slow {
+              from { transform: rotate(0deg); }
+              to { transform: rotate(360deg); }
+            }
+            @keyframes float-image {
+              0% { transform: translate(-50%, -50%) scale(1) rotate(-2deg); }
+              25% { transform: translate(-48%, -52%) scale(1.04) rotate(2deg); }
+              50% { transform: translate(-50%, -50%) scale(1.08) rotate(-1deg); }
+              75% { transform: translate(-52%, -48%) scale(1.04) rotate(2deg); }
+              100% { transform: translate(-50%, -50%) scale(1) rotate(-2deg); }
+            }
+
+            .animate-float {
+              animation: float 3s ease-in-out infinite;
+            }
+            .animate-float-slow {
+              animation: float-slow 6s ease-in-out infinite;
+            }
+            .animate-float-slower {
+              animation: float-slower 10s ease-in-out infinite;
+            }
+            .animate-fade-in {
+              animation: fade-in 1.2s ease-out forwards;
+            }
+            .animate-spin-slow {
+              animation: spin-slow 30s linear infinite;
+            }
+            .animate-float-image {
+              animation: float-image 12s ease-in-out infinite;
+            }
+
+            :root {
+              --brand-primary: #299DFF;
+              --brand-dark: #0A2D5C;
+            }
+
+            .bg-brand-primary {
+              background-color: var(--brand-primary) !important;
+            }
+            .bg-brand-dark {
+              background-color: var(--brand-dark) !important;
+            }
+            .text-brand-primary {
+              color: var(--brand-primary) !important;
+            }
+            .text-brand-dark {
+              color: var(--brand-dark) !important;
+            }
+            /* Custom shadow for a more premium feel */
+            .custom-shadow {
+              box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+            }
+          `}
+        </style>
+
+        {/* Left Sidebar */}
+        <div className="w-64 bg-white p-6 flex flex-col justify-between border-r border-gray-100 shadow-inner">
+          <div>
+            {/* Removed Logo and Brand Name (Pitch.io) */}
+            {/* Removed Create New Pitch Button */}
+
+            {/* Navigation Links */}
+            <nav className="space-y-4 pt-10"> {/* Added pt-10 for spacing after removing header */}
+              {navItems.map((item) => (
+                <a
+                  key={item.page}
+                  href="#"
+                  onClick={() => {
+                    setCurrentPage(item.page);
+                    setIsEditing(false); // Always switch to view mode when changing pages
+                    setActiveTab('basicInfo'); // Reset profile tab
+                  }}
+                  className={`flex items-center p-3 rounded-lg text-gray-700 font-medium hover:bg-blue-50 hover:text-brand-primary transition duration-200
+                    ${currentPage === item.page ? 'bg-blue-50 text-brand-primary font-semibold' : ''}`}
+                >
+                  <item.icon size={20} className="mr-3" />
+                  {item.name}
+                </a>
+              ))}
+            </nav>
+          </div>
+
+          {/* Logout Section */}
+          <div className="mt-10">
+            <button
+              onClick={logout}
+              className="w-full flex items-center px-6 py-3 bg-red-500 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 text-base"
+            >
+              <LogOut className="mr-3" size={20} /> Logout Securely
+            </button>
+          </div>
+        </div>
+
+        {/* Right Main Content Area */}
+        <div className="flex-1 p-8 bg-gray-50 overflow-y-auto">
+          {/* Top Header Bar */}
+          <header className="flex justify-between items-center mb-8 pb-4 border-b border-gray-200">
+            <div className="text-gray-600 font-medium">
+              {/* Display current date and time */}
+              <h2 className="text-2xl font-bold text-brand-dark capitalize">{currentPage.replace(/([A-Z])/g, ' $1')}</h2>
+              <p className="text-sm">
+                {currentDateTime.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                {" at "}
+                {currentDateTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+              </p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <Mail size={24} className="text-gray-500 cursor-pointer hover:text-brand-primary transition-colors" />
+              <Bell size={24} className="text-gray-500 cursor-pointer hover:text-brand-primary transition-colors" />
+              <div className="flex items-center bg-gray-100 rounded-full p-2 cursor-pointer hover:bg-gray-200 transition-colors">
+                {/* Display first two letters of startup name or 'SN' if not available */}
+                <div className="w-8 h-8 bg-blue-200 text-brand-dark font-bold rounded-full flex items-center justify-center text-sm mr-2">
+                  {profile?.startupName ? profile.startupName.substring(0, 2).toUpperCase() : 'SN'}
+                </div>
+                {/* Display full startup name */}
+                <span className="text-gray-700 font-medium">{profile?.startupName || 'Startup Name'}</span>
+                <ChevronDown size={18} className="ml-2 text-gray-500" />
+              </div>
+            </div>
+          </header>
+
+          {/* Messages: Error, Success */}
+          {error && (
+            <div className="flex items-center p-4 mb-6 bg-red-100/80 text-red-700 rounded-xl shadow-md border border-red-300 animate-fade-in">
+              <XCircle className="mr-3 text-red-600" size={20} /> <span className="font-medium text-base">{error}</span>
+            </div>
+          )}
+
+          {editMsg && (
+            <div className="flex items-center p-4 mb-6 bg-green-100/80 text-green-700 rounded-xl shadow-md border border-green-300 animate-fade-in">
+              <CheckCircle className="mr-3 text-green-600" size={20} /> <span className="font-medium text-base">{editMsg}</span>
+            </div>
+          )}
+
+          {/* --- Page Content Rendering --- */}
+          {currentPage === 'dashboard' && (
+            <div className="animate-fade-in">
+              {/* Welcome Section */}
+              <div className="bg-gradient-to-r from-blue-100 to-purple-100 p-8 rounded-2xl shadow-lg mb-8 flex flex-col sm:flex-row items-center justify-between animate-fade-in">
+                <div className="text-center sm:text-left mb-6 sm:mb-0">
+                  <h1 className="text-4xl font-extrabold text-brand-dark mb-2">Welcome, {profile?.startupName || 'Startup Name'}!</h1>
+                  <p className="text-lg text-gray-700">Ready to conquer the day with your groundbreaking ideas?</p>
+                </div>
+                <div className="relative w-36 h-36">
+                    {/* Display user's uploaded logo or a default placeholder */}
+                    <img
+                      src={profile?.logoUrl || "https://placehold.co/150x150/E0E7FF/0A2D5C?text=Logo"}
+                      alt="Startup Logo"
+                      className="w-full h-full object-cover rounded-full shadow-md animate-float-image z-10"
+                      onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/150x150/E0E7FF/0A2D5C?text=Logo"; }}
+                    />
+                    <Quote size={40} className="absolute bottom-0 right-0 text-gray-600 opacity-70 transform rotate-12" />
+                </div>
+              </div>
+
+              {/* Removed Overview Cards as per request */}
+              {/* <h3 className="text-xl font-bold text-brand-dark mb-4">Overview</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div className="p-6 rounded-xl shadow-md bg-yellow-100 text-yellow-800 flex flex-col items-center justify-center animate-fade-in hover:scale-105 transition-transform duration-300">
+                  <Lightbulb size={36} className="mb-2 text-yellow-600" />
+                  <AnimatedCounter targetValue={dashboardMetrics.openRate} suffix="%" />
+                  <p className="text-sm font-medium">Open Rate</p>
+                </div>
+                <div className="p-6 rounded-xl shadow-md bg-blue-100 text-blue-800 flex flex-col items-center justify-center animate-fade-in delay-100 hover:scale-105 transition-transform duration-300">
+                  <CheckCircle size={36} className="mb-2 text-blue-600" />
+                  <AnimatedCounter targetValue={dashboardMetrics.complete} suffix="%" />
+                  <p className="text-sm font-medium">Profile Complete</p>
+                </div>
+                <div className="p-6 rounded-xl shadow-md bg-pink-100 text-pink-800 flex flex-col items-center justify-center animate-fade-in delay-200 hover:scale-105 transition-transform duration-300">
+                  <Star size={36} className="mb-2 text-pink-600" />
+                  <AnimatedCounter targetValue={dashboardMetrics.uniqueViews} />
+                  <p className="text-sm font-medium">Unique Views</p>
+                </div>
+                <div className="p-6 rounded-xl shadow-md bg-purple-100 text-purple-800 flex flex-col items-center justify-center animate-fade-in delay-300 hover:scale-105 transition-transform duration-300">
+                  <Eye size={36} className="mb-2 text-purple-600" />
+                  <AnimatedCounter targetValue={dashboardMetrics.totalViews} />
+                  <p className="text-sm font-medium">Total Views</p>
+                </div>
+              </div> */}
+
+              {/* Dashboard Specific Cards (remaining) */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Incubation Progress Card */}
+                <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 animate-fade-in">
+                  <h3 className="text-xl font-bold text-brand-dark mb-5 flex items-center">
+                    <CheckCircle2 size={24} className="mr-3 text-green-600" /> Incubation Progress
+                  </h3>
+                  <div className="flex flex-col sm:flex-row items-center justify-around">
+                    <CircularProgressBar progress={dashboardMetrics.incubationProgress} size={150} strokeWidth={15} />
+                    <div className="text-center sm:text-left mt-6 sm:mt-0">
+                      <p className="text-lg font-semibold text-gray-800 mb-2">Phase: Prototype Development</p>
+                      <p className="text-sm text-gray-600">You're making great strides! Keep up the momentum.</p>
+                      <button
+                        onClick={() => setCurrentPage('incubationProgress')}
+                        className="mt-4 px-5 py-2 bg-blue-500 text-white text-sm font-semibold rounded-full shadow-md hover:bg-blue-600 transition duration-200"
+                      >
+                        View Details
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Assigned Mentor Card */}
+                <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 animate-fade-in">
+                  <h3 className="text-xl font-bold text-brand-dark mb-5 flex items-center">
+                    <GraduationCap size={24} className="mr-3 text-purple-600" /> Assigned Mentor
+                  </h3>
+                  <div className="flex items-center mb-4">
+                    <img src={mockMentor.photo} alt={mockMentor.name} className="w-20 h-20 rounded-full object-cover mr-4 shadow-md" />
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-800">{mockMentor.name}</h4>
+                      <p className="text-sm text-gray-600">{mockMentor.role}</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-700 mb-4 italic">"{mockMentor.latestAdvice}"</p>
+                  <div className="flex space-x-3">
+                    <a href={`mailto:${mockMentor.contact.email}`} className="px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-medium flex items-center hover:bg-green-200 transition-colors">
+                      <Mail size={16} className="mr-2" /> Message
+                    </a>
+                    <a href={mockMentor.contact.linkedin} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium flex items-center hover:bg-blue-200 transition-colors">
+                      <Linkedin size={16} className="mr-2" /> LinkedIn
+                    </a>
+                  </div>
+                </div>
+
+                {/* Recent Notifications Card */}
+                <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 animate-fade-in">
+                  <h3 className="text-xl font-bold text-brand-dark mb-5 flex items-center">
+                    <BellRing size={24} className="mr-3 text-orange-600" /> Recent Notifications
+                  </h3>
+                  <ul className="space-y-4">
+                    {mockNotifications.slice(0, 3).map(notif => (
+                      <li key={notif.id} className="flex items-start">
+                        <div className="flex-shrink-0 mt-1 mr-3 text-gray-500">{notif.icon}</div>
+                        <div>
+                          <p className="text-sm text-gray-700 font-medium">{notif.message}</p>
+                          <p className="text-xs text-gray-500">{notif.time}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={() => setCurrentPage('notifications')}
+                    className="mt-6 px-5 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-full shadow-sm hover:bg-gray-200 transition duration-200"
+                  >
+                    View All Notifications
+                  </button>
+                </div>
+
+                {/* Upcoming Task Card */}
+                <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 animate-fade-in">
+                  <h3 className="text-xl font-bold text-brand-dark mb-5 flex items-center">
+                    <Calendar size={24} className="mr-3 text-indigo-600" /> Upcoming Task
+                  </h3>
+                  <p className="text-lg font-semibold text-gray-800 mb-2">{mockUpcomingTask.title}</p>
+                  <p className="text-sm text-gray-600 mb-3">{mockUpcomingTask.description}</p>
+                  <div className="flex items-center text-red-500 text-sm font-medium mb-4">
+                    <CalendarDays size={16} className="mr-2" /> Deadline: {mockUpcomingTask.deadline}
+                  </div>
+                  <a href={mockUpcomingTask.link} className="px-5 py-2 bg-indigo-500 text-white text-sm font-semibold rounded-full shadow-md hover:bg-indigo-600 transition duration-200">
+                    Go to Task
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {currentPage === 'myProfile' && (
+            <div className="animate-fade-in">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-bold text-brand-dark flex items-center">
+                  <User size={28} className="mr-3 text-brand-primary" /> My Startup Profile
+                </h3>
+                <button
+                  onClick={() => setIsEditing(!isEditing)}
+                  className="flex items-center px-5 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-semibold rounded-full shadow-md hover:shadow-lg transform hover:scale-105 hover:-translate-y-0.5 transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 text-sm"
+                >
+                  {isEditing ? (
+                    <>
+                      <Eye className="mr-2" size={18} /> View Profile
+                    </>
+                  ) : (
+                    <>
+                      <Edit className="mr-2" size={18} /> Edit Profile
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {isEditing ? (
+                // Profile Edit Form
+                <form onSubmit={handleSave} className="space-y-6 bg-white p-8 rounded-2xl shadow-lg border border-gray-100">
+                  <h4 className="text-xl font-bold text-brand-dark mb-4">Basic Information</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {renderInputField('startupName', 'Startup Name', 'text', 'startupName', profile?.startupName || "", 'e.g., InnovateTech Solutions', Building)}
+                    {renderInputField('logoUrl', 'Company Logo URL', 'url', 'logoUrl', profile?.logoUrl || "", 'https://example.com/your-logo.png', Image)}
+                    {renderInputField('industry', 'Industry', 'text', 'industry', profile?.industry || "", 'e.g., Software, FinTech, Healthcare', Briefcase)}
+                    {renderInputField('website', 'Official Website URL', 'url', 'website', profile?.website || "", 'https://yourstartup.com', Globe)}
+                    {renderInputField('phone', 'Contact Phone Number', 'tel', 'phone', profile?.phone || "", '+1 (555) 123-4567', Phone)}
+                    {renderInputField('address', 'Street Address', 'text', 'address', profile?.address || "", '123 Innovation Drive', MapPin)}
+                    {renderInputField('city', 'City', 'text', 'city', profile?.city || "", 'e.g., San Francisco', MapPin)}
+                    {renderInputField('country', 'Country', 'text', 'country', profile?.country || "", 'e.g., USA', MapPin)}
+                    {renderInputField('linkedin', 'LinkedIn Company Page URL', 'url', 'linkedin', profile?.linkedin || "", 'https://linkedin.com/company/yourstartup', Linkedin)}
+                    {renderInputField('twitter', 'Twitter Handle URL', 'url', 'twitter', profile?.twitter || "", 'https://twitter.com/yourstartup', Twitter)}
+                  </div>
+                  <h4 className="text-xl font-bold text-brand-dark mt-8 mb-4">About Your Startup</h4>
+                  {renderTextareaField('description', 'Short Description', 'description', profile?.description || "", 'A brief overview of your startup and its core offering.', BookOpenText)}
+                  {renderTextareaField('mission', 'Mission Statement', 'mission', profile?.mission || "", 'What is your company\'s purpose? What problem do you solve?', Target)}
+                  {renderTextareaField('vision', 'Vision Statement', 'vision', profile?.vision || "", 'What future do you envision? What is your long-term aspiration?', EyeIcon)}
+
+                  <div className="flex justify-center mt-8">
+                    <button
+                      type="submit"
+                      className="flex items-center px-8 py-4 bg-gradient-to-r from-brand-primary to-blue-700 text-white font-bold rounded-full shadow-xl hover:shadow-2xl transform hover:scale-105 hover:-translate-y-1 transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary text-lg"
+                      disabled={saving}
+                    >
+                      {saving ? (
+                        <>
+                          <Loader2 className="animate-spin mr-3" size={24} /> Saving Brilliance...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-3" size={24} /> Save Your Masterpiece
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                // Profile Display View
+                <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100">
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start mb-8 pb-6 border-b border-dashed border-gray-200">
+                    <img
+                      src={profile?.logoUrl || defaultLogo}
+                      alt="Startup Logo"
+                      className="w-28 h-28 sm:w-32 sm:h-32 rounded-full object-cover shadow-md border-4 border-brand-primary p-0.5 bg-white mb-4 sm:mb-0 sm:mr-6 transition-transform duration-300 hover:scale-105"
+                      onError={(e) => { e.target.onerror = null; e.target.src = defaultLogo; }}
+                    />
+                    <div className="text-center sm:text-left flex-1">
+                      <h2 className="text-2xl sm:text-3xl font-bold text-brand-dark mb-2 leading-tight">
+                        {profile?.startupName || 'Your Startup Name'}
+                      </h2>
+                      <p className="text-base text-gray-700 font-normal leading-relaxed">
+                        {profile?.description || 'No description provided yet. Tell us about your vision!'}
+                      </p>
+                      {profile?.website && (
+                        <a
+                          href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center mt-4 text-sm text-brand-primary hover:underline font-semibold transition-colors duration-200 group"
+                        >
+                          Visit Website <ExternalLink size={16} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6 mt-8">
+                    <div className="space-y-4 p-6 bg-blue-50/50 rounded-xl shadow-sm border border-blue-100/70">
+                      <h3 className="text-xl font-bold text-brand-dark mb-4 flex items-center">
+                        <Info size={24} className="mr-3 text-brand-primary" /> Basic Information
+                      </h3>
+                      {renderDisplayItem('Industry', profile?.industry, Briefcase)}
+                      {renderDisplayItem('Official Website', profile?.website, Globe, true)}
+                      {renderDisplayItem('Direct Phone', profile?.phone, Phone)}
+                      {renderDisplayItem('Address', profile?.address, MapPin)}
+                      {renderDisplayItem('City', profile?.city, MapPin)}
+                      {renderDisplayItem('Country', profile?.country, MapPin)}
+                    </div>
+
+                    <div className="space-y-4 p-6 bg-purple-50/50 rounded-xl shadow-sm border border-purple-100/70">
+                      <h3 className="text-xl font-bold text-brand-dark mb-4 flex items-center">
+                        <Share2 size={24} className="mr-3 text-brand-primary" /> Social Presence
+                      </h3>
+                      {renderDisplayItem('LinkedIn Profile', profile?.linkedin, Linkedin, true)}
+                      {renderDisplayItem('Twitter Handle', profile?.twitter, Twitter, true)}
+                    </div>
+                  </div>
+
+                  {/* Mission and Vision Sections */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mt-8">
+                    <div className="space-y-4 p-6 bg-green-50/50 rounded-xl shadow-sm border border-green-100/70">
+                      <h3 className="text-xl font-bold text-brand-dark mb-4 flex items-center">
+                        <Target size={24} className="mr-3 text-green-600" /> Our Mission
+                      </h3>
+                      <p className="text-gray-700 text-sm leading-relaxed">
+                        {profile?.mission || 'No mission statement provided yet. Define your purpose!'}
+                      </p>
+                    </div>
+                    <div className="space-y-4 p-6 bg-yellow-50/50 rounded-xl shadow-sm border border-yellow-100/70">
+                      <h3 className="text-xl font-bold text-brand-dark mb-4 flex items-center">
+                        <EyeIcon size={24} className="mr-3 text-yellow-600" /> Our Vision
+                      </h3>
+                      <p className="text-gray-700 text-sm leading-relaxed">
+                        {profile?.vision || 'No vision statement provided yet. Envision your future!'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Mock Founders/Team Section */}
+                  <div className="mt-8 pt-6 border-t border-dashed border-gray-200">
+                    <h3 className="text-xl font-bold text-brand-dark mb-4 flex items-center">
+                      <Users size={24} className="mr-3 text-pink-600" /> Founders & Team
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                      {mockTeamMembers.map(member => (
+                        <div key={member.id} className="flex items-center p-3 bg-gray-50 rounded-lg shadow-sm">
+                          <img src={member.avatar} alt={member.name} className="w-12 h-12 rounded-full object-cover mr-3" />
+                          <div>
+                            <p className="font-semibold text-gray-800 text-sm">{member.name}</p>
+                            <p className="text-xs text-gray-600">{member.role}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Mock Uploaded Documents Section */}
+                  <div className="mt-8 pt-6 border-t border-dashed border-gray-200">
+                    <h3 className="text-xl font-bold text-brand-dark mb-4 flex items-center">
+                      <FileText size={24} className="mr-3 text-teal-600" /> Uploaded Documents
+                    </h3>
+                    <div className="space-y-3">
+                      {mockDocuments.map(doc => (
+                        <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center p-3 bg-gray-50 rounded-lg shadow-sm hover:bg-gray-100 transition-colors">
+                          <File size={20} className="mr-3 text-gray-500" />
+                          <span className="text-sm font-medium text-gray-700 flex-1">{doc.name}</span>
+                          <ExternalLink size={14} className="text-gray-400" />
+                        </a>
+                      ))}
+                    </div>
+                    <button className="mt-4 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-full shadow-sm hover:bg-gray-200 transition duration-200 flex items-center">
+                      <Upload size={16} className="mr-2" /> Upload New Document
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {currentPage === 'incubationProgress' && (
+            <div className="animate-fade-in">
+              <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center">
+                <CheckCircle2 size={28} className="mr-3 text-brand-primary" /> Incubation Progress Tracker
+              </h3>
+
+              {/* Overall Progress Bar */}
+              <div className="mb-8 p-6 bg-white rounded-2xl shadow-lg border border-gray-100 flex items-center justify-between">
+                <h4 className="text-xl font-bold text-brand-dark">Overall Progress:</h4>
+                <CircularProgressBar progress={dashboardMetrics.incubationProgress} size={120} strokeWidth={12} />
+              </div>
+
+              {/* Timeline of Phases */}
+              <div className="relative pl-8 border-l-2 border-gray-200 space-y-10">
+                {mockIncubationPhases.map((phase, index) => (
+                  <div key={phase.id} className="relative mb-8 last:mb-0">
+                    <div className="absolute -left-3.5 -top-1 w-7 h-7 bg-brand-primary rounded-full flex items-center justify-center text-white font-bold text-xs shadow-md">
+                      {index + 1}
+                    </div>
+                    <div className="ml-4 p-6 bg-white rounded-2xl shadow-lg border border-gray-100">
+                      <h4 className="text-lg font-bold text-brand-dark mb-2">{phase.title}</h4>
+                      <p className="text-sm text-gray-700 mb-3">{phase.description}</p>
+                      <div className="flex items-center text-sm font-medium mb-3">
+                        Status:
+                        <span className={`ml-2 px-3 py-1 rounded-full text-xs font-semibold ${
+                          phase.status === 'Approved' ? 'bg-green-100 text-green-700' :
+                          phase.status === 'Submitted' ? 'bg-blue-100 text-blue-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {phase.status}
+                        </span>
+                      </div>
+                      {phase.feedback && (
+                        <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-700 italic border border-gray-200 mb-3">
+                          <span className="font-semibold">Mentor Feedback:</span> {phase.feedback}
+                        </div>
+                      )}
+                      {phase.files && phase.files.length > 0 && (
+                        <div className="mt-3">
+                          <p className="text-sm font-semibold text-gray-700 mb-2">Attached Files:</p>
+                          <div className="space-y-2">
+                            {phase.files.map((file, fileIndex) => (
+                              <a key={fileIndex} href="#" className="flex items-center text-sm text-blue-600 hover:underline">
+                                <File size={16} className="mr-2 text-gray-500" />
+                                {file.name}
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <button className="mt-4 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-full shadow-sm hover:bg-gray-200 transition duration-200 flex items-center">
+                        <Upload size={16} className="mr-2" /> Upload Document
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {currentPage === 'myMentor' && (
+            <div className="animate-fade-in">
+              <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center">
+                <GraduationCap size={28} className="mr-3 text-brand-primary" /> My Dedicated Mentor
+              </h3>
+              <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 text-center">
+                <img src={mockMentor.photo} alt={mockMentor.name} className="w-32 h-32 rounded-full object-cover mx-auto mb-6 shadow-md border-4 border-brand-primary p-0.5" />
+                <h2 className="text-2xl font-bold text-brand-dark mb-2">{mockMentor.name}</h2>
+                <p className="text-lg text-gray-700 font-medium mb-4">{mockMentor.role}</p>
+                <p className="text-base text-gray-600 leading-relaxed mb-6 italic">"{mockMentor.bio}"</p>
+
+                <div className="p-5 bg-blue-50 rounded-xl mb-6 shadow-inner border border-blue-100">
+                  <h4 className="text-md font-semibold text-brand-dark mb-2 flex items-center justify-center">
+                    <Lightbulb size={20} className="mr-2 text-blue-600" /> Latest Advice
+                  </h4>
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    {mockMentor.latestAdvice}
+                  </p>
+                </div>
+
+                <div className="flex justify-center space-x-4">
+                  <a href={`mailto:${mockMentor.contact.email}`} className="px-6 py-3 bg-green-500 text-white font-semibold rounded-full shadow-lg hover:bg-green-600 transition duration-200 flex items-center">
+                    <Mail size={20} className="mr-2" /> Email Mentor
+                  </a>
+                  <a href={mockMentor.contact.linkedin} target="_blank" rel="noopener noreferrer" className="px-6 py-3 bg-blue-500 text-white font-semibold rounded-full shadow-lg hover:bg-blue-600 transition duration-200 flex items-center">
+                    <Linkedin size={20} className="mr-2" /> LinkedIn
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {currentPage === 'opportunities' && (
+            <div className="animate-fade-in">
+              <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center">
+                <Briefcase size={28} className="mr-3 text-brand-primary" /> Opportunities for Your Startup
+              </h3>
+
+              {/* Filter Dropdown */}
+              <div className="mb-6 flex justify-end">
+                <div className="relative inline-block text-left">
+                  <select className="block appearance-none w-full bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg shadow-sm leading-tight focus:outline-none focus:bg-white focus:border-brand-primary transition duration-200 text-sm">
+                    <option>All</option>
+                    <option>Open</option>
+                    <option>Applied</option>
+                    <option>Closed</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                    <ChevronDown size={16} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Opportunities List */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {mockOpportunities.map(opportunity => (
+                  <div key={opportunity.id} className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
+                    <h4 className="text-lg font-bold text-brand-dark mb-2 flex items-center">
+                      <Rocket size={20} className="mr-2 text-indigo-500" /> {opportunity.name}
+                    </h4>
+                    <p className="text-sm text-gray-700 mb-3">{opportunity.description}</p>
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center text-gray-600">
+                        <CalendarDays size={14} className="mr-2" /> Apply by: {opportunity.applyBy}
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        opportunity.status === 'Open' ? 'bg-green-100 text-green-700' :
+                        opportunity.status === 'Closed' ? 'bg-red-100 text-red-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {opportunity.status}
+                      </span>
+                    </div>
+                    <button className="mt-4 px-5 py-2 bg-brand-primary text-white text-sm font-semibold rounded-full shadow-md hover:bg-blue-600 transition duration-200">
+                      Apply Now
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {currentPage === 'notifications' && (
+            <div className="animate-fade-in">
+              <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center">
+                <BellRing size={28} className="mr-3 text-brand-primary" /> Your Notifications
+              </h3>
+
+              {/* Filter Dropdown */}
+              <div className="mb-6 flex justify-end">
+                <div className="relative inline-block text-left">
+                  <select className="block appearance-none w-full bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg shadow-sm leading-tight focus:outline-none focus:bg-white focus:border-brand-primary transition duration-200 text-sm">
+                    <option>All Types</option>
+                    <option>System</option>
+                    <option>Mentor</option>
+                    <option>Admin</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                    <ChevronDown size={16} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Notifications List (Timeline Style) */}
+              <div className="relative pl-8 border-l-2 border-gray-200 space-y-8">
+                {mockNotifications.map((notif, index) => (
+                  <div key={notif.id} className="relative">
+                    <div className="absolute -left-3.5 -top-1 w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 shadow-sm">
+                      {notif.icon}
+                    </div>
+                    <div className="ml-4 p-5 bg-white rounded-2xl shadow-lg border border-gray-100">
+                      <p className="text-sm text-gray-700 font-medium mb-1">{notif.message}</p>
+                      <p className="text-xs text-gray-500">{notif.time}</p>
+                      <div className="flex justify-end mt-3 space-x-2">
+                        <button className="text-xs text-blue-500 hover:underline">Mark as Read</button>
+                        <button className="text-xs text-red-500 hover:underline">Delete</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
-} 
+}
