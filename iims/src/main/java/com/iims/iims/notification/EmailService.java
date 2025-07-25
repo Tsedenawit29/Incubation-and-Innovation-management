@@ -135,4 +135,36 @@ public class EmailService {
         mailMessage.setText(message);
         mailSender.send(mailMessage);
     }
+
+    public void sendStartupCredentialsEmail(String startupEmail, String startupName, String username, String password, String tenantName) {
+        String subject = "Welcome to IIMS - Your Startup Account Credentials";
+        String message = String.format("""
+            Dear %s,
+            
+            Welcome to the IIMS platform! Your startup account has been created for %s.
+            
+            Login Credentials:
+            - Username: %s
+            - Password: %s
+            
+            Please log in and change your password after your first login.
+            
+            Login URL: http://localhost:3000/login
+            
+            If you have any questions or need support, please contact your tenant admin or the IIMS support team.
+            
+            Best regards,
+            IIMS Team
+            """, startupName, tenantName, username, password);
+
+        log.info("Sending startup credentials email to: {}", startupEmail);
+        log.info("Email subject: {}", subject);
+        log.info("Email content: {}", message);
+
+        SimpleMailMessage mailMessage = new SimpleMailMessage();
+        mailMessage.setTo(startupEmail);
+        mailMessage.setSubject(subject);
+        mailMessage.setText(message);
+        mailSender.send(mailMessage);
+    }
 } 

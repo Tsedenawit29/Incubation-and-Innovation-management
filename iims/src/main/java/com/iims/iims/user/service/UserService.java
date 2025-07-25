@@ -135,7 +135,11 @@ public class UserService implements UserDetailsService {
                 .orElse(null);
         String tenantName = tenant != null ? tenant.getName() : "Your Center";
         // Send email with credentials
-        emailService.sendAdminApprovalEmail(user.getEmail(), user.getFullName(), user.getEmail(), rawPassword, tenantName);
+        if (user.getRole() == Role.STARTUP) {
+            emailService.sendStartupCredentialsEmail(user.getEmail(), user.getFullName(), user.getEmail(), rawPassword, tenantName);
+        } else {
+            emailService.sendAdminApprovalEmail(user.getEmail(), user.getFullName(), user.getEmail(), rawPassword, tenantName);
+        }
         // Return user info without password
         user.setPassword(null);
         return user;

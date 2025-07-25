@@ -64,14 +64,6 @@ export default function DashboardPage() {
     setEditModal({ isOpen: true, user });
   };
 
-  console.log("DashboardPage render - Functions defined:", {
-    handleEdit: typeof handleEdit,
-    handleDelete: typeof handleDelete,
-    handleStatus: typeof handleStatus,
-    handleRole: typeof handleRole,
-    handleChangePassword: typeof handleChangePassword
-  });
-
   const handleEditSave = async (formData) => {
     try {
       console.log("handleEditSave called with formData:", formData);
@@ -170,6 +162,15 @@ export default function DashboardPage() {
       alert("Failed to update password: " + err.message);
     }
   };
+
+  // Move the following console.log below all function definitions to avoid ReferenceError
+  console.log("DashboardPage render - Functions defined:", {
+    handleEdit: typeof handleEdit,
+    handleDelete: typeof handleDelete,
+    handleStatus: typeof handleStatus,
+    handleRole: typeof handleRole,
+    handleChangePassword: typeof handleChangePassword
+  });
 
   if (loading) {
     return (
@@ -339,4 +340,4 @@ export default function DashboardPage() {
       />
     </div>
   );
-} 
+}
