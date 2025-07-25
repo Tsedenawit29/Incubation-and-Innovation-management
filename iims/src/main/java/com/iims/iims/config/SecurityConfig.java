@@ -11,6 +11,7 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer; // Added for csrf().disable()
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -35,26 +36,26 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter, UserService userService) throws Exception {
         System.out.println("SecurityConfig - Configuring security filter chain");
-        
-        return http.csrf().disable()
-            .cors().configurationSource(corsConfigurationSource()).and()
-            .authorizeHttpRequests()
-            .requestMatchers("/api/auth/**", "/ping").permitAll()
-            .requestMatchers("/api/tenant/apply").permitAll()
-            .requestMatchers("/api/users/request-admin").permitAll()
-            .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Allow CORS preflight
-                .requestMatchers("/api/v1/applications/submit").permitAll()
-            .requestMatchers("/api/profile/startup/**").hasAnyRole("STARTUP", "TENANT_ADMIN", "SUPER_ADMIN")
-            .requestMatchers("/api/tenant/**").hasRole("SUPER_ADMIN")
-            .requestMatchers("/api/users/pending-admins", "/api/users/admin-requests", "/api/users/approve-admin/**", "/api/users/reject-admin/**").hasRole("SUPER_ADMIN")
-            .requestMatchers("/api/tenant-admin/**").hasRole("TENANT_ADMIN")
-            .anyRequest().authenticated()
-            .and()
-            .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            .and()
-            .authenticationProvider(authenticationProvider(userService))
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-            .build();
+
+        return http.csrf(AbstractHttpConfigurer::disable) // Use lambda for disable
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Use lambda for cors
+                .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers("/api/auth/**", "/ping").permitAll()
+                        .requestMatchers("/api/tenant/apply").permitAll()
+                        .requestMatchers("/api/users/request-admin").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Allow CORS preflight
+                        .requestMatchers("/api/v1/applications/submit").permitAll()
+                        .requestMatchers("/error").permitAll() // <--- ADDED THIS LINE TO PERMIT ACCESS TO THE ERROR ENDPOINT
+                        .requestMatchers("/api/profile/startup/**").hasAnyRole("STARTUP", "TENANT_ADMIN", "SUPER_ADMIN")
+                        .requestMatchers("/api/tenant/**").hasRole("SUPER_ADMIN")
+                        .requestMatchers("/api/users/pending-admins", "/api/users/admin-requests", "/api/users/approve-admin/**", "/api/users/reject-admin/**").hasRole("SUPER_ADMIN")
+                        .requestMatchers("/api/tenant-admin/**").hasRole("TENANT_ADMIN")
+                        .anyRequest().authenticated()
+                )
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Use lambda for session management
+                .authenticationProvider(authenticationProvider(userService))
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .build();
     }
 
     @Bean
@@ -64,7 +65,7 @@ public class SecurityConfig {
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
-        
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
@@ -87,4 +88,4 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-} 
+}

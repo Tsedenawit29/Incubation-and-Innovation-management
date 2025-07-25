@@ -267,10 +267,11 @@ export default function StartupDashboard() {
         console.log("StartupDashboard: Profile fetched successfully.");
       } catch (err) {
         console.error("StartupDashboard: Error fetching profile:", err);
-        // If profile not found (404), try to create it
-        if (err.message && (err.message.includes("404") || err.message.includes("not found"))) {
+        // Check if the error indicates profile not found or forbidden (due to backend mapping)
+        const errorMessage = err.message ? err.message.toLowerCase() : '';
+        if (errorMessage.includes("404") || errorMessage.includes("not found") || errorMessage.includes("profile not found") || errorMessage.includes("403")) {
           try {
-            console.log("StartupDashboard: Profile not found, attempting to create new profile...");
+            console.log("StartupDashboard: Profile not found (or forbidden), attempting to create new profile...");
             let prof = await createStartupProfile(token, user.id);
             setProfile(prof);
             setEditMsg("New profile created successfully. Please fill in details!");

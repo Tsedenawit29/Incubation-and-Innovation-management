@@ -63,6 +63,21 @@ export function AuthProvider({ children }) {
     localStorage.setItem("springBootAuthToken", jwt);
     localStorage.setItem("springBootUser", JSON.stringify(userData));
     setAuthError(null); // Clear any errors on successful manual login
+
+    // IMPORTANT: Redirect based on user role
+    const userRole = userData?.role; // Assuming role is part of userData
+    let redirectPath = '/dashboard'; // Default redirect
+
+    if (userRole === 'SUPER_ADMIN') {
+      redirectPath = '/super-admin-dashboard';
+    } else if (userRole === 'TENANT_ADMIN') {
+      redirectPath = '/tenant-admin-dashboard';
+    } else if (userRole === 'STARTUP') {
+      redirectPath = '/startup-dashboard';
+    }
+    
+    console.log(`Redirecting to: ${redirectPath} for role: ${userRole}`);
+    window.location.href = redirectPath; // This line will force the page to navigate
   };
 
   const logout = () => {
@@ -72,7 +87,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("springBootAuthToken");
     localStorage.removeItem("springBootUser");
     setAuthError(null); // Clear any errors on logout
-    window.location.reload(); // Simple reload to reset app state
+    window.location.href = '/login'; // Redirect to login page on logout
   };
 
   const isAuthenticated = !!token && !!user; // User is authenticated if both token and user object exist
