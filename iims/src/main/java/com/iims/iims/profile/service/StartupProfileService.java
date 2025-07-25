@@ -12,6 +12,8 @@ import com.iims.iims.profile.repository.TeamMemberRepository;
 import com.iims.iims.profile.repository.DocumentRepository;
 import com.iims.iims.user.entity.User;
 import com.iims.iims.user.repository.UserRepository;
+import com.iims.iims.profile.exception.ProfileNotFoundException; // Import the new exception
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,15 +42,20 @@ public class StartupProfileService {
     }
 
     public StartupProfileDto getProfileByUserId(UUID userId) {
+        // First, ensure the user exists
+        userRepo.findById(userId)
+                .orElseThrow(() -> new ProfileNotFoundException("User not found for ID: " + userId));
+
+        // Then, try to find the profile for that user
         StartupProfile profile = profileRepo.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Profile not found"));
+                .orElseThrow(() -> new ProfileNotFoundException("Profile not found for user ID: " + userId));
         return toDto(profile);
     }
 
     @Transactional
     public StartupProfileDto updateProfile(UUID userId, StartupProfileUpdateRequest req) {
         StartupProfile profile = profileRepo.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Profile not found"));
+                .orElseThrow(() -> new ProfileNotFoundException("Profile not found for user ID: " + userId));
 
         // Update basic profile fields
         profile.setStartupName(req.getStartupName());
@@ -165,7 +172,7 @@ public class StartupProfileService {
 
     public StartupProfileDto createProfile(UUID userId) {
         User user = userRepo.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ProfileNotFoundException("User not found for ID: " + userId)); // Use custom exception
         StartupProfile profile = StartupProfile.builder()
                 .user(user)
                 .startupName("New Startup")
