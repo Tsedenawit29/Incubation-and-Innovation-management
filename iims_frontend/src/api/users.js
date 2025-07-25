@@ -257,3 +257,33 @@ export async function getTenantUsersByRole(token, role) {
   if (!res.ok) throw new Error("Failed to fetch tenant users by role");
   return res.json();
 } 
+
+export async function getStartupProfile(token, userId) {
+  const res = await fetch(`${API_URL}/profile/startup/${userId}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error("Failed to fetch profile");
+  return await res.json();
+}
+
+export async function updateStartupProfile(token, userId, data) {
+  const res = await fetch(`${API_URL}/profile/startup/${userId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) throw new Error("Failed to update profile");
+  return await res.json();
+}
+
+export async function createStartupProfile(token, userId) {
+  const res = await fetch(`${API_URL}/profile/startup/${userId}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error("Failed to create profile");
+  return await res.json();
+} 
