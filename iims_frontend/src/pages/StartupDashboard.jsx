@@ -163,6 +163,7 @@ export default function StartupDashboard() {
   const [activeTab, setActiveTab] = useState('basicInfo');
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [currentDateTime, setCurrentDateTime] = useState(new Date()); // State for current date and time
+  const [logoPreview, setLogoPreview] = useState(null); // State for logo preview (Base64)
 
 
   // Mock data for dashboard elements not directly from profile
@@ -246,6 +247,7 @@ export default function StartupDashboard() {
         let prof = await getStartupProfile(token, user.id);
         setProfile(prof);
         setIsEditing(false); // Set to view mode if profile exists
+        setLogoPreview(prof?.logoUrl || null); // Initialize logo preview with fetched URL
       } catch (err) {
         console.error("Error fetching profile:", err);
         // Check if the error is due to authentication (e.g., 403 Forbidden or expired JWT)
@@ -262,6 +264,7 @@ export default function StartupDashboard() {
             setEditMsg("New profile created successfully. Please fill in details!");
             setCurrentPage('myProfile'); // Navigate to profile to fill details
             setIsEditing(true); // Automatically go to edit mode for new profile
+            setLogoPreview(prof?.logoUrl || null); // Initialize logo preview for new profile
           } catch (e) {
             console.error("Error creating profile:", e);
             setError("Could not load or create profile: " + e.message);
@@ -278,55 +281,82 @@ export default function StartupDashboard() {
     setProfile({ ...profile, [e.target.name]: e.target.value });
   };
 
-  const handleSave = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    setEditMsg("");
-    setError("");
-
-    if (!user || !user.id || !token) {
-      setError('User not authenticated or ID/token missing. Cannot save profile.');
-      setSaving(false);
-      return;
-    }
-
-    try {
-      const payload = {
-        startupName: profile?.startupName || '',
-        description: profile?.description || '',
-        website: profile?.website || '',
-        phone: profile?.phone || '',
-        address: profile?.address || '',
-        linkedin: profile?.linkedin || '',
-        twitter: profile?.twitter || '',
-        logoUrl: profile?.logoUrl || '',
-        mission: profile?.mission || '',
-        vision: profile?.vision || '',
-        industry: profile?.industry || '', // New field
-        country: profile?.country || '',   // New field
-        city: profile?.city || '',         // New field
+  const handleLogoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result); // Set Base64 string for preview
+        setProfile(prevProfile => ({ ...prevProfile, logoUrl: reader.result })); // Update profile state with Base64
       };
-      const updated = await updateStartupProfile(token, user.id, payload);
-      setProfile(updated);
-      setEditMsg("Profile updated successfully!");
-      setIsEditing(false); // Switch to view mode after saving
-    } catch (err) {
-      console.error("Failed to update profile:", err);
-      setError(`Failed to update profile: ${err.message}`);
-      // Also check for authentication error on save
-      if (err.message && err.message.includes("Failed to update profile") || err.message.includes("JWT expired")) {
-        setError("Session expired or unauthorized. Please log in again.");
-        logout(); // Force logout to clear invalid token and redirect to login
-      }
-    } finally {
-      setSaving(false);
-      setTimeout(() => {
-        setEditMsg("");
-        setError("");
-      }, 5000);
+      reader.readAsDataURL(file); // Read file as Base64
+    } else {
+      setLogoPreview(null);
+      setProfile(prevProfile => ({ ...prevProfile, logoUrl: '' }));
     }
   };
 
+
+  const handleSave = async (e) => {
+  e.preventDefault();
+  setSaving(true);
+  setEditMsg("");
+  setError("");
+
+  if (!user || !user.id || !token) {
+    setError('User not authenticated or ID/token missing. Cannot save profile.');
+    setSaving(false);
+    return;
+  }
+
+  try {
+    const payload = {
+      startupName: profile?.startupName || '',
+      description: profile?.description || '',
+      website: profile?.website || '',
+      phone: profile?.phone || '',
+      address: profile?.address || '',
+      linkedin: profile?.linkedin || '',
+      twitter: profile?.twitter || '',
+      logoUrl: logoPreview || '',
+      mission: profile?.mission || '',
+      vision: profile?.vision || '',
+      industry: profile?.industry || '',
+      country: profile?.country || '',
+      city: profile?.city || '',
+    };
+
+    console.log("Sending payload:", payload); // Debug log
+
+    const updated = await updateStartupProfile(token, user.id, payload);
+    
+    console.log("Update response:", updated); // Debug log
+
+    if (!updated) {
+      throw new Error("No response received from server");
+    }
+
+    setProfile(updated);
+    setEditMsg("Profile updated successfully!");
+    setIsEditing(false);
+  } catch (err) {
+    console.error("Failed to update profile:", err);
+    
+    // Only logout if it's specifically an authentication error
+    if (err.message && (err.message.includes("401") || err.message.includes("403") || err.message.includes("JWT expired"))) {
+      setError("Your session has expired. Please log in again.");
+      logout();
+    } else {
+      // For other errors, show the message but don't logout
+      setError(`Failed to update profile: ${err.message || "Please try again"}`);
+      setSaving(false);
+    }
+  } finally {
+    if (!error.includes("session has expired")) {
+      setSaving(false);
+    }
+  }
+};
   // Helper function to render an input field with consistent styling
   const renderInputField = (id, label, type, name, value, placeholder, Icon) => (
     <div className="mb-5">
@@ -537,6 +567,16 @@ export default function StartupDashboard() {
             .custom-shadow {
               box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
             }
+
+            /* Ensure disabled button retains its background color */
+            /* Removed previous gradient and used a solid color for disabled state */
+            .save-button:disabled {
+              background-color: #93c5fd; /* A light blue, like Tailwind's blue-300 */
+              color: #ffffff; /* Ensure text color remains white */
+              opacity: 0.8; /* Slightly less opaque */
+              cursor: not-allowed;
+              box-shadow: none; /* Remove shadow when disabled */
+            }
           `}
         </style>
 
@@ -631,7 +671,7 @@ export default function StartupDashboard() {
                 <div className="relative w-36 h-36">
                     {/* Display user's uploaded logo or a default placeholder */}
                     <img
-                      src={profile?.logoUrl || "https://placehold.co/150x150/E0E7FF/0A2D5C?text=Logo"}
+                      src={logoPreview || "https://placehold.co/150x150/E0E7FF/0A2D5C?text=Logo"}
                       alt="Startup Logo"
                       className="w-full h-full object-cover rounded-full shadow-md animate-float-image z-10"
                       onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/150x150/E0E7FF/0A2D5C?text=Logo"; }}
@@ -720,7 +760,7 @@ export default function StartupDashboard() {
                       <li key={notif.id} className="flex items-start">
                         <div className="flex-shrink-0 mt-1 mr-3 text-gray-500">{notif.icon}</div>
                         <div>
-                          <p className="text-sm text-gray-700 font-medium">{notif.message}</p>
+                          <p className="text-sm text-gray-700 font-medium mb-1">{notif.message}</p>
                           <p className="text-xs text-gray-500">{notif.time}</p>
                         </div>
                       </li>
@@ -780,7 +820,30 @@ export default function StartupDashboard() {
                   <h4 className="text-xl font-bold text-brand-dark mb-4">Basic Information</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {renderInputField('startupName', 'Startup Name', 'text', 'startupName', profile?.startupName || "", 'e.g., InnovateTech Solutions', Building)}
-                    {renderInputField('logoUrl', 'Company Logo URL', 'url', 'logoUrl', profile?.logoUrl || "", 'https://example.com/your-logo.png', Image)}
+
+                    {/* Logo Upload Field */}
+                    <div className="mb-5">
+                      <label htmlFor="logoUpload" className="block text-gray-700 text-sm font-semibold mb-2 flex items-center">
+                        <Image size={16} className="mr-2 text-brand-primary" />
+                        Upload Company Logo
+                      </label>
+                      <input
+                        type="file"
+                        id="logoUpload"
+                        name="logoUpload"
+                        accept="image/*"
+                        className="shadow-sm appearance-none border border-gray-200 rounded-lg w-full py-2.5 px-3 text-gray-800 leading-tight focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition duration-200 ease-in-out bg-white/90 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-brand-primary hover:file:bg-blue-100"
+                        onChange={handleLogoChange}
+                        disabled={saving}
+                      />
+                      {logoPreview && (
+                        <div className="mt-4">
+                          <p className="text-sm font-medium text-gray-700 mb-2">Logo Preview:</p>
+                          <img src={logoPreview} alt="Logo Preview" className="w-24 h-24 rounded-full object-cover border-2 border-gray-200 shadow-sm" />
+                        </div>
+                      )}
+                    </div>
+
                     {renderInputField('industry', 'Industry', 'text', 'industry', profile?.industry || "", 'e.g., Software, FinTech, Healthcare', Briefcase)}
                     {renderInputField('website', 'Official Website URL', 'url', 'website', profile?.website || "", 'https://yourstartup.com', Globe)}
                     {renderInputField('phone', 'Contact Phone Number', 'tel', 'phone', profile?.phone || "", '+1 (555) 123-4567', Phone)}
@@ -798,7 +861,7 @@ export default function StartupDashboard() {
                   <div className="flex justify-center mt-8">
                     <button
                       type="submit"
-                      className="flex items-center px-8 py-4 bg-gradient-to-r from-brand-primary to-blue-700 text-white font-bold rounded-full shadow-xl hover:shadow-2xl transform hover:scale-105 hover:-translate-y-1 transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary text-lg"
+                      className="flex items-center px-8 py-4 bg-blue-500 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 text-base"
                       disabled={saving}
                     >
                       {saving ? (
@@ -918,7 +981,7 @@ export default function StartupDashboard() {
                       ))}
                     </div>
                     <button className="mt-4 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-full shadow-sm hover:bg-gray-200 transition duration-200 flex items-center">
-                      <Upload size={16} className="mr-2" /> Upload New Document
+                        <Upload size={16} className="mr-2" /> Upload New Document
                     </button>
                   </div>
                 </div>
