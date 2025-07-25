@@ -108,7 +108,7 @@ const AnimatedCounter = ({ targetValue, duration = 2000, prefix = "", suffix = "
 };
 
 // Circular Progress Bar Component
-const CircularProgressBar = ({ progress, size = 100, strokeWidth = 10 }) => {
+const CircularProgressBar = ({ progress, size = 150, strokeWidth = 15 }) => {
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const offset = circumference - (progress / 100) * circumference;
@@ -153,17 +153,24 @@ const CircularProgressBar = ({ progress, size = 100, strokeWidth = 10 }) => {
 
 
 export default function StartupDashboard() {
-  const { user, token, logout } = useAuth();
+  const { user, token, logout, loading: authLoading, authError } = useAuth(); // Get authError from useAuth
   const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [editMsg, setEditMsg] = useState("");
-  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true); // Combined loading for profile and auth
+  const [editMsg, setEditMsg] = useState(""); // General error messages
+  const [error, setError] = useState(""); // General error messages
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('basicInfo');
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [currentDateTime, setCurrentDateTime] = useState(new Date()); // State for current date and time
   const [logoPreview, setLogoPreview] = useState(null); // State for logo preview (Base64)
+
+  // --- NEW STATES FOR TEAM MEMBERS AND DOCUMENTS ---
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [newTeamMember, setNewTeamMember] = useState({ name: '', role: '', linkedin: '' }); // Removed avatarUrl
+  const [documents, setDocuments] = useState([]);
+  const [newDocument, setNewDocument] = useState({ name: '', url: '', fileType: '' });
+  // --- END NEW STATES ---
 
 
   // Mock data for dashboard elements not directly from profile
@@ -210,18 +217,6 @@ export default function StartupDashboard() {
     { id: 3, name: "Green Tech Grant", description: "Funding for sustainable technology solutions.", applyBy: "2025-07-20", status: "Closed" },
   ];
 
-  const mockTeamMembers = [
-    { id: 1, name: "Jane Doe", role: "CEO", avatar: "https://placehold.co/60x60/FFD700/000000?text=JD" },
-    { id: 2, name: "John Smith", role: "CTO", avatar: "https://placehold.co/60x60/87CEEB/000000?text=JS" },
-    { id: 3, name: "Emily White", role: "CMO", avatar: "https://placehold.co/60x60/DA70D6/000000?text=EW" },
-  ];
-
-  const mockDocuments = [
-    { id: 1, name: "Business Plan.pdf", type: "pdf", url: "#" },
-    { id: 2, name: "Pitch Deck v2.pptx", type: "docx", url: "#" }, // Using docx icon for pptx
-    { id: 3, name: "Financial Projections.xlsx", type: "file", url: "#" },
-  ];
-
   // Update current time every second
   useEffect(() => {
     const timer = setInterval(() => {
@@ -234,48 +229,76 @@ export default function StartupDashboard() {
   // Fetch or create profile on mount
   useEffect(() => {
     async function fetchOrCreateProfile() {
-      if (!user || !user.id || !token) {
-        setLoading(false);
-        setError("User not authenticated or ID/token missing.");
+      // Wait for authentication to complete
+      if (authLoading) {
+        console.log("StartupDashboard: Auth still loading, waiting...");
         return;
       }
 
-      setLoading(true);
-      setError("");
-      setEditMsg("");
+      // If there's an authentication error, display it and stop loading
+      if (authError) {
+        setLoading(false);
+        setError(authError);
+        console.error("StartupDashboard: Auth error detected:", authError);
+        return;
+      }
+
+      // If authLoading is false and no user/token, it means login failed or no session
+      if (!user || !user.id || !token) {
+        setLoading(false);
+        setError("Authentication required. Please ensure you are logged in.");
+        console.warn("StartupDashboard: User or token missing after auth load. Redirect to login expected.");
+        return;
+      }
+
+      console.log("StartupDashboard: Attempting to fetch profile with User ID:", user.id, "and Token (first 10 chars):", token ? token.substring(0,10) + '...' : 'N/A');
+
+      setLoading(true); // Start loading for profile data
+      setError(""); // Clear previous errors
+      setEditMsg(""); // Clear previous messages
       try {
         let prof = await getStartupProfile(token, user.id);
         setProfile(prof);
         setIsEditing(false); // Set to view mode if profile exists
         setLogoPreview(prof?.logoUrl || null); // Initialize logo preview with fetched URL
+        // Ensure that fetched team members and documents have an 'id' for frontend tracking
+        setTeamMembers(prof?.teamMembers?.map(tm => ({...tm, id: tm.id})) || []);
+        setDocuments(prof?.documents?.map(doc => ({...doc, id: doc.id})) || []);
+        console.log("StartupDashboard: Profile fetched successfully.");
       } catch (err) {
-        console.error("Error fetching profile:", err);
-        // Check if the error is due to authentication (e.g., 403 Forbidden or expired JWT)
-        // This assumes your getStartupProfile or underlying fetch might throw an error object
-        // that contains a 'status' property or an error message indicating JWT expiration.
-        // You might need to adjust this check based on how your API client handles errors.
-        if (err.message && err.message.includes("Failed to fetch profile") || err.message.includes("JWT expired")) {
-          setError("Session expired or unauthorized. Please log in again.");
-          logout(); // Force logout to clear invalid token and redirect to login
-        } else {
+        console.error("StartupDashboard: Error fetching profile:", err);
+        // If profile not found (404), try to create it
+        if (err.message && (err.message.includes("404") || err.message.includes("not found"))) {
           try {
+            console.log("StartupDashboard: Profile not found, attempting to create new profile...");
             let prof = await createStartupProfile(token, user.id);
             setProfile(prof);
             setEditMsg("New profile created successfully. Please fill in details!");
             setCurrentPage('myProfile'); // Navigate to profile to fill details
             setIsEditing(true); // Automatically go to edit mode for new profile
             setLogoPreview(prof?.logoUrl || null); // Initialize logo preview for new profile
+            setTeamMembers(prof?.teamMembers?.map(tm => ({...tm, id: tm.id})) || []);
+            setDocuments(prof?.documents?.map(doc => ({...doc, id: doc.id})) || []);
+            console.log("StartupDashboard: New profile created successfully.");
           } catch (e) {
-            console.error("Error creating profile:", e);
+            console.error("StartupDashboard: Error creating profile:", e);
             setError("Could not load or create profile: " + e.message);
           }
+        } else {
+          // For other errors (e.g., actual 403 from backend due to invalid token), just show the error message
+          setError(`Failed to load profile: ${err.message}`);
         }
       } finally {
-        setLoading(false);
+        setLoading(false); // End loading for profile data
       }
     }
-    fetchOrCreateProfile();
-  }, [token, user?.id, logout]); // Added logout to dependency array
+    // Only attempt to fetch/create profile if auth is not loading and no authError
+    // and user/token are available
+    if (!authLoading && !authError) {
+      fetchOrCreateProfile();
+    }
+  }, [user, token, authLoading, authError, logout]); // Depend on user, token, authLoading, authError, and logout
+
 
   const handleChange = (e) => {
     setProfile({ ...profile, [e.target.name]: e.target.value });
@@ -296,67 +319,173 @@ export default function StartupDashboard() {
     }
   };
 
+  // Helper function to generate initials for avatar
+  const getInitials = (name) => {
+    if (!name) return 'SN'; // Startup Name fallback
+    const parts = name.split(' ');
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+  };
+
+  // --- NEW HANDLERS FOR TEAM MEMBERS ---
+  const handleTeamMemberChange = (index, e) => {
+    const updatedMembers = [...teamMembers];
+    updatedMembers[index] = { ...updatedMembers[index], [e.target.name]: e.target.value };
+    setTeamMembers(updatedMembers);
+  };
+
+  const handleNewTeamMemberChange = (e) => {
+    setNewTeamMember({ ...newTeamMember, [e.target.name]: e.target.value });
+  };
+
+  const addTeamMember = () => {
+    if (newTeamMember.name && newTeamMember.role) {
+      // For new members, generate a temporary client-side ID (e.g., timestamp)
+      // The backend will assign a real UUID upon save.
+      setTeamMembers([...teamMembers, { ...newTeamMember, id: `temp-${Date.now()}` }]);
+      setNewTeamMember({ name: '', role: '', linkedin: '' }); // Clear form
+    } else {
+      setError("Team member name and role are required.");
+      setTimeout(() => setError(""), 3000);
+    }
+  };
+
+  const removeTeamMember = (idToRemove) => {
+    setTeamMembers(teamMembers.filter(member => member.id !== idToRemove));
+  };
+  // --- END NEW HANDLERS FOR TEAM MEMBERS ---
+
+  // --- NEW HANDLERS FOR DOCUMENTS ---
+  const handleDocumentFileChange = (index, e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const updatedDocs = [...documents];
+        updatedDocs[index] = {
+          ...updatedDocs[index],
+          url: reader.result, // Store Base64 string
+          name: file.name, // Use file name as document name
+          fileType: file.type // Store file MIME type
+        };
+        setDocuments(updatedDocs);
+      };
+      reader.readAsDataURL(file); // Read file as Base64
+    }
+  };
+
+  const handleNewDocumentFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewDocument({
+          name: file.name, // Use file name as document name
+          url: reader.result, // Store Base64 string
+          fileType: file.type // Store file MIME type
+        });
+      };
+      reader.readAsDataURL(file); // Read file as Base64
+    }
+  };
+
+  const handleDocumentNameChange = (index, e) => {
+    const updatedDocs = [...documents];
+    updatedDocs[index] = { ...updatedDocs[index], name: e.target.value };
+    setDocuments(updatedDocs);
+  };
+
+  const handleNewDocumentNameChange = (e) => {
+    setNewDocument(prev => ({ ...prev, name: e.target.value }));
+  };
+
+  const addDocument = () => {
+    if (newDocument.name && newDocument.url) {
+      // For new documents, generate a temporary client-side ID (e.g., timestamp)
+      // The backend will assign a real UUID upon save.
+      setDocuments([...documents, { ...newDocument, id: `temp-${Date.now()}` }]);
+      setNewDocument({ name: '', url: '', fileType: '' }); // Clear form
+    } else {
+      setError("Document name and a file are required.");
+      setTimeout(() => setError(""), 3000);
+    }
+  };
+
+  const removeDocument = (idToRemove) => {
+    setDocuments(documents.filter(doc => doc.id !== idToRemove));
+  };
+  // --- END NEW HANDLERS FOR DOCUMENTS ---
+
 
   const handleSave = async (e) => {
-  e.preventDefault();
-  setSaving(true);
-  setEditMsg("");
-  setError("");
+    e.preventDefault();
+    setSaving(true);
+    setEditMsg("");
+    setError("");
 
-  if (!user || !user.id || !token) {
-    setError('User not authenticated or ID/token missing. Cannot save profile.');
-    setSaving(false);
-    return;
-  }
-
-  try {
-    const payload = {
-      startupName: profile?.startupName || '',
-      description: profile?.description || '',
-      website: profile?.website || '',
-      phone: profile?.phone || '',
-      address: profile?.address || '',
-      linkedin: profile?.linkedin || '',
-      twitter: profile?.twitter || '',
-      logoUrl: logoPreview || '',
-      mission: profile?.mission || '',
-      vision: profile?.vision || '',
-      industry: profile?.industry || '',
-      country: profile?.country || '',
-      city: profile?.city || '',
-    };
-
-    console.log("Sending payload:", payload); // Debug log
-
-    const updated = await updateStartupProfile(token, user.id, payload);
-    
-    console.log("Update response:", updated); // Debug log
-
-    if (!updated) {
-      throw new Error("No response received from server");
-    }
-
-    setProfile(updated);
-    setEditMsg("Profile updated successfully!");
-    setIsEditing(false);
-  } catch (err) {
-    console.error("Failed to update profile:", err);
-    
-    // Only logout if it's specifically an authentication error
-    if (err.message && (err.message.includes("401") || err.message.includes("403") || err.message.includes("JWT expired"))) {
-      setError("Your session has expired. Please log in again.");
-      logout();
-    } else {
-      // For other errors, show the message but don't logout
-      setError(`Failed to update profile: ${err.message || "Please try again"}`);
+    if (!user || !user.id || !token) { // Check for user and token
+      setError('User not authenticated or ID/token missing. Cannot save profile.');
       setSaving(false);
+      console.error("StartupDashboard: Save failed - User or token missing.");
+      return;
     }
-  } finally {
-    if (!error.includes("session has expired")) {
+
+    console.log("StartupDashboard: Attempting to save profile with User ID:", user.id, "and Token (first 10 chars):", token ? token.substring(0,10) + '...' : 'N/A');
+    console.log("StartupDashboard: Payload being sent:", { ...profile, teamMembers, documents });
+
+
+    try {
+      const payload = {
+        startupName: profile?.startupName || '',
+        description: profile?.description || '',
+        website: profile?.website || '',
+        phone: profile?.phone || '',
+        address: profile?.address || '',
+        linkedin: profile?.linkedin || '',
+        twitter: profile?.twitter || '',
+        logoUrl: logoPreview || '', // Use logoPreview (Base64) for saving
+        mission: profile?.mission || '',
+        vision: profile?.vision || '',
+        industry: profile?.industry || '', // New field
+        country: profile?.country || '',   // New field
+        city: profile?.city || '',         // New field
+        // CORRECTED: Send 'id' for existing members (UUIDs) and 'null' for new ones (temp IDs)
+        teamMembers: teamMembers.map(member => ({
+          id: (typeof member.id === 'string' && member.id.length === 36) ? member.id : null, // Check if it's a UUID
+          name: member.name,
+          role: member.role,
+          linkedin: member.linkedin,
+          avatarUrl: member.avatarUrl || null // Ensure avatarUrl is sent if DTO expects it, even if null
+        })),
+        // CORRECTED: Send 'id' for existing documents (UUIDs) and 'null' for new ones (temp IDs)
+        documents: documents.map(doc => ({
+          id: (typeof doc.id === 'string' && doc.id.length === 36) ? doc.id : null, // Check if it's a UUID
+          name: doc.name,
+          url: doc.url,
+          fileType: doc.fileType
+        })),
+      };
+      const updated = await updateStartupProfile(token, user.id, payload); // Use user.id from useAuth
+      setProfile(updated);
+      setEditMsg("Profile updated successfully!");
+      setIsEditing(false); // Switch to view mode after saving
+      // Re-initialize teamMembers and documents from the saved profile to get backend IDs
+      // Ensure that fetched team members and documents have an 'id' for frontend tracking
+      setTeamMembers(updated?.teamMembers?.map(tm => ({...tm, id: tm.id})) || []);
+      setDocuments(updated?.documents?.map(doc => ({...doc, id: doc.id})) || []);
+      console.log("StartupDashboard: Profile saved successfully.");
+    } catch (err) {
+      console.error("StartupDashboard: Failed to update profile:", err);
+      setError(`Failed to update profile: ${err.message}`);
+    } finally {
       setSaving(false);
+      setTimeout(() => {
+        setEditMsg("");
+        setError("");
+      }, 5000); // Message disappears after 5 seconds
     }
-  }
-};
+  };
+
   // Helper function to render an input field with consistent styling
   const renderInputField = (id, label, type, name, value, placeholder, Icon) => (
     <div className="mb-5">
@@ -426,12 +555,12 @@ export default function StartupDashboard() {
   const defaultLogo = "https://placehold.co/100x100/E0E7FF/0A2D5C?text=Logo";
 
   // Render loading state
-  if (loading) {
+  if (loading || authLoading) { // Check both authLoading and profile loading
     return (
       <div className="min-h-screen bg-gray-100 p-4 sm:p-8 flex items-center justify-center font-inter relative overflow-hidden">
         <div className="absolute top-1/4 left-1/4 w-48 h-48 bg-brand-primary rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slow"></div>
-        <div className="absolute bottom-1/3 right-1/4 w-64 h-64 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slower"></div>
-        <div className="absolute top-1/2 left-1/2 w-32 h-32 bg-pink-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float"></div>
+        <div className="absolute bottom-1/3 right-1/4 w-64 h-64 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slower"></div> {/* Changed from purple-300 */}
+        <div className="absolute top-1/2 left-1/2 w-32 h-32 bg-teal-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float"></div> {/* Changed from pink-300 */}
         <div className="absolute top-1/10 right-1/10 w-24 h-24 bg-teal-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slow delay-1000"></div>
         <div className="absolute bottom-1/5 left-1/5 w-40 h-40 bg-orange-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slower delay-2000"></div>
 
@@ -444,7 +573,7 @@ export default function StartupDashboard() {
     );
   }
 
-  // Render error state if profile is null and there's an error
+  // Render error state if profile is null and there's an error (including authError)
   if (!profile && error) {
     return (
       <div className="min-h-screen bg-gray-100 p-4 sm:p-8 flex items-center justify-center font-inter relative overflow-hidden">
@@ -481,8 +610,8 @@ export default function StartupDashboard() {
     <div className="min-h-screen bg-gray-100 font-inter flex items-center justify-center p-4 sm:p-8 relative overflow-hidden">
       {/* Background animated shapes */}
       <div className="absolute top-1/4 left-1/4 w-48 h-48 bg-brand-primary rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slow"></div>
-      <div className="absolute bottom-1/3 right-1/4 w-64 h-64 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slower"></div>
-      <div className="absolute top-1/2 left-1/2 w-32 h-32 bg-pink-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float"></div>
+      <div className="absolute bottom-1/3 right-1/4 w-64 h-64 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slower"></div> {/* Changed from purple-300 */}
+      <div className="absolute top-1/2 left-1/2 w-32 h-32 bg-teal-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float"></div> {/* Changed from pink-300 */}
       <div className="absolute top-1/10 right-1/10 w-24 h-24 bg-teal-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slow delay-1000"></div>
       <div className="absolute bottom-1/5 left-1/5 w-40 h-40 bg-orange-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slower delay-2000"></div>
       <div className="absolute top-3/4 left-1/10 w-56 h-56 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float delay-500"></div>
@@ -613,7 +742,7 @@ export default function StartupDashboard() {
               onClick={logout}
               className="w-full flex items-center px-6 py-3 bg-red-500 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 text-base"
             >
-              <LogOut className="mr-3" size={20} /> Logout Securely
+              <LogOut className="mr-3" size={20} /> Logout
             </button>
           </div>
         </div>
@@ -663,7 +792,7 @@ export default function StartupDashboard() {
           {currentPage === 'dashboard' && (
             <div className="animate-fade-in">
               {/* Welcome Section */}
-              <div className="bg-gradient-to-r from-blue-100 to-purple-100 p-8 rounded-2xl shadow-lg mb-8 flex flex-col sm:flex-row items-center justify-between animate-fade-in">
+              <div className="bg-gradient-to-r from-blue-100 to-blue-200 p-8 rounded-2xl shadow-lg mb-8 flex flex-col sm:flex-row items-center justify-between animate-fade-in"> {/* Changed to-purple-100 to to-blue-200 */}
                 <div className="text-center sm:text-left mb-6 sm:mb-0">
                   <h1 className="text-4xl font-extrabold text-brand-dark mb-2">Welcome, {profile?.startupName || 'Startup Name'}!</h1>
                   <p className="text-lg text-gray-700">Ready to conquer the day with your groundbreaking ideas?</p>
@@ -712,9 +841,9 @@ export default function StartupDashboard() {
                   <h3 className="text-xl font-bold text-brand-dark mb-5 flex items-center">
                     <CheckCircle2 size={24} className="mr-3 text-green-600" /> Incubation Progress
                   </h3>
-                  <div className="flex flex-col sm:flex-row items-center justify-around">
-                    <CircularProgressBar progress={dashboardMetrics.incubationProgress} size={150} strokeWidth={15} />
-                    <div className="text-center sm:text-left mt-6 sm:mt-0">
+                  <div className="flex items-center justify-between"> {/* Changed to flex-row for better control */}
+                    <CircularProgressBar progress={dashboardMetrics.incubationProgress} size={100} strokeWidth={10} /> {/* Reduced size and strokeWidth */}
+                    <div className="flex-1 text-left ml-4"> {/* Added flex-1 and ml-4 */}
                       <p className="text-lg font-semibold text-gray-800 mb-2">Phase: Prototype Development</p>
                       <p className="text-sm text-gray-600">You're making great strides! Keep up the momentum.</p>
                       <button
@@ -730,7 +859,8 @@ export default function StartupDashboard() {
                 {/* Assigned Mentor Card */}
                 <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 animate-fade-in">
                   <h3 className="text-xl font-bold text-brand-dark mb-5 flex items-center">
-                    <GraduationCap size={24} className="mr-3 text-purple-600" /> Assigned Mentor
+                    <GraduationCap size={24} className="mr-3 text-brand-primary" /> {/* Changed from text-purple-600 */}
+                    Assigned Mentor
                   </h3>
                   <div className="flex items-center mb-4">
                     <img src={mockMentor.photo} alt={mockMentor.name} className="w-20 h-20 rounded-full object-cover mr-4 shadow-md" />
@@ -777,14 +907,15 @@ export default function StartupDashboard() {
                 {/* Upcoming Task Card */}
                 <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 animate-fade-in">
                   <h3 className="text-xl font-bold text-brand-dark mb-5 flex items-center">
-                    <Calendar size={24} className="mr-3 text-indigo-600" /> Upcoming Task
+                    <Calendar size={24} className="mr-3 text-brand-dark" /> {/* Changed from text-indigo-600 */}
+                    Upcoming Task
                   </h3>
                   <p className="text-lg font-semibold text-gray-800 mb-2">{mockUpcomingTask.title}</p>
                   <p className="text-sm text-gray-600 mb-3">{mockUpcomingTask.description}</p>
                   <div className="flex items-center text-red-500 text-sm font-medium mb-4">
                     <CalendarDays size={16} className="mr-2" /> Deadline: {mockUpcomingTask.deadline}
                   </div>
-                  <a href={mockUpcomingTask.link} className="px-5 py-2 bg-indigo-500 text-white text-sm font-semibold rounded-full shadow-md hover:bg-indigo-600 transition duration-200">
+                  <a href={mockUpcomingTask.link} className="px-5 py-2 bg-brand-primary text-white text-sm font-semibold rounded-full shadow-md hover:bg-blue-600 transition duration-200"> {/* Changed from bg-indigo-500 */}
                     Go to Task
                   </a>
                 </div>
@@ -800,7 +931,7 @@ export default function StartupDashboard() {
                 </h3>
                 <button
                   onClick={() => setIsEditing(!isEditing)}
-                  className="flex items-center px-5 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-semibold rounded-full shadow-md hover:shadow-lg transform hover:scale-105 hover:-translate-y-0.5 transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 text-sm"
+                  className="flex items-center px-5 py-2 bg-blue-600 text-white font-semibold rounded-full shadow-md hover:bg-blue-700 border border-blue-700 transform hover:scale-105 hover:-translate-y-0.5 transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-sm"
                 >
                   {isEditing ? (
                     <>
@@ -858,6 +989,164 @@ export default function StartupDashboard() {
                   {renderTextareaField('mission', 'Mission Statement', 'mission', profile?.mission || "", 'What is your company\'s purpose? What problem do you solve?', Target)}
                   {renderTextareaField('vision', 'Vision Statement', 'vision', profile?.vision || "", 'What future do you envision? What is your long-term aspiration?', EyeIcon)}
 
+                  {/* --- EDITABLE FOUNDERS & TEAM SECTION --- */}
+                  <h4 className="text-xl font-bold text-brand-dark mt-8 mb-4 flex items-center">
+                    <Users size={20} className="mr-2 text-pink-600" /> Founders & Team
+                  </h4>
+                  <div className="space-y-4 mb-6">
+                    {teamMembers.map((member, index) => (
+                      <div key={member.id || `temp-${index}`} className="flex flex-col sm:flex-row items-center sm:items-end p-4 bg-gray-50 rounded-lg shadow-sm border border-gray-200">
+                        <div className="flex-shrink-0 mb-4 sm:mb-0 sm:mr-4">
+                          <label htmlFor={`memberName-${index}`} className="block text-gray-700 text-sm font-semibold mb-2">
+                            Avatar
+                          </label>
+                          <div className="w-16 h-16 rounded-full bg-blue-200 text-brand-dark font-bold flex items-center justify-center text-lg mr-2 border border-gray-300">
+                            {getInitials(member.name)}
+                          </div>
+                        </div>
+                        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+                          <input
+                            type="text"
+                            name="name"
+                            placeholder="Name"
+                            className="shadow-sm border border-gray-200 rounded-lg py-2 px-3 text-sm"
+                            value={member.name}
+                            onChange={(e) => handleTeamMemberChange(index, e)}
+                            disabled={saving}
+                          />
+                          <input
+                            type="text"
+                            name="role"
+                            placeholder="Role"
+                            className="shadow-sm border border-gray-200 rounded-lg py-2 px-3 text-sm"
+                            value={member.role}
+                            onChange={(e) => handleTeamMemberChange(index, e)}
+                            disabled={saving}
+                          />
+                          <input
+                            type="url"
+                            name="linkedin"
+                            placeholder="LinkedIn URL"
+                            className="shadow-sm border border-gray-200 rounded-lg py-2 px-3 text-sm"
+                            value={member.linkedin}
+                            onChange={(e) => handleTeamMemberChange(index, e)}
+                            disabled={saving}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeTeamMember(member.id || `temp-${index}`)}
+                          className="ml-0 sm:ml-4 mt-4 sm:mt-0 p-2 text-red-600 hover:bg-red-100 rounded-full transition-colors"
+                          disabled={saving}
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      </div>
+                    ))}
+                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-100 flex flex-col sm:flex-row items-center gap-4">
+                      <input
+                        type="text"
+                        name="name"
+                        placeholder="New Member Name"
+                        className="shadow-sm border border-gray-200 rounded-lg py-2 px-3 text-sm flex-1"
+                        value={newTeamMember.name}
+                        onChange={handleNewTeamMemberChange}
+                        disabled={saving}
+                      />
+                      <input
+                        type="text"
+                        name="role"
+                        placeholder="New Member Role"
+                        className="shadow-sm border border-gray-200 rounded-lg py-2 px-3 text-sm flex-1"
+                        value={newTeamMember.role}
+                        onChange={handleNewTeamMemberChange}
+                        disabled={saving}
+                      />
+                      <input
+                        type="url"
+                        name="linkedin"
+                        placeholder="LinkedIn URL (Optional)"
+                        className="shadow-sm border border-gray-200 rounded-lg py-2 px-3 text-sm flex-1"
+                        value={newTeamMember.linkedin}
+                        onChange={handleNewTeamMemberChange}
+                        disabled={saving}
+                      />
+                      <button
+                        type="button"
+                        onClick={addTeamMember}
+                        className="px-4 py-2 bg-brand-primary text-white rounded-full text-sm font-semibold hover:bg-blue-600 transition-colors flex items-center"
+                        disabled={saving}
+                      >
+                        <Plus size={16} className="mr-1" /> Add
+                      </button>
+                    </div>
+                  </div>
+                  {/* --- END EDITABLE FOUNDERS & TEAM SECTION --- */}
+
+                  {/* --- EDITABLE UPLOADED DOCUMENTS SECTION --- */}
+                  <h4 className="text-xl font-bold text-brand-dark mt-8 mb-4 flex items-center">
+                    <FileText size={20} className="mr-2 text-teal-600" /> Uploaded Documents
+                  </h4>
+                  <div className="space-y-4 mb-6">
+                    {documents.map((doc, index) => (
+                      <div key={doc.id || `temp-${index}`} className="flex flex-col sm:flex-row items-center sm:items-end p-4 bg-gray-50 rounded-lg shadow-sm border border-gray-200">
+                        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+                          <input
+                            type="text"
+                            name="name"
+                            placeholder="Document Title"
+                            className="shadow-sm border border-gray-200 rounded-lg py-2 px-3 text-sm"
+                            value={doc.name}
+                            onChange={(e) => handleDocumentNameChange(index, e)}
+                            disabled={saving}
+                          />
+                          <input
+                            type="file"
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" // Specify accepted file types
+                            className="shadow-sm appearance-none border border-gray-200 rounded-lg w-full py-2.5 px-3 text-gray-800 leading-tight focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition duration-200 ease-in-out bg-white/90 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-brand-primary hover:file:bg-blue-100"
+                            onChange={(e) => handleDocumentFileChange(index, e)}
+                            disabled={saving}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeDocument(doc.id || `temp-${index}`)}
+                          className="ml-0 sm:ml-4 mt-4 sm:mt-0 p-2 text-red-600 hover:bg-red-100 rounded-full transition-colors"
+                          disabled={saving}
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      </div>
+                    ))}
+                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-100 flex flex-col sm:flex-row items-center gap-4">
+                      <input
+                        type="text"
+                        name="name"
+                        placeholder="New Document Title"
+                        className="shadow-sm border border-gray-200 rounded-lg py-2 px-3 text-sm flex-1"
+                        value={newDocument.name}
+                        onChange={handleNewDocumentNameChange}
+                        disabled={saving}
+                      />
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" // Specify accepted file types
+                        className="shadow-sm appearance-none border border-gray-200 rounded-lg w-full py-2.5 px-3 text-gray-800 leading-tight focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition duration-200 ease-in-out bg-white/90 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-brand-primary hover:file:bg-blue-100"
+                        onChange={handleNewDocumentFileChange}
+                        disabled={saving}
+                      />
+                      <button
+                        type="button"
+                        onClick={addDocument}
+                        className="px-4 py-2 bg-brand-primary text-white rounded-full text-sm font-semibold hover:bg-blue-600 transition-colors flex items-center"
+                        disabled={saving}
+                      >
+                        <Plus size={16} className="mr-1" /> Add
+                      </button>
+                    </div>
+                  </div>
+                  {/* --- END EDITABLE UPLOADED DOCUMENTS SECTION --- */}
+
                   <div className="flex justify-center mt-8">
                     <button
                       type="submit"
@@ -906,25 +1195,38 @@ export default function StartupDashboard() {
                     </div>
                   </div>
 
+                  {/* Enhanced Basic Information and Social Presence Sections */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6 mt-8">
-                    <div className="space-y-4 p-6 bg-blue-50/50 rounded-xl shadow-sm border border-blue-100/70">
-                      <h3 className="text-xl font-bold text-brand-dark mb-4 flex items-center">
-                        <Info size={24} className="mr-3 text-brand-primary" /> Basic Information
+                    {/* Basic Information Card */}
+                    <div className="space-y-4 p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl shadow-xl border border-blue-200 transform hover:scale-[1.01] transition-transform duration-300"> {/* Changed to-indigo-50 to to-blue-100 */}
+                      <h3 className="text-xl font-extrabold text-brand-dark mb-4 flex items-center pb-2 border-b border-blue-100">
+                        <div className="p-2 bg-brand-primary rounded-full text-white mr-3 shadow-md">
+                          <Info size={20} />
+                        </div>
+                        Basic Information
                       </h3>
-                      {renderDisplayItem('Industry', profile?.industry, Briefcase)}
-                      {renderDisplayItem('Official Website', profile?.website, Globe, true)}
-                      {renderDisplayItem('Direct Phone', profile?.phone, Phone)}
-                      {renderDisplayItem('Address', profile?.address, MapPin)}
-                      {renderDisplayItem('City', profile?.city, MapPin)}
-                      {renderDisplayItem('Country', profile?.country, MapPin)}
+                      <div className="space-y-3"> {/* Added space-y for consistent item spacing */}
+                        {renderDisplayItem('Industry', profile?.industry, Briefcase)}
+                        {renderDisplayItem('Official Website', profile?.website, Globe, true)}
+                        {renderDisplayItem('Direct Phone', profile?.phone, Phone)}
+                        {renderDisplayItem('Address', profile?.address, MapPin)}
+                        {renderDisplayItem('City', profile?.city, MapPin)}
+                        {renderDisplayItem('Country', profile?.country, MapPin)}
+                      </div>
                     </div>
 
-                    <div className="space-y-4 p-6 bg-purple-50/50 rounded-xl shadow-sm border border-purple-100/70">
-                      <h3 className="text-xl font-bold text-brand-dark mb-4 flex items-center">
-                        <Share2 size={24} className="mr-3 text-brand-primary" /> Social Presence
+                    {/* Social Presence Card */}
+                    <div className="space-y-4 p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl shadow-xl border border-blue-200 transform hover:scale-[1.01] transition-transform duration-300"> {/* Changed from purple-50 to pink-50, and border-purple-200 */}
+                      <h3 className="text-xl font-extrabold text-brand-dark mb-4 flex items-center pb-2 border-b border-blue-100"> {/* Changed border-purple-100 */}
+                        <div className="p-2 bg-brand-dark rounded-full text-white mr-3 shadow-md"> {/* Changed from bg-purple-600 */}
+                          <Share2 size={20} />
+                        </div>
+                        Social Presence
                       </h3>
-                      {renderDisplayItem('LinkedIn Profile', profile?.linkedin, Linkedin, true)}
-                      {renderDisplayItem('Twitter Handle', profile?.twitter, Twitter, true)}
+                      <div className="space-y-3"> {/* Added space-y for consistent item spacing */}
+                        {renderDisplayItem('LinkedIn Profile', profile?.linkedin, Linkedin, true)}
+                        {renderDisplayItem('Twitter Handle', profile?.twitter, Twitter, true)}
+                      </div>
                     </div>
                   </div>
 
@@ -948,42 +1250,69 @@ export default function StartupDashboard() {
                     </div>
                   </div>
 
-                  {/* Mock Founders/Team Section */}
+                  {/* --- DISPLAY FOUNDERS & TEAM SECTION --- */}
                   <div className="mt-8 pt-6 border-t border-dashed border-gray-200">
                     <h3 className="text-xl font-bold text-brand-dark mb-4 flex items-center">
                       <Users size={24} className="mr-3 text-pink-600" /> Founders & Team
                     </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                      {mockTeamMembers.map(member => (
-                        <div key={member.id} className="flex items-center p-3 bg-gray-50 rounded-lg shadow-sm">
-                          <img src={member.avatar} alt={member.name} className="w-12 h-12 rounded-full object-cover mr-3" />
-                          <div>
-                            <p className="font-semibold text-gray-800 text-sm">{member.name}</p>
-                            <p className="text-xs text-gray-600">{member.role}</p>
+                    {teamMembers.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        {teamMembers.map(member => (
+                          <div key={member.id} className="flex items-center p-3 bg-gray-50 rounded-lg shadow-sm">
+                            <div className="w-12 h-12 rounded-full bg-blue-200 text-brand-dark font-bold flex items-center justify-center text-md mr-3">
+                              {getInitials(member.name)}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-gray-800 text-sm">{member.name}</p>
+                              <p className="text-xs text-gray-600">{member.role}</p>
+                              {member.linkedin && (
+                                <a href={member.linkedin} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline flex items-center">
+                                  LinkedIn <ExternalLink size={10} className="ml-1" />
+                                </a>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-600 text-sm italic">No team members added yet.</p>
+                    )}
+                    <button onClick={() => { setCurrentPage('myProfile'); setIsEditing(true); }} className="mt-4 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-full shadow-sm hover:bg-gray-200 transition duration-200 flex items-center">
+                        <Plus size={16} className="mr-2" /> Add New Member
+                    </button>
                   </div>
+                  {/* --- END DISPLAY FOUNDERS & TEAM SECTION --- */}
 
-                  {/* Mock Uploaded Documents Section */}
+                  {/* --- DISPLAY UPLOADED DOCUMENTS SECTION --- */}
                   <div className="mt-8 pt-6 border-t border-dashed border-gray-200">
                     <h3 className="text-xl font-bold text-brand-dark mb-4 flex items-center">
                       <FileText size={24} className="mr-3 text-teal-600" /> Uploaded Documents
                     </h3>
-                    <div className="space-y-3">
-                      {mockDocuments.map(doc => (
-                        <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center p-3 bg-gray-50 rounded-lg shadow-sm hover:bg-gray-100 transition-colors">
-                          <File size={20} className="mr-3 text-gray-500" />
-                          <span className="text-sm font-medium text-gray-700 flex-1">{doc.name}</span>
-                          <ExternalLink size={14} className="text-gray-400" />
-                        </a>
-                      ))}
-                    </div>
-                    <button className="mt-4 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-full shadow-sm hover:bg-gray-200 transition duration-200 flex items-center">
-                        <Upload size={16} className="mr-2" /> Upload New Document
+                    {documents.length > 0 ? (
+                      <div className="space-y-3">
+                        {documents.map(doc => (
+                          <a
+                            key={doc.id}
+                            href={doc.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download={doc.name} // Suggest download with original name
+                            className="flex items-center p-3 bg-gray-50 rounded-lg shadow-sm hover:bg-gray-100 transition-colors"
+                          >
+                            <File size={20} className="mr-3 text-gray-500" />
+                            <span className="text-sm font-medium text-gray-700 flex-1">{doc.name}</span>
+                            <ExternalLink size={14} className="text-gray-400" />
+                          </a>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-600 text-sm italic">No documents uploaded yet.</p>
+                    )}
+                    <button onClick={() => { setCurrentPage('myProfile'); setIsEditing(true); }} className="mt-4 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-full shadow-sm hover:bg-gray-200 transition duration-200 flex items-center">
+                        <Upload size={16} className="mr-2" /> Add New Document
                     </button>
                   </div>
+                  {/* --- END DISPLAY UPLOADED DOCUMENTS SECTION --- */}
                 </div>
               )}
             </div>
@@ -1073,7 +1402,7 @@ export default function StartupDashboard() {
                   <a href={`mailto:${mockMentor.contact.email}`} className="px-6 py-3 bg-green-500 text-white font-semibold rounded-full shadow-lg hover:bg-green-600 transition duration-200 flex items-center">
                     <Mail size={20} className="mr-2" /> Email Mentor
                   </a>
-                  <a href={mockMentor.contact.linkedin} target="_blank" rel="noopener noreferrer" className="px-6 py-3 bg-blue-500 text-white font-semibold rounded-full shadow-lg hover:bg-blue-600 transition duration-200 flex items-center">
+                  <a href={mockMentor.contact.linkedin} target="_blank" rel="noopener noreferrer" className="px-6 py-3 bg-brand-primary text-white font-semibold rounded-full shadow-lg hover:bg-blue-600 transition duration-200 flex items-center"> {/* Changed from bg-blue-500 */}
                     <Linkedin size={20} className="mr-2" /> LinkedIn
                   </a>
                 </div>
@@ -1107,7 +1436,8 @@ export default function StartupDashboard() {
                 {mockOpportunities.map(opportunity => (
                   <div key={opportunity.id} className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
                     <h4 className="text-lg font-bold text-brand-dark mb-2 flex items-center">
-                      <Rocket size={20} className="mr-2 text-indigo-500" /> {opportunity.name}
+                      <Rocket size={20} className="mr-2 text-brand-primary" /> {/* Changed from text-indigo-500 */}
+                      {opportunity.name}
                     </h4>
                     <p className="text-sm text-gray-700 mb-3">{opportunity.description}</p>
                     <div className="flex items-center justify-between text-sm">

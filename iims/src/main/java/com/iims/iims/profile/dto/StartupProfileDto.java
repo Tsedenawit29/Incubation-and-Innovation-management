@@ -1,6 +1,7 @@
 package com.iims.iims.profile.dto;
 
 import lombok.Data;
+import java.util.List; // Import List
 import java.util.UUID;
 
 @Data
@@ -20,4 +21,6 @@ public class StartupProfileDto {
     private String industry;
     private String country;
     private String city;
+    private List<TeamMemberDto> teamMembers;
+    private List<DocumentDto> documents;
 }

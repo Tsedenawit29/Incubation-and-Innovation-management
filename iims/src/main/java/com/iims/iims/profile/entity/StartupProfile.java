@@ -4,9 +4,10 @@ import com.iims.iims.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.List; // Import List
 import java.util.UUID;
-import org.hibernate.annotations.CreationTimestamp; // Import for CreationTimestamp
-import org.hibernate.annotations.UpdateTimestamp;   // Import for UpdateTimestamp
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
 @Table(name = "startup_profiles")
@@ -23,37 +24,36 @@ public class StartupProfile {
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
-    @Column(nullable = false, length = 500) // Increased length for startupName, adjust as needed
+    @Column(nullable = false, length = 500)
     private String startupName;
 
-    @Column(columnDefinition = "TEXT") // Allows for very long text
+    @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(length = 2048) // Increased length for URLs
+    @Column(length = 2048)
     private String website;
 
-    @Column(length = 50) // Phone numbers are typically shorter
+    @Column(length = 50)
     private String phone;
 
-    @Column(length = 500) // Increased length for addresses
+    @Column(length = 500)
     private String address;
 
-    @Column(length = 2048) // Increased length for social media URLs
+    @Column(length = 2048)
     private String linkedin;
 
-    @Column(length = 2048) // Increased length for social media URLs
+    @Column(length = 2048)
     private String twitter;
 
-    @Column(columnDefinition = "TEXT") // <--- CRITICAL CHANGE: Allows for very long Base64 image strings
+    @Column(columnDefinition = "TEXT") // Allows for very long Base64 image strings
     private String logoUrl;
 
-    @Column(columnDefinition = "TEXT") // Allows for very long text
+    @Column(columnDefinition = "TEXT")
     private String mission;
 
-    @Column(columnDefinition = "TEXT") // Allows for very long text
+    @Column(columnDefinition = "TEXT")
     private String vision;
 
-    // New fields for customization - default length (255) is usually fine
     @Column(length = 100)
     private String industry;
     @Column(length = 100)
@@ -61,13 +61,22 @@ public class StartupProfile {
     @Column(length = 100)
     private String city;
 
-    @CreationTimestamp // Automatically sets creation timestamp
+    // --- NEW FIELDS FOR TEAM MEMBERS AND DOCUMENTS ---
+    // Assuming you will create TeamMember and Document entities
+    @OneToMany(mappedBy = "startupProfile", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default // Lombok annotation to initialize the list
+    private List<TeamMember> teamMembers = new java.util.ArrayList<>();
+
+    @OneToMany(mappedBy = "startupProfile", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default // Lombok annotation to initialize the list
+    private List<Document> documents = new java.util.ArrayList<>();
+    // --- END NEW FIELDS ---
+
+    @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @UpdateTimestamp // Automatically updates timestamp on entity modification
+    @UpdateTimestamp
     @Column(nullable = false)
     private LocalDateTime updatedAt;
-
-    // Removed @PrePersist and @PreUpdate as @CreationTimestamp and @UpdateTimestamp handle this.
 }
