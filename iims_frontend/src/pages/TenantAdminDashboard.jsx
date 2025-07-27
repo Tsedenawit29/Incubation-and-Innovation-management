@@ -1,19 +1,19 @@
 import { useAuth } from "../hooks/useAuth";
 import { useEffect, useState } from "react";
-import { 
-  getTenantUsersByRole, 
-  createTenantUser,
+import { getTenantUsersByRole, createTenantUser } from "../api/users";
+import UserTable from "../components/UserTable";
+import { Link } from 'react-router-dom';
+import EditUserModal from "../components/EditUserModal";
+import ChangeRoleModal from "../components/ChangeRoleModal";
+import ChangePasswordModal from "../components/ChangePasswordModal";
+import DeleteConfirmModal from "../components/DeleteConfirmModal";
+import {
   updateUserProfile,
   deleteUser,
   updateUserStatus,
   updateUserRole,
-  updateUserPassword
+  updateUserPassword,
 } from "../api/users";
-import UserTable from "../components/UserTable";
-import EditUserModal from '../components/EditUserModal';
-import DeleteConfirmModal from '../components/DeleteConfirmModal';
-import ChangeRoleModal from '../components/ChangeRoleModal';
-import ChangePasswordModal from '../components/ChangePasswordModal';
 
 const ROLES = [
   "STARTUP",
@@ -34,7 +34,7 @@ export default function TenantAdminDashboard() {
   const [form, setForm] = useState({ fullName: "", email: "", role: ROLES[0] });
   const [activeTab, setActiveTab] = useState(ROLES[0]);
 
-  // Modal states
+  // User management modal states
   const [editModal, setEditModal] = useState({ isOpen: false, user: null });
   const [roleModal, setRoleModal] = useState({ isOpen: false, user: null });
   const [passwordModal, setPasswordModal] = useState({ isOpen: false, user: null });
@@ -57,6 +57,85 @@ export default function TenantAdminDashboard() {
     if (token) fetchUsers(activeTab);
     // eslint-disable-next-line
   }, [token, activeTab]);
+
+  // User management handlers
+  const handleEdit = (user) => {
+    setEditModal({ isOpen: true, user });
+  };
+
+  const handleEditSave = async (formData) => {
+    try {
+      const profileData = {};
+      if (formData.fullName !== undefined && formData.fullName !== '') {
+        profileData.fullName = formData.fullName;
+      }
+      if (formData.email !== undefined && formData.email !== '') {
+        profileData.email = formData.email;
+      }
+      await updateUserProfile(token, editModal.user.id, profileData);
+      await fetchUsers(activeTab);
+      setSuccess("User updated successfully!");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err) {
+      setError("Failed to update user: " + err.message);
+    }
+  };
+
+  const handleDelete = (user) => {
+    setDeleteModal({ isOpen: true, user });
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      await deleteUser(token, deleteModal.user.id);
+      await fetchUsers(activeTab);
+      setSuccess("User deleted successfully!");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err) {
+      setError("Failed to delete user: " + err.message);
+    }
+  };
+
+  const handleStatus = async (user) => {
+    try {
+      await updateUserStatus(token, user.id, !user.active);
+      await fetchUsers(activeTab);
+      const action = user.active ? "deactivated" : "activated";
+      setSuccess(`User ${action} successfully!`);
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err) {
+      setError("Failed to update user status: " + err.message);
+    }
+  };
+
+  const handleRole = (user) => {
+    setRoleModal({ isOpen: true, user });
+  };
+
+  const handleRoleSave = async (newRole) => {
+    try {
+      await updateUserRole(token, roleModal.user.id, newRole);
+      await fetchUsers(activeTab);
+      setSuccess("User role updated successfully!");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err) {
+      setError("Failed to update user role: " + err.message);
+    }
+  };
+
+  const handleChangePassword = (user) => {
+    setPasswordModal({ isOpen: true, user });
+  };
+
+  const handlePasswordSave = async (currentPassword, newPassword) => {
+    try {
+      await updateUserPassword(token, passwordModal.user.id, currentPassword, newPassword);
+      setSuccess("Password updated successfully!");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err) {
+      setError("Failed to update password: " + err.message);
+    }
+  };
 
   const openModal = () => {
     setForm({ fullName: "", email: "", role: activeTab });
@@ -90,101 +169,18 @@ export default function TenantAdminDashboard() {
     }
   };
 
-  const showSuccessMessage = (message) => {
-    setSuccess(message);
-    setTimeout(() => setSuccess(""), 3000);
-  };
-
-  const handleEdit = (user) => {
-    setEditModal({ isOpen: true, user });
-  };
-
-  const handleEditSave = async (formData) => {
-    try {
-      const profileData = {};
-      if (formData.fullName !== undefined && formData.fullName !== '') {
-        profileData.fullName = formData.fullName;
-      }
-      if (formData.email !== undefined && formData.email !== '') {
-        profileData.email = formData.email;
-      }
-      
-      await updateUserProfile(token, editModal.user.id, profileData);
-      fetchUsers(activeTab);
-      setEditModal({ isOpen: false, user: null });
-      showSuccessMessage("User updated successfully!");
-    } catch (err) {
-      throw new Error("Failed to update user: " + err.message);
-    }
-  };
-
-  const handleDelete = (user) => {
-    setDeleteModal({ isOpen: true, user });
-  };
-
-  const handleDeleteConfirm = async () => {
-    try {
-      await deleteUser(token, deleteModal.user.id);
-      fetchUsers(activeTab);
-      setDeleteModal({ isOpen: false, user: null });
-      showSuccessMessage("User deleted successfully!");
-    } catch (err) {
-      throw new Error("Failed to delete user: " + err.message);
-    }
-  };
-
-  const handleStatus = async (user) => {
-    try {
-      await updateUserStatus(token, user.id, !user.active);
-      fetchUsers(activeTab);
-      const action = user.active ? "deactivated" : "activated";
-      showSuccessMessage(`User ${action} successfully!`);
-    } catch (err) {
-      alert("Failed to update user status: " + err.message);
-    }
-  };
-
-  const handleRole = (user) => {
-    setRoleModal({ isOpen: true, user });
-  };
-
-  const handleRoleSave = async (newRole) => {
-    try {
-      await updateUserRole(token, roleModal.user.id, newRole);
-      fetchUsers(activeTab);
-      setRoleModal({ isOpen: false, user: null });
-      showSuccessMessage("User role updated successfully!");
-    } catch (err) {
-      throw new Error("Failed to update user role: " + err.message);
-    }
-  };
-
-  const handleChangePassword = (user) => {
-    setPasswordModal({ isOpen: true, user });
-  };
-
-  const handlePasswordSave = async (currentPassword, newPassword) => {
-    try {
-      await updateUserPassword(token, passwordModal.user.id, currentPassword, newPassword);
-      setPasswordModal({ isOpen: false, user: null });
-      showSuccessMessage("Password updated successfully!");
-    } catch (err) {
-      throw new Error("Failed to update password: " + err.message);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
+    <div className="min-h-screen bg-brand-dark flex flex-col">
       {/* Header/Profile */}
-      <header className="bg-gradient-to-r from-blue-700 to-blue-400 shadow-lg p-6 flex items-center justify-between">
+      <header className="bg-gradient-to-r from-brand-dark to-brand-primary shadow-lg p-6 flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-blue-700 font-bold text-2xl border-4 border-blue-300">
+          <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-brand-primary font-bold text-2xl border-4 border-brand-primary">
             {user?.fullName ? user.fullName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase()}
           </div>
           <div>
             <h1 className="text-2xl font-bold text-white">{user?.fullName || user?.email}</h1>
-            <p className="text-blue-100 text-sm">Tenant Admin</p>
-            <p className="text-blue-200 text-xs">Tenant ID: <span className="font-mono">{user?.tenantId}</span></p>
+            <p className="text-brand-primary text-sm">Tenant Admin</p>
+            <p className="text-brand-dark text-xs">Tenant ID: <span className="font-mono">{user?.tenantId}</span></p>
           </div>
         </div>
         <button
@@ -200,8 +196,8 @@ export default function TenantAdminDashboard() {
           {ROLES.map((role) => (
             <button
               key={role}
-              className={`px-4 py-2 font-semibold rounded-t-md focus:outline-none transition-colors duration-200 ${activeTab === role ? 'bg-white border-l border-t border-r border-blue-400 text-blue-700 -mb-px' : 'bg-blue-100 text-blue-600 hover:bg-white'}`}
-              onClick={() => setActiveTab(role)}
+              className={`px-4 py-2 font-semibold rounded-t-md focus:outline-none transition-colors duration-200 ${activeTab === role ? 'bg-white border-l border-t border-r border-brand-primary text-brand-primary -mb-px' : 'bg-brand-dark text-white hover:bg-white hover:text-brand-primary'}`}
+              onClick={() => { setActiveTab(role); }}
             >
               {role.charAt(0) + role.slice(1).toLowerCase()}s
             </button>
@@ -209,9 +205,9 @@ export default function TenantAdminDashboard() {
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold text-blue-700">{activeTab.charAt(0) + activeTab.slice(1).toLowerCase()}s</h2>
+            <h2 className="text-lg font-bold text-brand-primary">{activeTab.charAt(0) + activeTab.slice(1).toLowerCase()}s</h2>
             <button
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow"
+              className="bg-brand-primary hover:bg-brand-dark text-white px-4 py-2 rounded shadow"
               onClick={openModal}
             >
               + Create {activeTab.charAt(0) + activeTab.slice(1).toLowerCase()}
@@ -221,13 +217,33 @@ export default function TenantAdminDashboard() {
           {error && <div className="text-red-600 mb-2">{error}</div>}
           {success && <div className="text-green-600 mb-2">{success}</div>}
           <UserTable 
-            users={users}
+            users={users} 
             onEdit={handleEdit}
             onDelete={handleDelete}
             onStatus={handleStatus}
             onRole={handleRole}
             onChangePassword={handleChangePassword}
           />
+        </div>
+        <div className="mt-6">
+          <h3 className="text-lg font-bold text-brand-primary mb-2">Manage Landing Page</h3>
+          <div className="mb-4">
+            <Link to={`/tenant-admin/${user?.tenantId}/landing-page-management`} className="bg-brand-primary text-white px-4 py-2 rounded">
+              Manage Landing Page
+            </Link>
+          </div>
+          <h3 className="text-lg font-bold text-brand-primary mb-2">Startup Management</h3>
+          <div className="mb-4">
+            <Link to="/tenant-admin/startup-management" className="bg-brand-primary text-white px-4 py-2 rounded">
+              Manage Startups & Assign Mentors
+            </Link>
+          </div>
+          <h3 className="text-lg font-bold text-brand-primary mb-2">Progress Tracking Management</h3>
+          <div className="mb-4">
+            <Link to={`/tenant-admin/${user?.tenantId}/progress-tracking-management`} className="bg-brand-primary text-white px-4 py-2 rounded">
+              Manage Progress Tracking
+            </Link>
+          </div>
         </div>
       </div>
       {/* Modal */}
@@ -293,30 +309,25 @@ export default function TenantAdminDashboard() {
           </div>
         </div>
       )}
-
-      {/* Modals */}
+      {/* Modals for user management */}
       <EditUserModal
         isOpen={editModal.isOpen}
         onClose={() => setEditModal({ isOpen: false, user: null })}
         user={editModal.user}
         onSave={handleEditSave}
       />
-
       <ChangeRoleModal
         isOpen={roleModal.isOpen}
         onClose={() => setRoleModal({ isOpen: false, user: null })}
         user={roleModal.user}
         onSave={handleRoleSave}
-        roles={ROLES} 
       />
-
       <ChangePasswordModal
         isOpen={passwordModal.isOpen}
         onClose={() => setPasswordModal({ isOpen: false, user: null })}
         user={passwordModal.user}
         onSave={handlePasswordSave}
       />
-
       <DeleteConfirmModal
         isOpen={deleteModal.isOpen}
         onClose={() => setDeleteModal({ isOpen: false, user: null })}

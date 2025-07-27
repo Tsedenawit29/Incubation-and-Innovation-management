@@ -1,13 +1,4 @@
 export default function UserTable({ users, onEdit, onDelete, onStatus, onRole, onChangePassword }) {
-  console.log("UserTable props:", {
-    users: users?.length || 0,
-    onEdit: typeof onEdit,
-    onDelete: typeof onDelete,
-    onStatus: typeof onStatus,
-    onRole: typeof onRole,
-    onChangePassword: typeof onChangePassword
-  });
-  
   return (
     <table className="min-w-full border">
       <thead>

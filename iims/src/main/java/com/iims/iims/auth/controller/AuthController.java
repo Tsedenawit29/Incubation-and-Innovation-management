@@ -1,19 +1,13 @@
 package com.iims.iims.auth.controller;
 
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
 import com.iims.iims.auth.dto.AuthRequest;
+import com.iims.iims.auth.dto.AuthResponse;
 import com.iims.iims.auth.dto.RegisterRequest;
 import com.iims.iims.auth.service.AuthService;
 import com.iims.iims.user.repository.UserRepository;
-
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")

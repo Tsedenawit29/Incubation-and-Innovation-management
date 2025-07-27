@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -87,4 +88,6 @@ public class TenantController {
         Tenant tenant = tenantService.activateTenant(id);
         return ResponseEntity.ok(tenant);
     }
+
+    // Removed landing page endpoints and related imports
 } 

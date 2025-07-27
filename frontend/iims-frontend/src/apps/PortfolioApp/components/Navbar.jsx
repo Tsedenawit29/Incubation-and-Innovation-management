@@ -20,18 +20,11 @@ const Navbar = () => (
         Home
       </Link>
       <Link
-        to="/application"
+        to="/projects"
         className="text-xl font-semibold text-brand-dark nav-link"
         style={{ color: 'var(--brand-dark)', transition: 'color 0.2s' }}
       >
-        Application
-      </Link>
-      <Link
-        to="/documentation"
-        className="text-xl font-semibold text-brand-dark nav-link"
-        style={{ color: 'var(--brand-dark)', transition: 'color 0.2s' }}
-      >
-        Documentation
+        Projects
       </Link>
       <Link
         to="/contact"

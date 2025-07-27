@@ -12,7 +12,7 @@ const ROLES = [
   'ALUMNI'
 ];
 
-export default function ChangeRoleModal({ isOpen, onClose, user, onSave, roles = [] }) {
+export default function ChangeRoleModal({ isOpen, onClose, user, onSave }) {
   const [selectedRole, setSelectedRole] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -70,7 +70,7 @@ export default function ChangeRoleModal({ isOpen, onClose, user, onSave, roles =
             required
           >
             <option value="">Select a role</option>
-            {roles.map(role => (
+            {ROLES.map(role => (
               <option key={role} value={role}>
                 {role}
               </option>

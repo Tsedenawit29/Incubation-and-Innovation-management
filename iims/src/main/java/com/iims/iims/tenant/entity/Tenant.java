@@ -64,9 +64,8 @@ public class Tenant {
     @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason;
 
-    public UUID getId() {
-        return id;
-    }
+    @OneToOne(mappedBy = "tenant", cascade = CascadeType.ALL, orphanRemoval = true)
+    private LandingPage landingPage;
 
     @PrePersist
     protected void onCreate() {
@@ -80,4 +79,7 @@ public class Tenant {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
+
+    public LandingPage getLandingPage() { return landingPage; }
+    public void setLandingPage(LandingPage landingPage) { this.landingPage = landingPage; }
 } 
