@@ -60,11 +60,12 @@ export const uploadSubmissionFile = async (file, submissionId, token) => {
   return res.json();
 };
 
-export const createSubmission = async (trackingId, taskId) => {
+export const createSubmission = async (trackingId, taskId, token) => {
   const res = await fetch('/api/progresstracking/submissions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
     },
     body: JSON.stringify({ trackingId, taskId }),
   });

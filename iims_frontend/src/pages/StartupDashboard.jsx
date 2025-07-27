@@ -110,7 +110,7 @@ export default function StartupDashboard() {
       // For now, mock trackingId as `${id}-${selectedTemplate?.id}`
       const trackingId = `${id}-${selectedTemplate?.id}`; // TODO: Replace with real trackingId from backend
       // Create the submission
-      const submission = await createSubmission(trackingId, taskId);
+      const submission = await createSubmission(trackingId, taskId, token);
       // Upload the file
       await uploadSubmissionFile(file, submission.id, token);
       setUploadStatus(prev => ({ ...prev, [taskId]: 'Uploaded!' }));
