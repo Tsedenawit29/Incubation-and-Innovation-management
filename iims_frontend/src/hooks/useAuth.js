@@ -64,16 +64,26 @@ export function AuthProvider({ children }) {
     localStorage.setItem("springBootUser", JSON.stringify(userData));
     setAuthError(null); // Clear any errors on successful manual login
 
-    // IMPORTANT: Redirect based on user role
+    // IMPORTANT: Redirect based on user role - using correct paths that match App.js routes
     const userRole = userData?.role; // Assuming role is part of userData
-    let redirectPath = '/dashboard'; // Default redirect
+    let redirectPath = '/'; // Default redirect
 
     if (userRole === 'SUPER_ADMIN') {
-      redirectPath = '/super-admin-dashboard';
+      redirectPath = '/super-admin/dashboard';
     } else if (userRole === 'TENANT_ADMIN') {
-      redirectPath = '/tenant-admin-dashboard';
+      redirectPath = '/tenant-admin/dashboard';
     } else if (userRole === 'STARTUP') {
-      redirectPath = '/startup-dashboard';
+      redirectPath = `/startup-dashboard/${userData.id}`;
+    } else if (userRole === 'MENTOR') {
+      redirectPath = `/mentor-dashboard/${userData.id}`;
+    } else if (userRole === 'COACH') {
+      redirectPath = `/coach-dashboard/${userData.id}`;
+    } else if (userRole === 'FACILITATOR') {
+      redirectPath = `/facilitator-dashboard/${userData.id}`;
+    } else if (userRole === 'INVESTOR') {
+      redirectPath = `/investor-dashboard/${userData.id}`;
+    } else if (userRole === 'ALUMNI') {
+      redirectPath = `/alumni-dashboard/${userData.id}`;
     }
     
     console.log(`Redirecting to: ${redirectPath} for role: ${userRole}`);
@@ -87,7 +97,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("springBootAuthToken");
     localStorage.removeItem("springBootUser");
     setAuthError(null); // Clear any errors on logout
-    window.location.href = '/login'; // Redirect to login page on logout
+    window.location.href = '/login'; // Redirect directly to login page on logout
   };
 
   const isAuthenticated = !!token && !!user; // User is authenticated if both token and user object exist

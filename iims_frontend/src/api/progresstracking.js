@@ -32,15 +32,20 @@ export const getTrackings = () =>
 export const getSubmissions = () =>
   axios.get('/api/progresstracking/submissions').then(res => res.data);
 
-export const updateSubmission = async (submissionId, data) => {
-  const res = await fetch(`/api/progresstracking/submissions/${submissionId}`, {
+export const updateSubmission = async (submissionId, data, token) => {
+  const res = await fetch(`${API_URL}/progresstracking/submissions/${submissionId}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
     },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Failed to update submission');
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('Update submission error:', errorText);
+    throw new Error(`Failed to update submission: ${res.status} ${res.statusText}`);
+  }
   return res.json();
 };
 
@@ -49,6 +54,9 @@ export const uploadSubmissionFile = async (file, submissionId, token) => {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('submissionId', submissionId);
+  
+  console.log('Uploading file:', { fileName: file.name, fileSize: file.size, submissionId });
+  
   const res = await fetch(`${API_URL}/progresstracking/submission-files/upload`, {
     method: 'POST',
     headers: {
@@ -56,12 +64,20 @@ export const uploadSubmissionFile = async (file, submissionId, token) => {
     },
     body: formData,
   });
-  if (!res.ok) throw new Error('Failed to upload file');
-  return res.json();
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('File upload error:', errorText);
+    throw new Error(`Failed to upload file: ${res.status} ${res.statusText}`);
+  }
+  
+  const result = await res.json();
+  console.log('File upload successful:', result);
+  return result;
 };
 
 export const createSubmission = async (trackingId, taskId, token) => {
-  const res = await fetch('/api/progresstracking/submissions', {
+  const res = await fetch(`${API_URL}/progresstracking/submissions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -69,7 +85,11 @@ export const createSubmission = async (trackingId, taskId, token) => {
     },
     body: JSON.stringify({ trackingId, taskId }),
   });
-  if (!res.ok) throw new Error('Failed to create submission');
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('Create submission error:', errorText);
+    throw new Error(`Failed to create submission: ${res.status} ${res.statusText}`);
+  }
   return res.json();
 };
 
@@ -82,4 +102,14 @@ export const getAssignedTemplatesForStartup = async (startupId) => {
   // Fetch all templates for tenant (or all), then filter
   const allTemplates = await axios.get(`/api/progresstracking/templates`).then(res => res.data);
   return allTemplates.filter(t => templateIds.includes(t.id));
+};
+
+export const getStartupsForMentor = async (mentorId) => {
+  const response = await axios.get(`/api/mentor-assignment?mentorId=${mentorId}`);
+  return response.data;
+};
+
+export const getSubmissionFiles = async (submissionId) => {
+  const response = await axios.get(`/api/progresstracking/submission-files?submissionId=${submissionId}`);
+  return response.data;
 }; 

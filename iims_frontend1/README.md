@@ -23,7 +23,7 @@ This is the React frontend for the IIMS (Incubation and Innovation Management Sy
 
 - Node.js (version 16 or higher)
 - npm or yarn
-- Backend server running on `http://localhost:8080`
+- Backend server running on `http://localhost:8081`
 
 ## Installation
 
@@ -103,7 +103,7 @@ src/
 
 ## API Endpoints
 
-The frontend communicates with the backend API at `http://localhost:8080/api`:
+The frontend communicates with the backend API at `http://localhost:8081/api`:
 
 ### Authentication
 - `POST /api/auth/login` - User login
@@ -146,7 +146,7 @@ The API base URL is configured in each API service file. To change the backend U
 
 1. **CORS Errors**: Ensure the backend CORS configuration allows requests from `http://localhost:3000`
 
-2. **API Connection Errors**: Verify the backend server is running on `http://localhost:8080`
+2. **API Connection Errors**: Verify the backend server is running on `http://localhost:8081`
 
 3. **Authentication Issues**: Check that JWT tokens are being properly stored and sent with requests
 

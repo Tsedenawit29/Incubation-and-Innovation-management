@@ -8,6 +8,7 @@ import {
 } from "../api/users"; // or from startupProfile.js
 import { getMentorsForStartup } from '../api/mentorAssignment';
 import { getAssignedTemplatesForStartup, getPhases, getTasks, uploadSubmissionFile, createSubmission } from '../api/progresstracking';
+import StartupProgressTracking from '../components/StartupProgressTracking';
 
 // Import Lucide React icons
 import {
@@ -217,14 +218,17 @@ export default function StartupDashboard() {
 
   // Get the first assigned mentor or use mock data as fallback
   const currentMentor = mentors.length > 0 ? mentors[0] : {
-    fullName: "Dr. Alex Chen",
-    role: "AI & SaaS Expert",
-    photo: "https://placehold.co/80x80/A7F3D0/065F46?text=AC",
-    bio: "Dr. Chen is a seasoned entrepreneur with 15+ years in AI product development and scaling SaaS businesses. Passionate about guiding early-stage startups.",
-    latestAdvice: "Focus on your core value proposition and iterate quickly based on user feedback. Don't be afraid to pivot!",
-    email: "alex.chen@example.com",
-    linkedin: "https://linkedin.com/in/alexchen"
+    fullName: 'No Mentor Assigned',
+    role: 'Mentor',
+    email: '',
+    linkedin: '',
+    photo: '',
+    latestAdvice: 'No mentor has been assigned yet. Please contact your tenant admin.'
   };
+
+  console.log('StartupDashboard: Current mentors state:', mentors);
+  console.log('StartupDashboard: Mentors loading:', mentorsLoading);
+  console.log('StartupDashboard: Current mentor:', currentMentor);
 
   const mockNotifications = [
     { id: 1, type: "system", icon: <Info size={16} />, message: "Your Q2 progress report is due next week.", time: "2 hours ago" },
@@ -262,14 +266,21 @@ export default function StartupDashboard() {
 
   // Fetch mentors for the startup
   const fetchMentors = async () => {
-    if (!user?.id || !token) return;
+    if (!user?.id || !token) {
+      console.log('fetchMentors: Missing user.id or token');
+      return;
+    }
     
+    console.log('fetchMentors: Starting to fetch mentors for startup:', user.id);
     setMentorsLoading(true);
     try {
       const data = await getMentorsForStartup(token, user.id);
-      setMentors(data.map(a => a.mentor));
+      console.log('fetchMentors: Raw data received:', data);
+      const mentors = data.map(a => a.mentor);
+      console.log('fetchMentors: Processed mentors:', mentors);
+      setMentors(mentors);
     } catch (e) {
-      console.error("Failed to fetch mentors:", e);
+      console.error("fetchMentors: Failed to fetch mentors:", e);
       setMentors([]);
     } finally {
       setMentorsLoading(false);
@@ -958,8 +969,8 @@ export default function StartupDashboard() {
                   <AnimatedCounter targetValue={dashboardMetrics.complete} suffix="%" />
                   <p className="text-sm font-medium">Profile Complete</p>
                 </div>
-                <div className="p-6 rounded-xl shadow-md bg-pink-100 text-pink-800 flex flex-col items-center justify-center animate-fade-in delay-200 hover:scale-105 transition-transform duration-300">
-                  <Star size={36} className="mb-2 text-pink-600" />
+                <div className="p-6 rounded-xl shadow-md bg-blue-100 text-blue-800 flex flex-col items-center justify-center animate-fade-in delay-200 hover:scale-105 transition-transform duration-300">
+                  <Star size={36} className="mb-2 text-blue-600" />
                   <AnimatedCounter targetValue={dashboardMetrics.uniqueViews} />
                   <p className="text-sm font-medium">Unique Views</p>
                 </div>
@@ -1060,6 +1071,134 @@ export default function StartupDashboard() {
                   </a>
                 </div>
               </div>
+
+              {/* Enhanced Assigned Mentors Section - Only in Dashboard */}
+              {mentors.length > 0 && (
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-8 rounded-2xl shadow-xl border border-blue-100 animate-fade-in">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-2xl font-bold text-brand-dark flex items-center">
+                      <Users size={28} className="mr-3 text-purple-600" />
+                      Your Assigned Mentors
+                    </h3>
+                    <div className="bg-purple-100 text-purple-700 px-4 py-2 rounded-full text-sm font-semibold">
+                      {mentors.filter(Boolean).length} Mentor{mentors.filter(Boolean).length > 1 ? 's' : ''}
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {mentors.filter(Boolean).map((mentor, index) => (
+                      <div key={(mentor && mentor.id) || index} className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                        <div className="flex items-center mb-4">
+                          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-blue-500 text-white font-bold flex items-center justify-center text-xl mr-4 shadow-lg">
+                            {mentor && mentor.fullName ? mentor.fullName.substring(0, 2).toUpperCase() : (mentor && mentor.email ? mentor.email.substring(0, 2).toUpperCase() : 'MN')}
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-bold text-gray-900 text-lg">{mentor && mentor.fullName ? mentor.fullName : (mentor && mentor.email ? mentor.email : "No Name")}</h4>
+                            <p className="text-sm text-gray-600">{mentor && mentor.email ? mentor.email : "No Email"}</p>
+                            {mentor && mentor.role && (
+                              <p className="text-xs text-blue-600 font-medium mt-1">{mentor.role}</p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Mentor Bio/Description */}
+                        {mentor && mentor.bio && (
+                          <p className="text-sm text-gray-700 mb-4 italic">"{mentor.bio}"</p>
+                        )}
+                        
+                        {/* Contact & Social Links */}
+                        <div className="space-y-3">
+                          {mentor && mentor.email && (
+                            <a 
+                              href={`mailto:${mentor.email}`} 
+                              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-md"
+                            >
+                              <Mail size={16} className="mr-2" /> Email Mentor
+                            </a>
+                          )}
+                          
+                          <div className="flex gap-2">
+                            {mentor && mentor.linkedin && (
+                              <a 
+                                href={mentor.linkedin}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center hover:bg-blue-700 transition-colors"
+                              >
+                                <Linkedin size={14} className="mr-1" /> LinkedIn
+                              </a>
+                            )}
+                            
+                            {mentor && mentor.twitter && (
+                              <a 
+                                href={mentor.twitter}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 bg-blue-400 text-white px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center hover:bg-blue-500 transition-colors"
+                              >
+                                <Twitter size={14} className="mr-1" /> Twitter
+                              </a>
+                            )}
+                            
+                            {mentor && mentor.website && (
+                              <a 
+                                href={mentor.website}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 bg-gray-600 text-white px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center hover:bg-gray-700 transition-colors"
+                              >
+                                <Globe size={14} className="mr-1" /> Website
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Latest Advice */}
+                        {mentor && mentor.latestAdvice && (
+                          <div className="mt-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+                            <p className="text-xs text-blue-800 font-medium mb-1">Latest Advice</p>
+                            <p className="text-sm text-gray-700 italic">"{mentor.latestAdvice}"</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {mentorsLoading && (
+                    <div className="text-center py-8">
+                      <div className="inline-flex items-center gap-3">
+                        <Loader2 className="animate-spin text-purple-600" size={24} />
+                        <p className="text-gray-600 font-medium">Loading your mentors...</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* No Mentors Assigned Section - Only in Dashboard */}
+              {!mentorsLoading && mentors.length === 0 && (
+                <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 animate-fade-in">
+                  <h3 className="text-xl font-bold text-brand-dark mb-5 flex items-center">
+                    <GraduationCap size={24} className="mr-3 text-gray-600" />
+                    Mentor Assignment
+                  </h3>
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <GraduationCap size={32} className="text-gray-400" />
+                    </div>
+                    <h4 className="text-lg font-semibold text-gray-700 mb-2">No Mentors Assigned Yet</h4>
+                    <p className="text-gray-600 mb-4">You haven't been assigned any mentors yet. Please contact your tenant admin to get assigned a mentor.</p>
+                    <div className="flex justify-center gap-4">
+                      <button 
+                        onClick={() => setCurrentPage('myMentor')} 
+                        className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                      >
+                        View Mentor Page
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1131,7 +1270,7 @@ export default function StartupDashboard() {
 
                   {/* --- EDITABLE FOUNDERS & TEAM SECTION --- */}
                   <h4 className="text-xl font-bold text-brand-dark mt-8 mb-4 flex items-center">
-                    <Users size={20} className="mr-2 text-pink-600" /> Founders & Team
+                                            <Users size={20} className="mr-2 text-blue-600" /> Founders & Team
                   </h4>
                   <div className="space-y-4 mb-6">
                     {teamMembers.map((member, index) => (
@@ -1393,7 +1532,7 @@ export default function StartupDashboard() {
                   {/* --- DISPLAY FOUNDERS & TEAM SECTION --- */}
                   <div className="mt-8 pt-6 border-t border-dashed border-gray-200">
                     <h3 className="text-xl font-bold text-brand-dark mb-4 flex items-center">
-                      <Users size={24} className="mr-3 text-pink-600" /> Founders & Team
+                                              <Users size={24} className="mr-3 text-blue-600" /> Founders & Team
                     </h3>
                     {teamMembers.length > 0 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -1460,162 +1599,7 @@ export default function StartupDashboard() {
 
           {currentPage === 'incubationProgress' && (
             <div className="animate-fade-in">
-              <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center">
-                <CheckCircle2 size={28} className="mr-3 text-brand-primary" /> Incubation Progress Tracker
-              </h3>
-
-              {/* Progress Error Display */}
-              {progressError && (
-                <div className="flex items-center p-4 mb-6 bg-red-100/80 text-red-700 rounded-xl shadow-md border border-red-300 animate-fade-in">
-                  <XCircle className="mr-3 text-red-600" size={20} /> <span className="font-medium text-base">{progressError}</span>
-                </div>
-              )}
-
-              {/* Template Selection */}
-              {templates.length > 0 && (
-                <div className="mb-8 p-6 bg-white rounded-2xl shadow-lg border border-gray-100">
-                  <h4 className="text-xl font-bold text-brand-dark mb-4">Select Progress Template</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {templates.map(template => (
-                      <div 
-                        key={template.id} 
-                        className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
-                          selectedTemplate?.id === template.id 
-                            ? 'border-brand-primary bg-blue-50' 
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                        onClick={() => handleSelectTemplate(template)}
-                      >
-                        <h5 className="font-semibold text-gray-900 mb-2">{template.name}</h5>
-                        <p className="text-sm text-gray-600">{template.description}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Overall Progress Bar */}
-              {selectedTemplate && (
-                <div className="mb-8 p-6 bg-white rounded-2xl shadow-lg border border-gray-100 flex items-center justify-between">
-                  <div>
-                    <h4 className="text-xl font-bold text-brand-dark mb-2">Overall Progress: {selectedTemplate.name}</h4>
-                    <p className="text-sm text-gray-600">
-                      {getProgressStats().completed} of {getProgressStats().total} tasks completed
-                    </p>
-                  </div>
-                  <CircularProgressBar progress={getProgressStats().percentage} size={120} strokeWidth={12} />
-                </div>
-              )}
-
-              {/* Loading State */}
-              {progressLoading && (
-                <div className="flex items-center justify-center p-8">
-                  <Loader2 className="animate-spin text-brand-primary mr-3" size={24} />
-                  <span className="text-gray-600">Loading progress data...</span>
-                </div>
-              )}
-
-              {/* Phases and Tasks */}
-              {selectedTemplate && phases.length > 0 && !progressLoading && (
-                <div className="space-y-6">
-                  {phases.map(phase => (
-                    <div key={phase.id} className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-                      <div
-                        onClick={() => togglePhase(phase.id)}
-                        className="p-6 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
-                      >
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <h4 className="text-lg font-bold text-gray-900">{phase.name}</h4>
-                            <p className="text-sm text-gray-600 mt-1">{phase.description}</p>
-                          </div>
-                          <span className="text-sm text-gray-600">
-                            {expandedPhases.includes(phase.id) ? '▼' : '▶'}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      {expandedPhases.includes(phase.id) && (
-                        <div className="p-6">
-                          {!tasksByPhase[phase.id] && (
-                            <button
-                              onClick={() => fetchTasks(phase.id)}
-                              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                            >
-                              Load Tasks
-                            </button>
-                          )}
-                          
-                          {tasksByPhase[phase.id] && (
-                            <div className="space-y-4">
-                              {tasksByPhase[phase.id].map(task => (
-                                <div key={task.id} className="border border-gray-200 rounded-lg p-4">
-                                  <div className="flex justify-between items-start">
-                                    <div className="flex-1">
-                                      <h5 className="font-semibold text-gray-900 mb-2">{task.name}</h5>
-                                      <p className="text-sm text-gray-600 mb-3">{task.description}</p>
-                                      <div className="flex items-center">
-                                        <span className={`px-3 py-1 text-xs rounded-full font-semibold ${
-                                          task.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
-                                          task.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
-                                          'bg-gray-100 text-gray-800'
-                                        }`}>
-                                          {task.status}
-                                        </span>
-                                      </div>
-                                    </div>
-                                    
-                                    <div className="ml-4">
-                                      <input
-                                        type="file"
-                                        onChange={(e) => {
-                                          const file = e.target.files[0];
-                                          if (file) handleFileUpload(file, phase.id, task.id);
-                                        }}
-                                        className="hidden"
-                                        id={`file-${task.id}`}
-                                      />
-                                      <label
-                                        htmlFor={`file-${task.id}`}
-                                        className="bg-brand-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm cursor-pointer transition-colors"
-                                      >
-                                        Upload
-                                      </label>
-                                      {uploadStatus[`${phase.id}-${task.id}`] && (
-                                        <div className="text-xs text-gray-600 mt-2 text-center">
-                                          {uploadStatus[`${phase.id}-${task.id}`]}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* No Template Selected */}
-              {!selectedTemplate && templates.length > 0 && !progressLoading && (
-                <div className="text-center py-12">
-                  <CheckCircle2 size={48} className="mx-auto text-gray-400 mb-4" />
-                  <h4 className="text-lg font-semibold text-gray-700 mb-2">Select a Template</h4>
-                  <p className="text-gray-600">Choose a progress template above to view your incubation progress.</p>
-                </div>
-              )}
-
-              {/* No Templates Available */}
-              {templates.length === 0 && !progressLoading && (
-                <div className="text-center py-12">
-                  <CheckCircle2 size={48} className="mx-auto text-gray-400 mb-4" />
-                  <h4 className="text-lg font-semibold text-gray-700 mb-2">No Progress Templates Available</h4>
-                  <p className="text-gray-600">No progress templates have been assigned to your startup yet.</p>
-                </div>
-              )}
+              <StartupProgressTracking userId={user?.id} token={token} />
             </div>
           )}
 
@@ -1648,6 +1632,132 @@ export default function StartupDashboard() {
                   </a>
                 </div>
               </div>
+
+              {/* Enhanced All Assigned Mentors Section */}
+              {mentors.length > 0 && (
+                <div className="mt-8 bg-gradient-to-br from-blue-50 to-blue-100 p-8 rounded-2xl shadow-xl border border-blue-100">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-2xl font-bold text-brand-dark flex items-center">
+                      <Users size={28} className="mr-3 text-purple-600" />
+                      All Your Assigned Mentors
+                    </h3>
+                    <div className="bg-purple-100 text-purple-700 px-4 py-2 rounded-full text-sm font-semibold">
+                      {mentors.filter(Boolean).length} Mentor{mentors.filter(Boolean).length > 1 ? 's' : ''}
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {mentors.filter(Boolean).map((mentor, index) => (
+                      <div key={(mentor && mentor.id) || index} className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                        <div className="flex items-center mb-4">
+                          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-blue-500 text-white font-bold flex items-center justify-center text-xl mr-4 shadow-lg">
+                            {mentor && mentor.fullName ? mentor.fullName.substring(0, 2).toUpperCase() : (mentor && mentor.email ? mentor.email.substring(0, 2).toUpperCase() : 'MN')}
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-bold text-gray-900 text-lg">{mentor && mentor.fullName ? mentor.fullName : (mentor && mentor.email ? mentor.email : "No Name")}</h4>
+                            <p className="text-sm text-gray-600">{mentor && mentor.email ? mentor.email : "No Email"}</p>
+                            {mentor && mentor.role && (
+                              <p className="text-xs text-purple-600 font-medium mt-1">{mentor.role}</p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Mentor Bio/Description */}
+                        {mentor && mentor.bio && (
+                          <p className="text-sm text-gray-700 mb-4 italic">"{mentor.bio}"</p>
+                        )}
+                        
+                        {/* Contact & Social Links */}
+                        <div className="space-y-3">
+                          {mentor && mentor.email && (
+                            <a 
+                              href={`mailto:${mentor.email}`} 
+                              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-md"
+                            >
+                              <Mail size={16} className="mr-2" /> Email Mentor
+                            </a>
+                          )}
+                          
+                          <div className="flex gap-2">
+                            {mentor && mentor.linkedin && (
+                              <a 
+                                href={mentor.linkedin}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center hover:bg-blue-700 transition-colors"
+                              >
+                                <Linkedin size={14} className="mr-1" /> LinkedIn
+                              </a>
+                            )}
+                            
+                            {mentor && mentor.twitter && (
+                              <a 
+                                href={mentor.twitter}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 bg-blue-400 text-white px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center hover:bg-blue-500 transition-colors"
+                              >
+                                <Twitter size={14} className="mr-1" /> Twitter
+                              </a>
+                            )}
+                            
+                            {mentor && mentor.website && (
+                              <a 
+                                href={mentor.website}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 bg-gray-600 text-white px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center hover:bg-gray-700 transition-colors"
+                              >
+                                <Globe size={14} className="mr-1" /> Website
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Latest Advice */}
+                        {mentor && mentor.latestAdvice && (
+                          <div className="mt-4 p-3 bg-purple-50 rounded-lg border-l-4 border-purple-400">
+                            <p className="text-xs text-purple-800 font-medium mb-1">Latest Advice</p>
+                            <p className="text-sm text-gray-700 italic">"{mentor.latestAdvice}"</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {mentorsLoading && (
+                    <div className="text-center py-8">
+                      <div className="inline-flex items-center gap-3">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+                        <p className="text-gray-600 font-medium">Loading your mentors...</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* No Mentors Assigned Section */}
+              {!mentorsLoading && mentors.length === 0 && (
+                <div className="mt-8 bg-white p-8 rounded-2xl shadow-lg border border-gray-100">
+                  <h3 className="text-xl font-bold text-brand-dark mb-5 flex items-center">
+                    <GraduationCap size={24} className="mr-3 text-gray-600" />
+                    Mentor Assignments
+                  </h3>
+                  <div className="text-center py-8">
+                    <GraduationCap size={48} className="mx-auto text-gray-400 mb-4" />
+                    <h4 className="text-lg font-semibold text-gray-700 mb-2">No Mentors Assigned Yet</h4>
+                    <p className="text-gray-600 mb-4">
+                      You haven't been assigned any mentors yet. Mentors will be assigned by your tenant administrator.
+                    </p>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <p className="text-sm text-blue-800">
+                        <strong>What to expect:</strong> Once assigned, mentors will help guide your startup's progress,
+                        provide feedback on your submissions, and offer valuable insights for your growth.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1744,72 +1854,7 @@ export default function StartupDashboard() {
             </div>
           )}
 
-          {/* All Assigned Mentors Section */}
-          {mentors.length > 0 && (
-            <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 animate-fade-in">
-              <h3 className="text-xl font-bold text-brand-dark mb-5 flex items-center">
-                <Users size={24} className="mr-3 text-purple-600" />
-                All Assigned Mentors
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {mentors.filter(Boolean).map((mentor, index) => (
-                  <div key={(mentor && mentor.id) || index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                    <div className="flex items-center mb-3">
-                      <div className="w-12 h-12 rounded-full bg-purple-200 text-purple-800 font-bold flex items-center justify-center text-lg mr-3">
-                        {mentor && mentor.fullName ? mentor.fullName.substring(0, 2).toUpperCase() : (mentor && mentor.email ? mentor.email.substring(0, 2).toUpperCase() : 'MN')}
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-gray-900">{mentor && mentor.fullName ? mentor.fullName : (mentor && mentor.email ? mentor.email : "No Name")}</h4>
-                        <p className="text-sm text-gray-600">{mentor && mentor.email ? mentor.email : "No Email"}</p>
-                      </div>
-                    </div>
-                    {mentor && mentor.role && (
-                      <p className="text-sm text-gray-600 mb-3">{mentor.role}</p>
-                    )}
-                    {mentor && mentor.email && (
-                      <div className="flex space-x-2">
-                        <a 
-                          href={`mailto:${mentor.email}`} 
-                          className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium flex items-center hover:bg-purple-200 transition-colors"
-                        >
-                          <Mail size={12} className="mr-1" /> Message
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-              {mentorsLoading && (
-                <div className="text-center py-4">
-                  <Loader2 className="animate-spin mx-auto text-purple-600" size={24} />
-                  <p className="text-sm text-gray-600 mt-2">Loading mentors...</p>
-                </div>
-              )}
-            </div>
-          )}
 
-          {/* No Mentors Assigned Section */}
-          {!mentorsLoading && mentors.length === 0 && (
-            <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 animate-fade-in">
-              <h3 className="text-xl font-bold text-brand-dark mb-5 flex items-center">
-                <GraduationCap size={24} className="mr-3 text-gray-600" />
-                Mentor Assignment
-              </h3>
-              <div className="text-center py-8">
-                <GraduationCap size={48} className="mx-auto text-gray-400 mb-4" />
-                <h4 className="text-lg font-semibold text-gray-700 mb-2">No Mentors Assigned Yet</h4>
-                <p className="text-gray-600 mb-4">
-                  You haven't been assigned any mentors yet. Mentors will be assigned by your tenant administrator.
-                </p>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-sm text-blue-800">
-                    <strong>What to expect:</strong> Once assigned, mentors will help guide your startup's progress, 
-                    provide feedback on your submissions, and offer valuable insights for your growth.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
