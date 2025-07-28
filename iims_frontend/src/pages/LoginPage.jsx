@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { login as loginApi } from "../api/users";
-import { useNavigate } from "react-router-dom";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -9,7 +8,6 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
-  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -27,27 +25,8 @@ export default function LoginPage() {
         fullName: data.fullName,
         tenantId: data.tenantId || null
       };
+      // The login function in useAuth will handle the redirection
       login(data.token, userData);
-      // Redirect based on role
-      if (userData.role === "SUPER_ADMIN") {
-        navigate("/super-admin/dashboard");
-      } else if (userData.role === "TENANT_ADMIN") {
-        navigate("/tenant-admin/dashboard");
-      } else if (userData.role === "STARTUP") {
-        navigate(`/startup-dashboard/${userData.id}`);
-      } else if (userData.role === "MENTOR") {
-        navigate(`/mentor-dashboard/${userData.id}`);
-      } else if (userData.role === "COACH") {
-        navigate(`/coach-dashboard/${userData.id}`);
-      } else if (userData.role === "FACILITATOR") {
-        navigate(`/facilitator-dashboard/${userData.id}`);
-      } else if (userData.role === "INVESTOR") {
-        navigate(`/investor-dashboard/${userData.id}`);
-      } else if (userData.role === "ALUMNI") {
-        navigate(`/alumni-dashboard/${userData.id}`);
-      } else {
-        navigate("/");
-      }
     } catch (error) {
       console.error("Login error:", error);
       setError(error.message || "Invalid credentials");

@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { getTenantUsersByRole } from '../api/users';
 import { assignMentor, getMentorsForStartup, unassignMentor } from '../api/mentorAssignment';
-import { FaUserTie, FaUsers, FaPlus, FaTrash, FaUserCheck } from 'react-icons/fa';
+import { FaUserTie, FaUsers, FaPlus, FaTrash, FaUserCheck, FaHome } from 'react-icons/fa';
+import { Link } from 'react-router-dom';
 
 export default function StartupManagement() {
   const { user, token } = useAuth();
@@ -85,7 +86,17 @@ export default function StartupManagement() {
       <div className="max-w-6xl mx-auto py-8 px-4">
         <div className="bg-white rounded-lg shadow-lg p-6">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-900">Startup Management</h1>
+            <div className="flex items-center gap-4">
+              <Link
+                to="/tenant-admin/dashboard"
+                className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium transition-colors"
+              >
+                <FaHome className="w-5 h-5" />
+                Back to Dashboard
+              </Link>
+              <div className="h-6 w-px bg-gray-300"></div>
+              <h1 className="text-3xl font-bold text-gray-900">Startup Management</h1>
+            </div>
             <div className="flex items-center space-x-4">
               <div className="text-sm text-gray-600">
                 <FaUsers className="inline mr-2" />

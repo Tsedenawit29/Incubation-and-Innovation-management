@@ -54,10 +54,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/tenant/**").hasRole("SUPER_ADMIN")
                         .requestMatchers("/api/tenant-admin/**").hasRole("TENANT_ADMIN")
                         
-                        // Landing page endpoints
-                        .requestMatchers(HttpMethod.GET, "/api/tenant/landing-page/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/tenants/*/landing-page/public").permitAll()
-                        .requestMatchers("/api/tenant/landing-page/**").hasAnyRole("SUPER_ADMIN", "TENANT_ADMIN")
+                        // Landing page endpoints - ALL GET requests to landing page should be public
+                        .requestMatchers(HttpMethod.GET, "/api/tenants/*/landing-page/**").permitAll()
+                        .requestMatchers("/api/tenants/*/landing-page/**").hasAnyRole("SUPER_ADMIN", "TENANT_ADMIN")
                         
                         // Progress tracking endpoints
                         .requestMatchers(HttpMethod.GET, "/api/progresstracking/templates/**").hasAnyRole("TENANT_ADMIN", "STARTUP", "MENTOR")

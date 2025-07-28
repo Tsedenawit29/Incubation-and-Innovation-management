@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { FaTimes, FaSave, FaSpinner } from 'react-icons/fa';
 
-// Template Form Component
-export function TemplateForm({ onSubmit, initialData, onCancel }) {
+export const TemplateForm = ({ template, onSubmit, onCancel, loading }) => {
   const [form, setForm] = useState({
-    name: '',
-    description: '',
-    ...initialData
+    name: template?.name || '',
+    description: template?.description || '',
+    tenantId: template?.tenantId || ''
   });
 
   const handleSubmit = (e) => {
@@ -14,53 +14,70 @@ export function TemplateForm({ onSubmit, initialData, onCancel }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Name</label>
-        <input
-          type="text"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        />
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-bold text-gray-900">
+            {template ? 'Edit Template' : 'Create Template'}
+          </h3>
+          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
+            <FaTimes size={20} />
+          </button>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Template Name</label>
+            <input
+              type="text"
+              value={form.name}
+              onChange={(e) => setForm({...form, name: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter template name"
+              required
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm({...form, description: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              rows="3"
+              placeholder="Enter template description"
+            />
+          </div>
+          
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            >
+              {loading ? <FaSpinner className="animate-spin" /> : <FaSave />}
+              {template ? 'Update' : 'Create'}
+            </button>
+          </div>
+        </form>
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Description</label>
-        <textarea
-          value={form.description}
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
-          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          rows={3}
-          required
-        />
-      </div>
-      <div className="flex justify-end space-x-3">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          className="px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700"
-        >
-          {initialData ? 'Update' : 'Create'}
-        </button>
-      </div>
-    </form>
+    </div>
   );
-}
+};
 
-// Phase Form Component
-export function PhaseForm({ onSubmit, initialData, onCancel }) {
+export const PhaseForm = ({ phase, templateId, onSubmit, onCancel, loading }) => {
   const [form, setForm] = useState({
-    name: '',
-    description: '',
-    orderIndex: 1,
-    ...initialData
+    name: phase?.name || '',
+    description: phase?.description || '',
+    orderIndex: phase?.orderIndex || 1,
+    templateId: templateId
   });
 
   const handleSubmit = (e) => {
@@ -69,64 +86,85 @@ export function PhaseForm({ onSubmit, initialData, onCancel }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Name</label>
-        <input
-          type="text"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        />
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-bold text-gray-900">
+            {phase ? 'Edit Phase' : 'Create Phase'}
+          </h3>
+          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
+            <FaTimes size={20} />
+          </button>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Phase Name</label>
+            <input
+              type="text"
+              value={form.name}
+              onChange={(e) => setForm({...form, name: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter phase name"
+              required
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm({...form, description: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              rows="3"
+              placeholder="Enter phase description"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Order Index</label>
+            <input
+              type="number"
+              value={form.orderIndex}
+              onChange={(e) => setForm({...form, orderIndex: parseInt(e.target.value)})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              min="1"
+              required
+            />
+          </div>
+          
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            >
+              {loading ? <FaSpinner className="animate-spin" /> : <FaSave />}
+              {phase ? 'Update' : 'Create'}
+            </button>
+          </div>
+        </form>
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Description</label>
-        <textarea
-          value={form.description}
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
-          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          rows={3}
-          required
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Order Index</label>
-        <input
-          type="number"
-          value={form.orderIndex}
-          onChange={(e) => setForm({ ...form, orderIndex: parseInt(e.target.value) })}
-          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          min="1"
-          required
-        />
-      </div>
-      <div className="flex justify-end space-x-3">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          className="px-4 py-2 bg-green-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-green-700"
-        >
-          {initialData ? 'Update' : 'Create'}
-        </button>
-      </div>
-    </form>
+    </div>
   );
-}
+};
 
-// Task Form Component
-export function TaskForm({ onSubmit, initialData, onCancel }) {
+export const TaskForm = ({ task, phaseId, users, onSubmit, onCancel, loading }) => {
   const [form, setForm] = useState({
-    name: '',
-    description: '',
-    dueDays: 7,
-    ...initialData
+    taskName: task?.taskName || task?.name || '',
+    description: task?.description || '',
+    dueDays: task?.dueDays || 7,
+    dueDate: task?.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
+    orderIndex: task?.orderIndex || 1,
+    phaseId: phaseId,
+    mentorId: task?.mentorId || ''
   });
 
   const handleSubmit = (e) => {
@@ -135,63 +173,120 @@ export function TaskForm({ onSubmit, initialData, onCancel }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Name</label>
-        <input
-          type="text"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        />
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-bold text-gray-900">
+            {task ? 'Edit Task' : 'Create Task'}
+          </h3>
+          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
+            <FaTimes size={20} />
+          </button>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Task Name</label>
+            <input
+              type="text"
+              value={form.taskName}
+              onChange={(e) => setForm({...form, taskName: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter task name"
+              required
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm({...form, description: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              rows="3"
+              placeholder="Enter task description"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Due Days</label>
+            <input
+              type="number"
+              value={form.dueDays}
+              onChange={(e) => setForm({...form, dueDays: parseInt(e.target.value)})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              min="1"
+              placeholder="Number of days to complete"
+              required
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Due Date (Optional)</label>
+            <input
+              type="date"
+              value={form.dueDate}
+              onChange={(e) => setForm({...form, dueDate: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Assign Mentor (Optional)</label>
+            <select
+              value={form.mentorId}
+              onChange={(e) => setForm({...form, mentorId: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">No mentor assigned</option>
+              {users?.filter(user => user.role === 'MENTOR').map(mentor => (
+                <option key={mentor.id} value={mentor.id}>
+                  {mentor.fullName || mentor.name || mentor.email}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Order Index</label>
+            <input
+              type="number"
+              value={form.orderIndex}
+              onChange={(e) => setForm({...form, orderIndex: parseInt(e.target.value)})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              min="1"
+              required
+            />
+          </div>
+          
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            >
+              {loading ? <FaSpinner className="animate-spin" /> : <FaSave />}
+              {task ? 'Update' : 'Create'}
+            </button>
+          </div>
+        </form>
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Description</label>
-        <textarea
-          value={form.description}
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
-          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          rows={3}
-          required
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Due Days</label>
-        <input
-          type="number"
-          value={form.dueDays}
-          onChange={(e) => setForm({ ...form, dueDays: parseInt(e.target.value) })}
-          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          min="1"
-          required
-        />
-      </div>
-      <div className="flex justify-end space-x-3">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          className="px-4 py-2 bg-purple-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-purple-700"
-        >
-          {initialData ? 'Update' : 'Create'}
-        </button>
-      </div>
-    </form>
+    </div>
   );
-}
+};
 
-// Assignment Form Component
-export function AssignmentForm({ onSubmit, templates, onCancel }) {
+export const AssignmentForm = ({ templates, users, onSubmit, onCancel, loading }) => {
   const [form, setForm] = useState({
     templateId: '',
     userId: '',
-    userType: 'STARTUP'
+    assignedBy: ''
   });
 
   const handleSubmit = (e) => {
@@ -200,61 +295,85 @@ export function AssignmentForm({ onSubmit, templates, onCancel }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Template</label>
-        <select
-          value={form.templateId}
-          onChange={(e) => setForm({ ...form, templateId: e.target.value })}
-          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        >
-          <option value="">Select a template</option>
-          {templates.map(template => (
-            <option key={template.id} value={template.id}>
-              {template.name}
-            </option>
-          ))}
-        </select>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-bold text-gray-900">Assign Template to Startup</h3>
+          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
+            <FaTimes size={20} />
+          </button>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <p className="text-sm text-gray-600 mb-4">
+            Assign a progress tracking template to a startup. The startup will be able to view and complete tasks from this template.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Progress Template</label>
+            <select
+              value={form.templateId}
+              onChange={(e) => setForm({...form, templateId: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              required
+            >
+              <option value="">Select a progress template</option>
+              {templates.map(template => (
+                <option key={template.id} value={template.id}>
+                  {template.name}
+                  {template.description && ` - ${template.description}`}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Startup</label>
+            <select
+              value={form.userId}
+              onChange={(e) => setForm({...form, userId: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              required
+            >
+              <option value="">Select a startup</option>
+              {users.length === 0 ? (
+                <option value="" disabled>No users available</option>
+              ) : (
+                users.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.fullName || user.name || user.email} 
+                    {user.startupName && ` - ${user.startupName}`}
+                    {!user.fullName && !user.name && !user.startupName && ` (${user.email})`}
+                    {user.role && ` [${user.role}]`}
+                  </option>
+                ))
+              )}
+            </select>
+            {users.length === 0 && (
+              <p className="text-sm text-red-600 mt-1">
+                No users found. Please ensure there are users registered in the system.
+              </p>
+            )}
+          </div>
+          
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            >
+              {loading ? <FaSpinner className="animate-spin" /> : <FaSave />}
+              Assign
+            </button>
+          </div>
+        </form>
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700">User Type</label>
-        <select
-          value={form.userType}
-          onChange={(e) => setForm({ ...form, userType: e.target.value })}
-          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        >
-          <option value="STARTUP">Startup</option>
-          <option value="MENTOR">Mentor</option>
-        </select>
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700">User ID</label>
-        <input
-          type="text"
-          value={form.userId}
-          onChange={(e) => setForm({ ...form, userId: e.target.value })}
-          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Enter user ID"
-          required
-        />
-      </div>
-      <div className="flex justify-end space-x-3">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          className="px-4 py-2 bg-indigo-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-indigo-700"
-        >
-          Assign
-        </button>
-      </div>
-    </form>
+    </div>
   );
-} 
+}; 

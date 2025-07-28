@@ -19,6 +19,7 @@ import FacilitatorDashboard from './pages/FacilitatorDashboard';
 import InvestorDashboard from './pages/InvestorDashboard';
 import AlumniDashboard from './pages/AlumniDashboard';
 import LandingPageManagement from './pages/LandingPageManagement';
+import PublicLandingPage from './pages/PublicLandingPage';
 import StartupManagement from './pages/StartupManagement';
 import './App.css';
 
@@ -140,8 +141,14 @@ function App() {
             <Route path="/apply-tenant" element={<TenantApplicationForm />} />
             <Route path="/register-admin" element={<AdminRegistrationForm />} />
             <Route path="/register-admin/:tenantId" element={<AdminRegistrationForm />} />
-            {/* Default redirect */}
-            <Route path="/" element={<LandingPage />} />
+            {/* Public Landing Page */}
+            <Route path="/public-landing/:tenantId" element={<PublicLandingPage />} />
+            {/* Root route - redirect authenticated users to their dashboard */}
+            <Route path="/" element={
+              <PublicRoute>
+                <LandingPage />
+              </PublicRoute>
+            } />
             {/* Startup Dashboard */}
             <Route
               path="/startup-dashboard/:id"
