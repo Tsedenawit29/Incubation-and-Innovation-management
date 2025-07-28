@@ -1,23 +1,24 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import Navbar from './apps/PortfolioApp/components/Navbar';
 import LoginPage from './pages/LoginPage';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import TenantAdminDashboard from './pages/TenantAdminDashboard';
 import TenantManagementPage from './pages/TenantManagementPage';
 import AdminRequestManagementPage from './pages/AdminRequestManagementPage';
 import TenantApplicationForm from './components/TenantApplicationForm';
-import AdminRegistrationForm from './components/AdminRegistrationForm';
-import LandingPage from './pages/LandingPage';
-import StartupDashboard from './pages/StartupDashboard';
-import StartupProgress from './pages/StartupProgress';
-import MentorDashboard from './pages/MentorDashboard';
-import MentorProgress from './pages/MentorProgress';
-import ProgressTrackingManagement from './pages/ProgressTrackingManagement';
+// import AdminRegistrationForm from './components/AdminRegistrationForm';
+// import StartupDashboard from './pages/startupprogress';
+// import MentorDashboard from './pages/mentorprogress';
 import CoachDashboard from './pages/CoachDashboard';
 import FacilitatorDashboard from './pages/FacilitatorDashboard';
 import InvestorDashboard from './pages/InvestorDashboard';
 import AlumniDashboard from './pages/AlumniDashboard';
+import LandingPageManagement from './pages/LandingPageManagement';
+import PublicLandingPage from './pages/PublicLandingPage';
+import ProgressTrackingManagement from './pages/ProgressTrackingManagement';
+import StartupManagement from './mentorAssignment/StartupManagement';
 import './App.css';
 
 // Protected Route Component
@@ -48,8 +49,8 @@ const PublicRoute = ({ children }) => {
   if (isAuthenticated) {
     if (user?.role === 'SUPER_ADMIN') return <Navigate to="/super-admin/dashboard" replace />;
     if (user?.role === 'TENANT_ADMIN') return <Navigate to="/tenant-admin/dashboard" replace />;
-    if (user?.role === 'STARTUP') return <Navigate to={`/startup-dashboard/${user.id}`} replace />;
-    if (user?.role === 'MENTOR') return <Navigate to={`/mentor-dashboard/${user.id}`} replace />;
+    // if (user?.role === 'STARTUP') return <Navigate to={`/startup-dashboard/${user.id}`} replace />;
+    // if (user?.role === 'MENTOR') return <Navigate to={`/mentor-dashboard/${user.id}`} replace />;
     if (user?.role === 'COACH') return <Navigate to={`/coach-dashboard/${user.id}`} replace />;
     if (user?.role === 'FACILITATOR') return <Navigate to={`/facilitator-dashboard/${user.id}`} replace />;
     if (user?.role === 'INVESTOR') return <Navigate to={`/investor-dashboard/${user.id}`} replace />;
@@ -59,11 +60,33 @@ const PublicRoute = ({ children }) => {
   return children;
 };
 
+function AppNavbar() {
+  const { isAuthenticated, user } = useAuth();
+  // Show Sign Up only on /public-landing/:tenantId
+  const location = useLocation();
+  const showSignUp = location.pathname.startsWith('/public-landing/');
+
+  // Professional management links for tenant admins
+  let managementLinks = [];
+  if (isAuthenticated && user?.role === 'TENANT_ADMIN') {
+    managementLinks = [
+      { label: 'Dashboard', to: '/tenant-admin/dashboard' },
+      { label: 'Startup Management', to: '/tenant-admin/startup-management' },
+      { label: 'Progress Tracking', to: `/tenant-admin/${user.tenantId}/progress-tracking-management` },
+      { label: 'Landing Page', to: `/tenant-admin/${user.tenantId}/landing-page-management` },
+    ];
+  }
+  return (
+    <Navbar showSignUp={showSignUp} managementLinks={managementLinks} />
+  );
+}
+
 function App() {
   return (
     <AuthProvider>
       <Router>
         <div className="App min-h-screen bg-gray-50">
+          {/* <AppNavbar /> */}
           <Routes>
             {/* Public Routes */}
             <Route 
@@ -113,53 +136,24 @@ function App() {
             <Route path="/apply-tenant" element={<TenantApplicationForm />} />
             <Route path="/register-admin" element={<AdminRegistrationForm />} />
             <Route path="/register-admin/:tenantId" element={<AdminRegistrationForm />} />
-            {/* Default redirect */}
-            <Route path="/" element={<LandingPage />} />
             {/* Startup Dashboard */}
-            <Route
+            {/* <Route
               path="/startup-dashboard/:id"
               element={
                 <ProtectedRoute role="STARTUP">
                   <StartupDashboard />
                 </ProtectedRoute>
               }
-            />
-            {/* Startup Progress */}
-            <Route
-              path="/startup-progress/:id"
-              element={
-                <ProtectedRoute role="STARTUP">
-                  <StartupProgress />
-                </ProtectedRoute>
-              }
-            />
+            /> */}
             {/* Mentor Dashboard */}
-            <Route
+            {/* <Route
               path="/mentor-dashboard/:id"
               element={
                 <ProtectedRoute role="MENTOR">
                   <MentorDashboard />
                 </ProtectedRoute>
               }
-            />
-            {/* Mentor Progress */}
-            <Route
-              path="/mentor-progress/:id"
-              element={
-                <ProtectedRoute role="MENTOR">
-                  <MentorProgress />
-                </ProtectedRoute>
-              }
-            />
-            {/* Progress Tracking Management */}
-            <Route
-              path="/progress-tracking-management/:tenantId"
-              element={
-                <ProtectedRoute role="TENANT_ADMIN">
-                  <ProgressTrackingManagement />
-                </ProtectedRoute>
-              }
-            />
+            /> */}
             {/* Coach Dashboard */}
             <Route
               path="/coach-dashboard/:id"
@@ -196,6 +190,28 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            {/* Landing Page Management */}
+            <Route path="/tenant-admin/:tenantId/landing-page-management" element={<LandingPageManagement />} />
+            {/* Progress Tracking Management */}
+            <Route
+              path="/tenant-admin/:tenantId/progress-tracking-management"
+              element={
+                <ProtectedRoute role="TENANT_ADMIN">
+                  <ProgressTrackingManagement />
+                </ProtectedRoute>
+              }
+            />
+            {/* Startup Management for Tenant Admin */}
+            <Route
+              path="/tenant-admin/startup-management"
+              element={
+                <ProtectedRoute role="TENANT_ADMIN">
+                  <StartupManagement />
+                </ProtectedRoute>
+              }
+            />
+            {/* Public Landing Page */}
+            <Route path="/public-landing/:tenantId" element={<PublicLandingPage />} />
             {/* Catch all route - must be last */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
