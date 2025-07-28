@@ -18,6 +18,7 @@ export default function LoginPage() {
     
     try {
       const data = await loginApi(email, password);
+      
       console.log("Login response:", data);
       // Use the actual user data from the response
       const userData = {

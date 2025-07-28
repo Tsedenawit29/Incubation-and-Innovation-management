@@ -19,6 +19,8 @@ import org.apache.commons.lang3.RandomStringUtils;
 import com.iims.iims.tenant.entity.Tenant;
 import com.iims.iims.tenant.repository.TenantRepository;
 import com.iims.iims.notification.EmailService;
+import com.iims.iims.mentorassignment.repository.StartupMentorAssignmentRepository;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +30,7 @@ public class UserService implements UserDetailsService {
     private final PasswordEncoder encoder;
     private final EmailService emailService;
     private final TenantRepository tenantRepository;
+    private final StartupMentorAssignmentRepository assignmentRepo;
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
@@ -53,7 +56,11 @@ public class UserService implements UserDetailsService {
         return userRepository.save(user);
     }
 
+    @Transactional
     public void deleteUser(UUID id) {
+        // Remove all mentor assignments where this user is a mentor or startup
+        assignmentRepo.deleteByMentorId(id);
+        assignmentRepo.deleteByStartupId(id);
         userRepository.deleteById(id);
     }
 
@@ -135,11 +142,14 @@ public class UserService implements UserDetailsService {
                 .orElse(null);
         String tenantName = tenant != null ? tenant.getName() : "Your Center";
         // Send email with credentials
-        if (user.getRole() == Role.STARTUP) {
-            emailService.sendStartupCredentialsEmail(user.getEmail(), user.getFullName(), user.getEmail(), rawPassword, tenantName);
-        } else {
-            emailService.sendAdminApprovalEmail(user.getEmail(), user.getFullName(), user.getEmail(), rawPassword, tenantName);
-        }
+        emailService.sendUserAccountEmail(
+            user.getEmail(),
+            user.getFullName(),
+            user.getEmail(),
+            rawPassword,
+            tenantName,
+            user.getRole().toString()
+        );
         // Return user info without password
         user.setPassword(null);
         return user;

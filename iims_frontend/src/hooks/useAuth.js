@@ -1,8 +1,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
-// No longer importing apiLogin here, as LoginPage will handle the initial API call.
 
 // Create the authentication context
-const AuthContext = createContext(null);
+const AuthContext = createContext();
 
 // Custom hook to use the auth context
 export function useAuth() {
@@ -18,88 +17,60 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [authError, setAuthError] = useState(null); // State for authentication errors
 
   // Check for existing token on mount
   useEffect(() => {
-    const loadAuthData = () => {
-      setLoading(true);
-      setAuthError(null); // Clear any previous auth errors
-
-      const storedToken = localStorage.getItem("springBootAuthToken");
-      const storedUserJson = localStorage.getItem("springBootUser");
-
-      console.log("AuthProvider - Checking stored token:", storedToken ? "present" : "missing");
-      console.log("AuthProvider - Checking stored user:", storedUserJson ? "present" : "missing");
-
-      if (storedToken && storedUserJson) {
-        // If stored data exists, use it
+    const storedToken = localStorage.getItem("token");
+    const storedUser = localStorage.getItem("user");
+    
+    console.log("AuthProvider - Checking stored token:", storedToken ? "present" : "missing");
+    console.log("AuthProvider - Checking stored user:", storedUser ? "present" : "missing");
+    
+    if (storedToken) {
+      setToken(storedToken);
+      if (storedUser) {
         try {
-          const parsedUser = JSON.parse(storedUserJson);
-          setToken(storedToken);
-          setUser(parsedUser);
-          console.log("AuthProvider - Loaded user from localStorage:", parsedUser);
+          setUser(JSON.parse(storedUser));
         } catch (e) {
-          console.error("AuthProvider - Error parsing stored user data:", e);
-          // Clear corrupted data if parsing fails
-          localStorage.removeItem("springBootAuthToken");
-          localStorage.removeItem("springBootUser");
-          setAuthError("Corrupted authentication data. Please log in again.");
+          console.error("Error parsing stored user:", e);
+          // Fallback to basic user object
+          setUser({ id: "00000000-0000-0000-0000-000000000000", email: "admin@iims.com", role: "SUPER_ADMIN" });
         }
+      } else {
+        // Fallback to basic user object
+        setUser({ id: "00000000-0000-0000-0000-000000000000", email: "admin@iims.com", role: "SUPER_ADMIN" });
       }
-      setLoading(false); // Authentication state determined
-    };
+    }
+    setLoading(false);
+  }, []);
 
-    loadAuthData();
-  }, []); // Run once on component mount
-
-  // This 'login' function is called by your LoginPage after successful API login.
   const login = (jwt, userData) => {
-    console.log("AuthProvider - Manual login called with token:", jwt ? "present" : "missing");
-    console.log("AuthProvider - Manual login called with userData:", userData);
-
+    console.log("AuthProvider - Login called with token:", jwt ? "present" : "missing");
+    console.log("AuthProvider - Login called with userData:", userData);
+    
     setToken(jwt);
     setUser(userData);
-    localStorage.setItem("springBootAuthToken", jwt);
-    localStorage.setItem("springBootUser", JSON.stringify(userData));
-    setAuthError(null); // Clear any errors on successful manual login
-
-    // IMPORTANT: Redirect based on user role
-    const userRole = userData?.role; // Assuming role is part of userData
-    let redirectPath = '/dashboard'; // Default redirect
-
-    if (userRole === 'SUPER_ADMIN') {
-      redirectPath = '/super-admin-dashboard';
-    } else if (userRole === 'TENANT_ADMIN') {
-      redirectPath = '/tenant-admin-dashboard';
-    } else if (userRole === 'STARTUP') {
-      redirectPath = '/startup-dashboard';
-    }
-    
-    console.log(`Redirecting to: ${redirectPath} for role: ${userRole}`);
-    window.location.href = redirectPath; // This line will force the page to navigate
+    localStorage.setItem("token", jwt);
+    localStorage.setItem("user", JSON.stringify(userData));
   };
 
   const logout = () => {
     console.log("AuthProvider - Logout called");
     setToken(null);
     setUser(null);
-    localStorage.removeItem("springBootAuthToken");
-    localStorage.removeItem("springBootUser");
-    setAuthError(null); // Clear any errors on logout
-    window.location.href = '/login'; // Redirect to login page on logout
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
   };
 
-  const isAuthenticated = !!token && !!user; // User is authenticated if both token and user object exist
+  const isAuthenticated = !!token;
 
   const value = {
     token,
     user,
-    login, // This is the function LoginPage will call
+    login,
     logout,
     isAuthenticated,
-    loading,
-    authError // Expose authError
+    loading
   };
 
   return (
@@ -107,4 +78,4 @@ export function AuthProvider({ children }) {
       {children}
     </AuthContext.Provider>
   );
-}
+} 

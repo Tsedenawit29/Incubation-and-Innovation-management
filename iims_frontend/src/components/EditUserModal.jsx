@@ -2,38 +2,33 @@ import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 
 export default function EditUserModal({ isOpen, onClose, user, onSave }) {
-  const [formData, setFormData] = useState({
-    fullName: '',
-    email: ''
-  });
+  const [formData, setFormData] = useState({ fullName: '', email: '' });
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
 
-  // Pre-fill form data when user changes
+  // Pre-fill form when user changes
   useEffect(() => {
     if (user) {
       setFormData({
         fullName: user.fullName || '',
-        email: user.email || ''
+        email: user.email || '',
       });
     }
   }, [user]);
 
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setSuccess(false);
-    
+    setError('');
     try {
       await onSave(formData);
-      setSuccess(true);
-      // Close modal after a short delay to show success message
-      setTimeout(() => {
         onClose();
-        setSuccess(false);
-      }, 1500);
-    } catch (error) {
-      console.error('Error updating user:', error);
+    } catch (err) {
+      setError(err.message || 'Failed to update user.');
     } finally {
       setLoading(false);
     }
@@ -42,36 +37,29 @@ export default function EditUserModal({ isOpen, onClose, user, onSave }) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Edit User">
       <form onSubmit={handleSubmit} className="space-y-4">
-        {success && (
-          <div className="rounded-md bg-green-50 p-4 mb-4">
-            <div className="text-sm text-green-700">
-              ✅ User updated successfully!
-            </div>
+        {error && (
+          <div className="rounded-md bg-red-50 p-4">
+            <div className="text-sm text-red-700">{error}</div>
           </div>
         )}
-        
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Full Name
-          </label>
+          <label className="block text-sm font-medium text-gray-700">Full Name</label>
           <input
             type="text"
+            name="fullName"
             value={formData.fullName}
-            onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Enter full name (optional)"
+            onChange={handleChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Email
-          </label>
+          <label className="block text-sm font-medium text-gray-700">Email</label>
           <input
             type="email"
+            name="email"
             value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Enter email (optional)"
+            onChange={handleChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
           />
         </div>
         <div className="flex justify-end space-x-3 pt-4">

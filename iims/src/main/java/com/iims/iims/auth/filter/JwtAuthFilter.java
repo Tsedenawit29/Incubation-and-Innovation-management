@@ -16,6 +16,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import java.util.ArrayList;
+import java.util.List;
+import io.jsonwebtoken.Claims;
 
 @Component
 @RequiredArgsConstructor
@@ -61,22 +65,26 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 System.out.println("JWT Filter - Loading user details for: " + userEmail);
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
-                
                 if (jwtService.isTokenValid(jwt, userDetails)) {
                     System.out.println("JWT Filter - Token is valid, setting authentication");
-                    System.out.println("JWT Filter - User details: " + userDetails.getUsername());
-                    System.out.println("JWT Filter - User authorities: " + userDetails.getAuthorities());
-                    
+                    // Extract role from JWT claims
+                    Claims claims = jwtService.extractAllClaims(jwt);
+                    String role = claims.get("role", String.class);
+                    List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+                    if (role != null) {
+                        authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
+                    } else {
+                        authorities.addAll((List<SimpleGrantedAuthority>) userDetails.getAuthorities());
+                    }
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
                             null,
-                            userDetails.getAuthorities()
+                            authorities
                     );
                     authToken.setDetails(
                             new WebAuthenticationDetailsSource().buildDetails(request)
                     );
                     SecurityContextHolder.getContext().setAuthentication(authToken);
-                    
                     System.out.println("JWT Filter - Authentication set successfully");
                     System.out.println("JWT Filter - Current authorities: " + SecurityContextHolder.getContext().getAuthentication().getAuthorities());
                 } else {

@@ -3,9 +3,8 @@ import Navbar from './apps/PortfolioApp/components/Navbar';
 import HeroSection from './apps/PortfolioApp/components/HeroSection';
 import Footer from './apps/shared/components/Footer';
 import Home from './apps/PortfolioApp/pages/Home';
+import Projects from './apps/PortfolioApp/pages/Projects';
 import Contact from './apps/PortfolioApp/pages/Contact';
-import Application from './apps/PortfolioApp/pages/Application';
-import Documentation from './apps/PortfolioApp/pages/Documentation';
 
 const App = () => {
   return (
@@ -22,9 +21,8 @@ const App = () => {
               </>
             }
           />
+          <Route path="/projects" element={<Projects />} />
           <Route path="/contact" element={<Contact />} />
-          <Route path="/application" element={<Application />} />
-          <Route path="/documentation" element={<Documentation />} />
         </Routes>
       </main>
       <Footer />
