@@ -6,6 +6,8 @@ import {
   updateStartupProfile,
   createStartupProfile
 } from "../api/users"; // or from startupProfile.js
+import { getMentorsForStartup } from '../api/mentorAssignment';
+import { getAssignedTemplatesForStartup, getPhases, getTasks, uploadSubmissionFile, createSubmission } from '../api/progresstracking';
 
 // Import Lucide React icons
 import {
@@ -172,23 +174,56 @@ export default function StartupDashboard() {
   const [newDocument, setNewDocument] = useState({ name: '', url: '', fileType: '' });
   // --- END NEW STATES ---
 
+  // --- NEW STATES FOR MENTORS ---
+  const [mentors, setMentors] = useState([]);
+  const [mentorsLoading, setMentorsLoading] = useState(false);
+  // --- END NEW STATES ---
+
+  // --- NEW STATES FOR PROGRESS TRACKING ---
+  const [templates, setTemplates] = useState([]);
+  const [phases, setPhases] = useState([]);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [expandedPhases, setExpandedPhases] = useState([]);
+  const [tasksByPhase, setTasksByPhase] = useState({});
+  const [uploadStatus, setUploadStatus] = useState({});
+  const [progressLoading, setProgressLoading] = useState(false);
+  const [progressError, setProgressError] = useState('');
+  // --- END NEW STATES ---
+
+  // Move getProgressStats definition here to ensure it is defined before use
+  const getProgressStats = () => {
+    if (!selectedTemplate || phases.length === 0) return { completed: 0, total: 0, percentage: 0 };
+    let completed = 0;
+    let total = 0;
+    phases.forEach(phase => {
+      const phaseTasks = tasksByPhase[phase.id] || [];
+      phaseTasks.forEach(task => {
+        total++;
+        if (task.status === 'COMPLETED') completed++;
+      });
+    });
+    return {
+      completed,
+      total,
+      percentage: total > 0 ? Math.round((completed / total) * 100) : 0
+    };
+  };
 
   // Mock data for dashboard elements not directly from profile
   const dashboardMetrics = {
-    incubationProgress: 45, // Example progress for circular chart
+    incubationProgress: getProgressStats().percentage, // Use real progress data
     // Removed other metrics as per request
   };
 
-  const mockMentor = {
-    name: "Dr. Alex Chen",
+  // Get the first assigned mentor or use mock data as fallback
+  const currentMentor = mentors.length > 0 ? mentors[0] : {
+    fullName: "Dr. Alex Chen",
     role: "AI & SaaS Expert",
     photo: "https://placehold.co/80x80/A7F3D0/065F46?text=AC",
     bio: "Dr. Chen is a seasoned entrepreneur with 15+ years in AI product development and scaling SaaS businesses. Passionate about guiding early-stage startups.",
     latestAdvice: "Focus on your core value proposition and iterate quickly based on user feedback. Don't be afraid to pivot!",
-    contact: {
-      email: "alex.chen@example.com",
-      linkedin: "https://linkedin.com/in/alexchen"
-    }
+    email: "alex.chen@example.com",
+    linkedin: "https://linkedin.com/in/alexchen"
   };
 
   const mockNotifications = [
@@ -225,6 +260,100 @@ export default function StartupDashboard() {
     return () => clearInterval(timer);
   }, []);
 
+  // Fetch mentors for the startup
+  const fetchMentors = async () => {
+    if (!user?.id || !token) return;
+    
+    setMentorsLoading(true);
+    try {
+      const data = await getMentorsForStartup(token, user.id);
+      setMentors(data.map(a => a.mentor));
+    } catch (e) {
+      console.error("Failed to fetch mentors:", e);
+      setMentors([]);
+    } finally {
+      setMentorsLoading(false);
+    }
+  };
+
+  // Progress tracking functions
+  const fetchTemplates = async () => {
+    if (!user?.id || !token) return;
+    
+    setProgressLoading(true); 
+    setProgressError('');
+    try {
+      const data = await getAssignedTemplatesForStartup(user.id);
+      // Filter templates by current user's tenantId
+      const filtered = user?.tenantId ? data.filter(t => t.tenantId === user.tenantId) : data;
+      setTemplates(filtered);
+      setSelectedTemplate(null);
+      setPhases([]); // Clear phases
+      setTasksByPhase({});  // Clear tasks
+    } catch (e) {
+      setProgressError('Failed to load templates');
+    } finally {
+      setProgressLoading(false);
+    }
+  };
+
+  const handleSelectTemplate = (template) => {
+    setSelectedTemplate(template);
+    setPhases([]); // Clear old phases
+    setTasksByPhase({});  // Clear old tasks
+    if (template) fetchPhases(template.id);
+  };
+
+  const fetchPhases = async (templateId) => {
+    setProgressLoading(true); 
+    setProgressError('');
+    try {
+      const data = await getPhases(templateId);
+      setPhases(data);
+      setTasksByPhase({}); // Clear tasks for new phases
+    } catch (e) {
+      setProgressError('Failed to load phases');
+    } finally {
+      setProgressLoading(false);
+    }
+  };
+
+  const fetchTasks = async (phaseId) => {
+    setProgressLoading(true); 
+    setProgressError('');
+    try {
+      const data = await getTasks(phaseId);
+      setTasksByPhase(prev => ({ ...prev, [phaseId]: data }));
+    } catch (e) {
+      setProgressError('Failed to load tasks');
+    } finally {
+      setProgressLoading(false);
+    }
+  };
+
+  const togglePhase = (phaseId) => {
+    setExpandedPhases(prev =>
+      prev.includes(phaseId)
+        ? prev.filter(id => id !== phaseId)
+        : [...prev, phaseId]
+    );
+  };
+
+  const handleFileUpload = async (file, phaseId, taskId) => {
+    setUploadStatus(prev => ({ ...prev, [`${phaseId}-${taskId}`]: 'Uploading...' }));
+    try {
+      // Create submission first
+      const submission = await createSubmission(null, taskId, token);
+      // Then upload file
+      await uploadSubmissionFile(file, submission.id, token);
+      setUploadStatus(prev => ({ ...prev, [`${phaseId}-${taskId}`]: 'Uploaded!' }));
+      // Refresh tasks to show updated status
+      fetchTasks(phaseId);
+    } catch (e) {
+      setUploadStatus(prev => ({ ...prev, [`${phaseId}-${taskId}`]: 'Upload failed' }));
+      setProgressError('Failed to upload file');
+    }
+  };
 
   // Fetch or create profile on mount
   useEffect(() => {
@@ -265,6 +394,12 @@ export default function StartupDashboard() {
         setTeamMembers(prof?.teamMembers?.map(tm => ({...tm, id: tm.id})) || []);
         setDocuments(prof?.documents?.map(doc => ({...doc, id: doc.id})) || []);
         console.log("StartupDashboard: Profile fetched successfully.");
+        
+        // Fetch mentors after profile is loaded
+        await fetchMentors();
+        
+        // Fetch progress templates after profile is loaded
+        await fetchTemplates();
       } catch (err) {
         console.error("StartupDashboard: Error fetching profile:", err);
         // Check if the error indicates profile not found or forbidden (due to backend mapping)
@@ -843,10 +978,14 @@ export default function StartupDashboard() {
                     <CheckCircle2 size={24} className="mr-3 text-green-600" /> Incubation Progress
                   </h3>
                   <div className="flex items-center justify-between"> {/* Changed to flex-row for better control */}
-                    <CircularProgressBar progress={dashboardMetrics.incubationProgress} size={100} strokeWidth={10} /> {/* Reduced size and strokeWidth */}
+                    <CircularProgressBar progress={getProgressStats().percentage} size={100} strokeWidth={10} /> {/* Use real progress data */}
                     <div className="flex-1 text-left ml-4"> {/* Added flex-1 and ml-4 */}
-                      <p className="text-lg font-semibold text-gray-800 mb-2">Phase: Prototype Development</p>
-                      <p className="text-sm text-gray-600">You're making great strides! Keep up the momentum.</p>
+                      <p className="text-lg font-semibold text-gray-800 mb-2">
+                        {selectedTemplate ? selectedTemplate.name : 'No Template Selected'}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {getProgressStats().completed} of {getProgressStats().total} tasks completed
+                      </p>
                       <button
                         onClick={() => setCurrentPage('incubationProgress')}
                         className="mt-4 px-5 py-2 bg-blue-500 text-white text-sm font-semibold rounded-full shadow-md hover:bg-blue-600 transition duration-200"
@@ -864,18 +1003,18 @@ export default function StartupDashboard() {
                     Assigned Mentor
                   </h3>
                   <div className="flex items-center mb-4">
-                    <img src={mockMentor.photo} alt={mockMentor.name} className="w-20 h-20 rounded-full object-cover mr-4 shadow-md" />
+                    <img src={currentMentor.photo} alt={currentMentor.fullName || 'Mentor'} className="w-20 h-20 rounded-full object-cover mr-4 shadow-md" />
                     <div>
-                      <h4 className="text-lg font-semibold text-gray-800">{mockMentor.name}</h4>
-                      <p className="text-sm text-gray-600">{mockMentor.role}</p>
+                      <h4 className="text-lg font-semibold text-gray-800">{currentMentor.fullName || 'No Name'}</h4>
+                      <p className="text-sm text-gray-600">{currentMentor.role || ''}</p>
                     </div>
                   </div>
-                  <p className="text-sm text-gray-700 mb-4 italic">"{mockMentor.latestAdvice}"</p>
+                  <p className="text-sm text-gray-700 mb-4 italic">"{currentMentor.latestAdvice || ''}"</p>
                   <div className="flex space-x-3">
-                    <a href={`mailto:${mockMentor.contact.email}`} className="px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-medium flex items-center hover:bg-green-200 transition-colors">
+                    <a href={currentMentor && currentMentor.email ? `mailto:${currentMentor.email}` : undefined} className="px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-medium flex items-center hover:bg-green-200 transition-colors" disabled={!(currentMentor && currentMentor.email)}>
                       <Mail size={16} className="mr-2" /> Message
                     </a>
-                    <a href={mockMentor.contact.linkedin} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium flex items-center hover:bg-blue-200 transition-colors">
+                    <a href={currentMentor && currentMentor.linkedin ? currentMentor.linkedin : undefined} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium flex items-center hover:bg-blue-200 transition-colors" disabled={!(currentMentor && currentMentor.linkedin)}>
                       <Linkedin size={16} className="mr-2" /> LinkedIn
                     </a>
                   </div>
@@ -1325,57 +1464,158 @@ export default function StartupDashboard() {
                 <CheckCircle2 size={28} className="mr-3 text-brand-primary" /> Incubation Progress Tracker
               </h3>
 
-              {/* Overall Progress Bar */}
-              <div className="mb-8 p-6 bg-white rounded-2xl shadow-lg border border-gray-100 flex items-center justify-between">
-                <h4 className="text-xl font-bold text-brand-dark">Overall Progress:</h4>
-                <CircularProgressBar progress={dashboardMetrics.incubationProgress} size={120} strokeWidth={12} />
-              </div>
+              {/* Progress Error Display */}
+              {progressError && (
+                <div className="flex items-center p-4 mb-6 bg-red-100/80 text-red-700 rounded-xl shadow-md border border-red-300 animate-fade-in">
+                  <XCircle className="mr-3 text-red-600" size={20} /> <span className="font-medium text-base">{progressError}</span>
+                </div>
+              )}
 
-              {/* Timeline of Phases */}
-              <div className="relative pl-8 border-l-2 border-gray-200 space-y-10">
-                {mockIncubationPhases.map((phase, index) => (
-                  <div key={phase.id} className="relative mb-8 last:mb-0">
-                    <div className="absolute -left-3.5 -top-1 w-7 h-7 bg-brand-primary rounded-full flex items-center justify-center text-white font-bold text-xs shadow-md">
-                      {index + 1}
-                    </div>
-                    <div className="ml-4 p-6 bg-white rounded-2xl shadow-lg border border-gray-100">
-                      <h4 className="text-lg font-bold text-brand-dark mb-2">{phase.title}</h4>
-                      <p className="text-sm text-gray-700 mb-3">{phase.description}</p>
-                      <div className="flex items-center text-sm font-medium mb-3">
-                        Status:
-                        <span className={`ml-2 px-3 py-1 rounded-full text-xs font-semibold ${
-                          phase.status === 'Approved' ? 'bg-green-100 text-green-700' :
-                          phase.status === 'Submitted' ? 'bg-blue-100 text-blue-700' :
-                          'bg-gray-100 text-gray-700'
-                        }`}>
-                          {phase.status}
-                        </span>
+              {/* Template Selection */}
+              {templates.length > 0 && (
+                <div className="mb-8 p-6 bg-white rounded-2xl shadow-lg border border-gray-100">
+                  <h4 className="text-xl font-bold text-brand-dark mb-4">Select Progress Template</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {templates.map(template => (
+                      <div 
+                        key={template.id} 
+                        className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
+                          selectedTemplate?.id === template.id 
+                            ? 'border-brand-primary bg-blue-50' 
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                        onClick={() => handleSelectTemplate(template)}
+                      >
+                        <h5 className="font-semibold text-gray-900 mb-2">{template.name}</h5>
+                        <p className="text-sm text-gray-600">{template.description}</p>
                       </div>
-                      {phase.feedback && (
-                        <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-700 italic border border-gray-200 mb-3">
-                          <span className="font-semibold">Mentor Feedback:</span> {phase.feedback}
-                        </div>
-                      )}
-                      {phase.files && phase.files.length > 0 && (
-                        <div className="mt-3">
-                          <p className="text-sm font-semibold text-gray-700 mb-2">Attached Files:</p>
-                          <div className="space-y-2">
-                            {phase.files.map((file, fileIndex) => (
-                              <a key={fileIndex} href="#" className="flex items-center text-sm text-blue-600 hover:underline">
-                                <File size={16} className="mr-2 text-gray-500" />
-                                {file.name}
-                              </a>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      <button className="mt-4 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-full shadow-sm hover:bg-gray-200 transition duration-200 flex items-center">
-                        <Upload size={16} className="mr-2" /> Upload Document
-                      </button>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
+
+              {/* Overall Progress Bar */}
+              {selectedTemplate && (
+                <div className="mb-8 p-6 bg-white rounded-2xl shadow-lg border border-gray-100 flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xl font-bold text-brand-dark mb-2">Overall Progress: {selectedTemplate.name}</h4>
+                    <p className="text-sm text-gray-600">
+                      {getProgressStats().completed} of {getProgressStats().total} tasks completed
+                    </p>
+                  </div>
+                  <CircularProgressBar progress={getProgressStats().percentage} size={120} strokeWidth={12} />
+                </div>
+              )}
+
+              {/* Loading State */}
+              {progressLoading && (
+                <div className="flex items-center justify-center p-8">
+                  <Loader2 className="animate-spin text-brand-primary mr-3" size={24} />
+                  <span className="text-gray-600">Loading progress data...</span>
+                </div>
+              )}
+
+              {/* Phases and Tasks */}
+              {selectedTemplate && phases.length > 0 && !progressLoading && (
+                <div className="space-y-6">
+                  {phases.map(phase => (
+                    <div key={phase.id} className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                      <div
+                        onClick={() => togglePhase(phase.id)}
+                        className="p-6 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+                      >
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <h4 className="text-lg font-bold text-gray-900">{phase.name}</h4>
+                            <p className="text-sm text-gray-600 mt-1">{phase.description}</p>
+                          </div>
+                          <span className="text-sm text-gray-600">
+                            {expandedPhases.includes(phase.id) ? '▼' : '▶'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {expandedPhases.includes(phase.id) && (
+                        <div className="p-6">
+                          {!tasksByPhase[phase.id] && (
+                            <button
+                              onClick={() => fetchTasks(phase.id)}
+                              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                            >
+                              Load Tasks
+                            </button>
+                          )}
+                          
+                          {tasksByPhase[phase.id] && (
+                            <div className="space-y-4">
+                              {tasksByPhase[phase.id].map(task => (
+                                <div key={task.id} className="border border-gray-200 rounded-lg p-4">
+                                  <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                      <h5 className="font-semibold text-gray-900 mb-2">{task.name}</h5>
+                                      <p className="text-sm text-gray-600 mb-3">{task.description}</p>
+                                      <div className="flex items-center">
+                                        <span className={`px-3 py-1 text-xs rounded-full font-semibold ${
+                                          task.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                                          task.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
+                                          'bg-gray-100 text-gray-800'
+                                        }`}>
+                                          {task.status}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="ml-4">
+                                      <input
+                                        type="file"
+                                        onChange={(e) => {
+                                          const file = e.target.files[0];
+                                          if (file) handleFileUpload(file, phase.id, task.id);
+                                        }}
+                                        className="hidden"
+                                        id={`file-${task.id}`}
+                                      />
+                                      <label
+                                        htmlFor={`file-${task.id}`}
+                                        className="bg-brand-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm cursor-pointer transition-colors"
+                                      >
+                                        Upload
+                                      </label>
+                                      {uploadStatus[`${phase.id}-${task.id}`] && (
+                                        <div className="text-xs text-gray-600 mt-2 text-center">
+                                          {uploadStatus[`${phase.id}-${task.id}`]}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* No Template Selected */}
+              {!selectedTemplate && templates.length > 0 && !progressLoading && (
+                <div className="text-center py-12">
+                  <CheckCircle2 size={48} className="mx-auto text-gray-400 mb-4" />
+                  <h4 className="text-lg font-semibold text-gray-700 mb-2">Select a Template</h4>
+                  <p className="text-gray-600">Choose a progress template above to view your incubation progress.</p>
+                </div>
+              )}
+
+              {/* No Templates Available */}
+              {templates.length === 0 && !progressLoading && (
+                <div className="text-center py-12">
+                  <CheckCircle2 size={48} className="mx-auto text-gray-400 mb-4" />
+                  <h4 className="text-lg font-semibold text-gray-700 mb-2">No Progress Templates Available</h4>
+                  <p className="text-gray-600">No progress templates have been assigned to your startup yet.</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -1385,25 +1625,25 @@ export default function StartupDashboard() {
                 <GraduationCap size={28} className="mr-3 text-brand-primary" /> My Dedicated Mentor
               </h3>
               <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 text-center">
-                <img src={mockMentor.photo} alt={mockMentor.name} className="w-32 h-32 rounded-full object-cover mx-auto mb-6 shadow-md border-4 border-brand-primary p-0.5" />
-                <h2 className="text-2xl font-bold text-brand-dark mb-2">{mockMentor.name}</h2>
-                <p className="text-lg text-gray-700 font-medium mb-4">{mockMentor.role}</p>
-                <p className="text-base text-gray-600 leading-relaxed mb-6 italic">"{mockMentor.bio}"</p>
+                <img src={currentMentor.photo} alt={currentMentor.fullName || 'Mentor'} className="w-32 h-32 rounded-full object-cover mx-auto mb-6 shadow-md border-4 border-brand-primary p-0.5" />
+                <h2 className="text-2xl font-bold text-brand-dark mb-2">{currentMentor.fullName || 'No Name'}</h2>
+                <p className="text-lg text-gray-700 font-medium mb-4">{currentMentor.role || ''}</p>
+                <p className="text-base text-gray-600 leading-relaxed mb-6 italic">"{currentMentor.bio || ''}"</p>
 
                 <div className="p-5 bg-blue-50 rounded-xl mb-6 shadow-inner border border-blue-100">
                   <h4 className="text-md font-semibold text-brand-dark mb-2 flex items-center justify-center">
                     <Lightbulb size={20} className="mr-2 text-blue-600" /> Latest Advice
                   </h4>
                   <p className="text-sm text-gray-700 leading-relaxed">
-                    {mockMentor.latestAdvice}
+                    {currentMentor.latestAdvice || ''}
                   </p>
                 </div>
 
                 <div className="flex justify-center space-x-4">
-                  <a href={`mailto:${mockMentor.contact.email}`} className="px-6 py-3 bg-green-500 text-white font-semibold rounded-full shadow-lg hover:bg-green-600 transition duration-200 flex items-center">
+                  <a href={currentMentor && currentMentor.email ? `mailto:${currentMentor.email}` : undefined} className="px-6 py-3 bg-green-500 text-white font-semibold rounded-full shadow-lg hover:bg-green-600 transition duration-200 flex items-center" disabled={!(currentMentor && currentMentor.email)}>
                     <Mail size={20} className="mr-2" /> Email Mentor
                   </a>
-                  <a href={mockMentor.contact.linkedin} target="_blank" rel="noopener noreferrer" className="px-6 py-3 bg-brand-primary text-white font-semibold rounded-full shadow-lg hover:bg-blue-600 transition duration-200 flex items-center"> {/* Changed from bg-blue-500 */}
+                  <a href={currentMentor && currentMentor.linkedin ? currentMentor.linkedin : undefined} target="_blank" rel="noopener noreferrer" className="px-6 py-3 bg-brand-primary text-white font-semibold rounded-full shadow-lg hover:bg-blue-600 transition duration-200 flex items-center" disabled={!(currentMentor && currentMentor.linkedin)}>
                     <Linkedin size={20} className="mr-2" /> LinkedIn
                   </a>
                 </div>
@@ -1500,6 +1740,73 @@ export default function StartupDashboard() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* All Assigned Mentors Section */}
+          {mentors.length > 0 && (
+            <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 animate-fade-in">
+              <h3 className="text-xl font-bold text-brand-dark mb-5 flex items-center">
+                <Users size={24} className="mr-3 text-purple-600" />
+                All Assigned Mentors
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {mentors.filter(Boolean).map((mentor, index) => (
+                  <div key={(mentor && mentor.id) || index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-center mb-3">
+                      <div className="w-12 h-12 rounded-full bg-purple-200 text-purple-800 font-bold flex items-center justify-center text-lg mr-3">
+                        {mentor && mentor.fullName ? mentor.fullName.substring(0, 2).toUpperCase() : (mentor && mentor.email ? mentor.email.substring(0, 2).toUpperCase() : 'MN')}
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900">{mentor && mentor.fullName ? mentor.fullName : (mentor && mentor.email ? mentor.email : "No Name")}</h4>
+                        <p className="text-sm text-gray-600">{mentor && mentor.email ? mentor.email : "No Email"}</p>
+                      </div>
+                    </div>
+                    {mentor && mentor.role && (
+                      <p className="text-sm text-gray-600 mb-3">{mentor.role}</p>
+                    )}
+                    {mentor && mentor.email && (
+                      <div className="flex space-x-2">
+                        <a 
+                          href={`mailto:${mentor.email}`} 
+                          className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium flex items-center hover:bg-purple-200 transition-colors"
+                        >
+                          <Mail size={12} className="mr-1" /> Message
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {mentorsLoading && (
+                <div className="text-center py-4">
+                  <Loader2 className="animate-spin mx-auto text-purple-600" size={24} />
+                  <p className="text-sm text-gray-600 mt-2">Loading mentors...</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* No Mentors Assigned Section */}
+          {!mentorsLoading && mentors.length === 0 && (
+            <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 animate-fade-in">
+              <h3 className="text-xl font-bold text-brand-dark mb-5 flex items-center">
+                <GraduationCap size={24} className="mr-3 text-gray-600" />
+                Mentor Assignment
+              </h3>
+              <div className="text-center py-8">
+                <GraduationCap size={48} className="mx-auto text-gray-400 mb-4" />
+                <h4 className="text-lg font-semibold text-gray-700 mb-2">No Mentors Assigned Yet</h4>
+                <p className="text-gray-600 mb-4">
+                  You haven't been assigned any mentors yet. Mentors will be assigned by your tenant administrator.
+                </p>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-800">
+                    <strong>What to expect:</strong> Once assigned, mentors will help guide your startup's progress, 
+                    provide feedback on your submissions, and offer valuable insights for your growth.
+                  </p>
+                </div>
               </div>
             </div>
           )}
