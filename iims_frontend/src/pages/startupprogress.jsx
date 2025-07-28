@@ -6,7 +6,7 @@ import { getAssignedTemplatesForStartup, getPhases, getTasks, uploadSubmissionFi
 import { getTenantUsersByRole } from '../api/users';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Legend } from 'recharts';
 
-export default function StartupDashboard() {
+export default function Startupprogress() {
   const { id } = useParams();
   const { token, logout, user } = useAuth();
   const navigate = useNavigate();

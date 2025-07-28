@@ -8,9 +8,9 @@ import TenantAdminDashboard from './pages/TenantAdminDashboard';
 import TenantManagementPage from './pages/TenantManagementPage';
 import AdminRequestManagementPage from './pages/AdminRequestManagementPage';
 import TenantApplicationForm from './components/TenantApplicationForm';
-import AdminRegistrationForm from './components/AdminRegistrationForm';
-import StartupDashboard from './pages/startupprogress';
-import MentorDashboard from './pages/mentorprogress';
+// import AdminRegistrationForm from './components/AdminRegistrationForm';
+// import StartupDashboard from './pages/startupprogress';
+// import MentorDashboard from './pages/mentorprogress';
 import CoachDashboard from './pages/CoachDashboard';
 import FacilitatorDashboard from './pages/FacilitatorDashboard';
 import InvestorDashboard from './pages/InvestorDashboard';
@@ -49,8 +49,8 @@ const PublicRoute = ({ children }) => {
   if (isAuthenticated) {
     if (user?.role === 'SUPER_ADMIN') return <Navigate to="/super-admin/dashboard" replace />;
     if (user?.role === 'TENANT_ADMIN') return <Navigate to="/tenant-admin/dashboard" replace />;
-    if (user?.role === 'STARTUP') return <Navigate to={`/startup-dashboard/${user.id}`} replace />;
-    if (user?.role === 'MENTOR') return <Navigate to={`/mentor-dashboard/${user.id}`} replace />;
+    // if (user?.role === 'STARTUP') return <Navigate to={`/startup-dashboard/${user.id}`} replace />;
+    // if (user?.role === 'MENTOR') return <Navigate to={`/mentor-dashboard/${user.id}`} replace />;
     if (user?.role === 'COACH') return <Navigate to={`/coach-dashboard/${user.id}`} replace />;
     if (user?.role === 'FACILITATOR') return <Navigate to={`/facilitator-dashboard/${user.id}`} replace />;
     if (user?.role === 'INVESTOR') return <Navigate to={`/investor-dashboard/${user.id}`} replace />;
@@ -137,23 +137,23 @@ function App() {
             <Route path="/register-admin" element={<AdminRegistrationForm />} />
             <Route path="/register-admin/:tenantId" element={<AdminRegistrationForm />} />
             {/* Startup Dashboard */}
-            <Route
+            {/* <Route
               path="/startup-dashboard/:id"
               element={
                 <ProtectedRoute role="STARTUP">
                   <StartupDashboard />
                 </ProtectedRoute>
               }
-            />
+            /> */}
             {/* Mentor Dashboard */}
-            <Route
+            {/* <Route
               path="/mentor-dashboard/:id"
               element={
                 <ProtectedRoute role="MENTOR">
                   <MentorDashboard />
                 </ProtectedRoute>
               }
-            />
+            /> */}
             {/* Coach Dashboard */}
             <Route
               path="/coach-dashboard/:id"
