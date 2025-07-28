@@ -10,6 +10,7 @@ import {
   updateUserPassword
 } from "../api/users";
 import UserTable from "../components/UserTable";
+import { Link } from 'react-router-dom';
 import EditUserModal from '../components/EditUserModal';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import ChangeRoleModal from '../components/ChangeRoleModal';
@@ -174,17 +175,17 @@ export default function TenantAdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
+    <div className="min-h-screen bg-brand-dark flex flex-col">
       {/* Header/Profile */}
-      <header className="bg-gradient-to-r from-blue-700 to-blue-400 shadow-lg p-6 flex items-center justify-between">
+      <header className="bg-gradient-to-r from-brand-dark to-brand-primary shadow-lg p-6 flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-blue-700 font-bold text-2xl border-4 border-blue-300">
+          <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-brand-primary font-bold text-2xl border-4 border-brand-primary">
             {user?.fullName ? user.fullName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase()}
           </div>
           <div>
             <h1 className="text-2xl font-bold text-white">{user?.fullName || user?.email}</h1>
-            <p className="text-blue-100 text-sm">Tenant Admin</p>
-            <p className="text-blue-200 text-xs">Tenant ID: <span className="font-mono">{user?.tenantId}</span></p>
+            <p className="text-brand-primary text-sm">Tenant Admin</p>
+            <p className="text-brand-dark text-xs">Tenant ID: <span className="font-mono">{user?.tenantId}</span></p>
           </div>
         </div>
         <button
@@ -200,8 +201,8 @@ export default function TenantAdminDashboard() {
           {ROLES.map((role) => (
             <button
               key={role}
-              className={`px-4 py-2 font-semibold rounded-t-md focus:outline-none transition-colors duration-200 ${activeTab === role ? 'bg-white border-l border-t border-r border-blue-400 text-blue-700 -mb-px' : 'bg-blue-100 text-blue-600 hover:bg-white'}`}
-              onClick={() => setActiveTab(role)}
+              className={`px-4 py-2 font-semibold rounded-t-md focus:outline-none transition-colors duration-200 ${activeTab === role ? 'bg-white border-l border-t border-r border-brand-primary text-brand-primary -mb-px' : 'bg-brand-dark text-white hover:bg-white hover:text-brand-primary'}`}
+              onClick={() => { setActiveTab(role); }}
             >
               {role.charAt(0) + role.slice(1).toLowerCase()}s
             </button>
@@ -209,9 +210,9 @@ export default function TenantAdminDashboard() {
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold text-blue-700">{activeTab.charAt(0) + activeTab.slice(1).toLowerCase()}s</h2>
+            <h2 className="text-lg font-bold text-brand-primary">{activeTab.charAt(0) + activeTab.slice(1).toLowerCase()}s</h2>
             <button
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow"
+              className="bg-brand-primary hover:bg-brand-dark text-white px-4 py-2 rounded shadow"
               onClick={openModal}
             >
               + Create {activeTab.charAt(0) + activeTab.slice(1).toLowerCase()}
@@ -228,6 +229,26 @@ export default function TenantAdminDashboard() {
             onRole={handleRole}
             onChangePassword={handleChangePassword}
           />
+        </div>
+        <div className="mt-6">
+          <h3 className="text-lg font-bold text-brand-primary mb-2">Manage Landing Page</h3>
+          <div className="mb-4">
+            <Link to={`/tenant-admin/${user?.tenantId}/landing-page-management`} className="bg-brand-primary text-white px-4 py-2 rounded">
+              Manage Landing Page
+            </Link>
+          </div>
+          <h3 className="text-lg font-bold text-brand-primary mb-2">Startup Management</h3>
+          <div className="mb-4">
+            <Link to="/tenant-admin/startup-management" className="bg-brand-primary text-white px-4 py-2 rounded">
+              Manage Startups & Assign Mentors
+            </Link>
+          </div>
+          <h3 className="text-lg font-bold text-brand-primary mb-2">Progress Tracking Management</h3>
+          <div className="mb-4">
+            <Link to={`/tenant-admin/${user?.tenantId}/progress-tracking-management`} className="bg-brand-primary text-white px-4 py-2 rounded">
+              Manage Progress Tracking
+            </Link>
+          </div>
         </div>
       </div>
       {/* Modal */}

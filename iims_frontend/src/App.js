@@ -18,6 +18,8 @@ import CoachDashboard from './pages/CoachDashboard';
 import FacilitatorDashboard from './pages/FacilitatorDashboard';
 import InvestorDashboard from './pages/InvestorDashboard';
 import AlumniDashboard from './pages/AlumniDashboard';
+import LandingPageManagement from './pages/LandingPageManagement';
+import StartupManagement from './pages/StartupManagement';
 import './App.css';
 
 // Protected Route Component
@@ -89,6 +91,31 @@ function App() {
               element={
                 <ProtectedRoute role="TENANT_ADMIN">
                   <TenantAdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            {/* Tenant Admin Management Routes */}
+            <Route
+              path="/tenant-admin/:tenantId/landing-page-management"
+              element={
+                <ProtectedRoute role="TENANT_ADMIN">
+                  <LandingPageManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant-admin/startup-management"
+              element={
+                <ProtectedRoute role="TENANT_ADMIN">
+                  <StartupManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant-admin/:tenantId/progress-tracking-management"
+              element={
+                <ProtectedRoute role="TENANT_ADMIN">
+                  <ProgressTrackingManagement />
                 </ProtectedRoute>
               }
             />

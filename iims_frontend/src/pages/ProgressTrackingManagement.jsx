@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-// Import your progresstracking API functions
 import {
   getTemplates,
   createTemplate,
@@ -18,7 +17,6 @@ import {
 } from '../api/progresstracking';
 import { TemplateForm, PhaseForm, TaskForm, AssignmentForm } from '../components/ProgressTrackingForms';
 import ProgressDashboard from '../components/ProgressDashboard';
-import { useRef } from 'react';
 import { FaEdit, FaTrash, FaPlus, FaChevronDown } from 'react-icons/fa';
 
 export default function ProgressTrackingManagement() {
@@ -31,13 +29,11 @@ export default function ProgressTrackingManagement() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [modal, setModal] = useState({ type: null, data: null });
-  const [activeTab, setActiveTab] = useState('manage'); // 'manage' or 'dashboard'
+  const [activeTab, setActiveTab] = useState('manage');
   const [success, setSuccess] = useState('');
   const [templateSearch, setTemplateSearch] = useState('');
-  const toastRef = useRef();
   const [expandedPhases, setExpandedPhases] = useState([]);
 
-  // Fetch templates on mount
   useEffect(() => {
     fetchTemplates();
     // eslint-disable-next-line
@@ -49,8 +45,8 @@ export default function ProgressTrackingManagement() {
       const data = await getTemplates(tenantId);
       setTemplates(data);
       setSelectedTemplate(null);
-      setPhases([]); // Clear phases
-      setTasks([]);  // Clear tasks
+      setPhases([]);
+      setTasks([]);
     } catch (e) {
       setError('Failed to load templates');
     } finally {
@@ -84,16 +80,15 @@ export default function ProgressTrackingManagement() {
     }
   };
 
-  // Handlers for selecting template/phase
   const handleSelectTemplate = (template) => {
     setSelectedTemplate(template);
-    setPhases([]); // Clear old phases
-    setTasks([]);  // Clear old tasks
+    setPhases([]);
+    setTasks([]);
     fetchPhases(template.id);
   };
   const handleSelectPhase = (phase) => {
     setSelectedPhase(phase);
-    setTasks([]); // Clear old tasks
+    setTasks([]);
     fetchTasks(phase.id);
   };
 
@@ -105,416 +100,337 @@ export default function ProgressTrackingManagement() {
     );
   };
 
-  // Modal handlers
   const openModal = (type, data = null) => setModal({ type, data });
   const closeModal = () => setModal({ type: null, data: null });
 
-  // CRUD handlers for templates
   const handleCreateTemplate = async (form) => {
+    setLoading(true); setError('');
     try {
       await createTemplate({ ...form, tenantId });
-      setSuccess('Template created successfully');
-      fetchTemplates();
+      await fetchTemplates();
       closeModal();
     } catch (e) {
       setError('Failed to create template');
+    } finally {
+      setLoading(false);
     }
   };
-
   const handleEditTemplate = async (id, form) => {
+    setLoading(true); setError('');
     try {
       await updateTemplate(id, form);
-      setSuccess('Template updated successfully');
-      fetchTemplates();
+      await fetchTemplates();
       closeModal();
     } catch (e) {
       setError('Failed to update template');
+    } finally {
+      setLoading(false);
     }
   };
-
   const handleDeleteTemplate = async (id) => {
-    if (window.confirm('Are you sure you want to delete this template?')) {
+    setLoading(true); setError('');
       try {
         await deleteTemplate(id);
-        setSuccess('Template deleted successfully');
-        fetchTemplates();
+      await fetchTemplates();
+      closeModal();
       } catch (e) {
         setError('Failed to delete template');
-      }
+    } finally {
+      setLoading(false);
     }
   };
 
-  // CRUD handlers for phases
   const handleCreatePhase = async (form) => {
+    setLoading(true); setError('');
     try {
       await createPhase({ ...form, templateId: selectedTemplate.id });
-      setSuccess('Phase created successfully');
-      fetchPhases(selectedTemplate.id);
+      await fetchPhases(selectedTemplate.id);
       closeModal();
     } catch (e) {
       setError('Failed to create phase');
+    } finally {
+      setLoading(false);
     }
   };
-
   const handleEditPhase = async (id, form) => {
+    setLoading(true); setError('');
     try {
       await updatePhase(id, form);
-      setSuccess('Phase updated successfully');
-      fetchPhases(selectedTemplate.id);
+      await fetchPhases(selectedTemplate.id);
       closeModal();
     } catch (e) {
       setError('Failed to update phase');
+    } finally {
+      setLoading(false);
     }
   };
-
   const handleDeletePhase = async (id) => {
-    if (window.confirm('Are you sure you want to delete this phase?')) {
+    setLoading(true); setError('');
       try {
         await deletePhase(id);
-        setSuccess('Phase deleted successfully');
-        fetchPhases(selectedTemplate.id);
+      await fetchPhases(selectedTemplate.id);
+      closeModal();
       } catch (e) {
         setError('Failed to delete phase');
-      }
+    } finally {
+      setLoading(false);
     }
   };
 
-  // CRUD handlers for tasks
   const handleCreateTask = async (form) => {
+    setLoading(true); setError('');
     try {
       await createTask({ ...form, phaseId: selectedPhase.id });
-      setSuccess('Task created successfully');
-      fetchTasks(selectedPhase.id);
+      await fetchTasks(selectedPhase.id);
       closeModal();
     } catch (e) {
       setError('Failed to create task');
+    } finally {
+      setLoading(false);
     }
   };
-
   const handleEditTask = async (id, form) => {
+    setLoading(true); setError('');
     try {
       await updateTask(id, form);
-      setSuccess('Task updated successfully');
-      fetchTasks(selectedPhase.id);
+      await fetchTasks(selectedPhase.id);
       closeModal();
     } catch (e) {
       setError('Failed to update task');
+    } finally {
+      setLoading(false);
     }
   };
-
   const handleDeleteTask = async (id) => {
-    if (window.confirm('Are you sure you want to delete this task?')) {
+    setLoading(true); setError('');
       try {
         await deleteTask(id);
-        setSuccess('Task deleted successfully');
-        fetchTasks(selectedPhase.id);
+      await fetchTasks(selectedPhase.id);
+      closeModal();
       } catch (e) {
         setError('Failed to delete task');
-      }
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Assignment handler
   const handleAssignTemplate = async (form) => {
+    setLoading(true); setError(''); setSuccess('');
     try {
       await assignTemplate(form);
-      setSuccess('Template assigned successfully');
+      setSuccess('Template assigned successfully!');
       closeModal();
     } catch (e) {
       setError('Failed to assign template');
+    } finally {
+      setLoading(false);
     }
   };
 
   function Toast({ message, type, onClose }) {
+    if (!message) return null;
     return (
-      <div className={`fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
-        type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-      }`}>
-        <div className="flex items-center justify-between">
-          <span>{message}</span>
-          <button onClick={onClose} className="ml-4 text-white hover:text-gray-200">
-            ×
-          </button>
-        </div>
-      </div>
+      <div className={`fixed bottom-6 right-6 z-50 px-4 py-2 rounded shadow-lg text-white ${type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>{message}<button className="ml-2 text-white font-bold" onClick={onClose}>&times;</button></div>
     );
   }
 
-  const filteredTemplates = templates.filter(template =>
-    template.name.toLowerCase().includes(templateSearch.toLowerCase())
-  );
-
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Progress Tracking Management</h1>
-              <p className="text-sm text-gray-600">Manage templates, phases, and tasks for your tenant</p>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        {/* Toast notifications */}
-        {success && (
-          <Toast
-            message={success}
-            type="success"
-            onClose={() => setSuccess('')}
-          />
-        )}
-        {error && (
-          <Toast
-            message={error}
-            type="error"
-            onClose={() => setError('')}
-          />
-        )}
-
-        {/* Tab Navigation */}
-        <div className="mb-6">
-          <nav className="flex space-x-8">
+    <div className="min-h-screen bg-gray-50 p-6">
+      <h1 className="text-2xl font-bold text-brand-primary mb-6">Progress Tracking Management</h1>
+      <div className="flex gap-2 mb-4">
             <button
+          className={`px-4 py-2 rounded ${activeTab === 'manage' ? 'bg-brand-primary text-white' : 'bg-gray-200'}`}
               onClick={() => setActiveTab('manage')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'manage'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
             >
               Manage Templates
             </button>
             <button
+          className={`px-4 py-2 rounded ${activeTab === 'dashboard' ? 'bg-brand-primary text-white' : 'bg-gray-200'}`}
               onClick={() => setActiveTab('dashboard')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'dashboard'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
             >
               Progress Dashboard
             </button>
-          </nav>
         </div>
-
+      <Toast message={success || error} type={success ? 'success' : 'error'} onClose={() => { setSuccess(''); setError(''); }} />
         {activeTab === 'manage' ? (
-          <div className="space-y-6">
-            {/* Templates Section */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">Templates</h2>
+        <>
                 <button
-                  onClick={() => openModal('template')}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+            className="bg-brand-primary text-white px-3 py-1 rounded mb-2"
+            onClick={() => openModal('assignTemplate')}
                 >
-                  <FaPlus className="inline mr-2" />
-                  New Template
+            Assign Template
                 </button>
-              </div>
-
-              {/* Search */}
-              <div className="mb-4">
+          <div className="flex flex-col md:flex-row gap-8">
+            {/* Templates List */}
+            <div className="flex-1 bg-white rounded shadow p-4">
+              <div className="mb-8">
+                <div className="flex justify-between items-center mb-4">
                 <input
                   type="text"
                   placeholder="Search templates..."
+                    className="border rounded px-2 py-1 w-1/2"
                   value={templateSearch}
-                  onChange={(e) => setTemplateSearch(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onChange={e => setTemplateSearch(e.target.value)}
                 />
+                  <button className="bg-brand-primary text-white px-3 py-1 rounded flex items-center gap-2" onClick={() => openModal('createTemplate')}>
+                    <FaPlus /> New Template
+                  </button>
               </div>
-
-              {/* Templates List */}
-              <div className="space-y-4">
-                {filteredTemplates.map(template => (
-                  <div key={template.id} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900">{template.name}</h3>
-                        <p className="text-sm text-gray-600 mt-1">{template.description}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {templates.filter(t => t.name.toLowerCase().includes(templateSearch.toLowerCase())).length === 0 ? (
+                    <div className="col-span-full text-center text-gray-400 py-8">No templates found.</div>
+                  ) : templates.filter(t => t.name.toLowerCase().includes(templateSearch.toLowerCase())).map(t => (
+                    <div
+                      key={t.id}
+                      className={`rounded-xl shadow-lg p-6 bg-white border hover:shadow-xl transition cursor-pointer ${selectedTemplate?.id === t.id ? 'ring-2 ring-brand-primary' : ''}`}
+                      onClick={() => handleSelectTemplate(t)}
+                    >
+                      <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-xl font-bold text-brand-primary">{t.name}</h3>
+                        <div className="flex gap-2">
+                          <button className="text-blue-600 hover:text-blue-800" onClick={e => { e.stopPropagation(); openModal('editTemplate', t); }} title="Edit"><FaEdit /></button>
+                          <button className="text-red-600 hover:text-red-800" onClick={e => { e.stopPropagation(); openModal('deleteTemplate', t); }} title="Delete"><FaTrash /></button>
                       </div>
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => openModal('template', template)}
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          <FaEdit />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteTemplate(template.id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <FaTrash />
-                        </button>
-                        <button
-                          onClick={() => handleSelectTemplate(template)}
-                          className="text-green-600 hover:text-green-800"
-                        >
-                          View Phases
-                        </button>
                       </div>
+                      <p className="text-gray-600 mb-2">{t.description}</p>
+                      <div className="text-xs text-gray-500">Phases: {phases.filter(p => p.templateId === t.id).length}</div>
                     </div>
-
-                    {/* Phases for this template */}
-                    {selectedTemplate?.id === template.id && phases.length > 0 && (
-                      <div className="mt-4 pl-4 border-l-2 border-gray-200">
-                        <div className="flex justify-between items-center mb-2">
-                          <h4 className="font-medium text-gray-900">Phases</h4>
+                  ))}
+                </div>
+              </div>
+              {/* Phases/Tasks */}
+              {selectedTemplate && (
+                <button
+                  className="bg-brand-primary text-white px-3 py-1 rounded flex items-center gap-2 mb-4"
+                  onClick={() => openModal('createPhase')}
+                >
+                  <FaPlus /> New Phase
+                </button>
+              )}
+              <div className="space-y-4 mt-6">
+                {phases.length === 0 ? (
+                  <div className="text-center text-gray-400 py-8">No phases found.</div>
+                ) : phases.map(p => {
+                  const expanded = expandedPhases.includes(p.id);
+                  return (
+                    <div key={p.id} className="bg-white rounded-xl shadow-lg p-4 border transition-all">
+                      <div
+                        className="flex justify-between items-center cursor-pointer group"
+                        onClick={() => togglePhase(p.id)}
+                      >
+                        <div className="flex items-center gap-2">
                           <button
-                            onClick={() => openModal('phase')}
-                            className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
+                            className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''} text-brand-primary`}
+                            tabIndex={-1}
+                            aria-label={expanded ? 'Collapse phase' : 'Expand phase'}
                           >
-                            <FaPlus className="inline mr-1" />
-                            New Phase
+                            <FaChevronDown />
                           </button>
+                          <h4 className="text-lg font-semibold text-brand-primary">{p.name}</h4>
+                          <span className="text-xs text-gray-500">Order: {p.orderIndex}</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button className="text-blue-600 hover:text-blue-800" onClick={e => { e.stopPropagation(); openModal('editPhase', p); }} title="Edit"><FaEdit /></button>
+                          <button className="text-red-600 hover:text-red-800" onClick={e => { e.stopPropagation(); openModal('deletePhase', p); }} title="Delete"><FaTrash /></button>
+                        </div>
+                      </div>
+                      {/* Animated expand/collapse */}
+                      <div
+                        className={`transition-all duration-300 overflow-hidden ${expanded ? 'max-h-[1000px] opacity-100 mt-4' : 'max-h-0 opacity-0'}`}
+                      >
+                        <div className="flex justify-between items-center mb-2">
+                          <h5 className="font-semibold text-brand-primary">Tasks</h5>
+                          <button className="bg-brand-primary text-white px-3 py-1 rounded flex items-center gap-2" onClick={e => { e.stopPropagation(); setSelectedPhase(p); openModal('createTask'); }}><FaPlus /> New Task</button>
                         </div>
                         <div className="space-y-2">
-                          {phases.map(phase => (
-                            <div key={phase.id} className="border border-gray-200 rounded p-3">
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  <h5 className="font-medium text-gray-900">{phase.name}</h5>
-                                  <p className="text-sm text-gray-600">{phase.description}</p>
-                                </div>
-                                <div className="flex space-x-2">
-                                  <button
-                                    onClick={() => openModal('phase', phase)}
-                                    className="text-blue-600 hover:text-blue-800 text-sm"
-                                  >
-                                    <FaEdit />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeletePhase(phase.id)}
-                                    className="text-red-600 hover:text-red-800 text-sm"
-                                  >
-                                    <FaTrash />
-                                  </button>
-                                  <button
-                                    onClick={() => handleSelectPhase(phase)}
-                                    className="text-green-600 hover:text-green-800 text-sm"
-                                  >
-                                    View Tasks
-                                  </button>
-                                </div>
+                          {expanded && selectedPhase?.id === p.id && tasks.length === 0 ? (
+                            <div className="text-gray-400 italic">No tasks found.</div>
+                          ) : expanded && selectedPhase?.id === p.id && tasks.map(t => (
+                            <div key={t.id} className="flex justify-between items-center bg-gray-50 rounded p-3 shadow-sm">
+                              <div>
+                                <div className="font-medium">{t.taskName}</div>
+                                <div className="text-xs text-gray-500">{t.description}</div>
+                                <div className="text-xs text-gray-400">Due in {t.dueDays} days</div>
                               </div>
-
-                              {/* Tasks for this phase */}
-                              {selectedPhase?.id === phase.id && tasks.length > 0 && (
-                                <div className="mt-3 pl-4 border-l-2 border-gray-200">
-                                  <div className="flex justify-between items-center mb-2">
-                                    <h6 className="font-medium text-gray-900">Tasks</h6>
-                                    <button
-                                      onClick={() => openModal('task')}
-                                      className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm"
-                                    >
-                                      <FaPlus className="inline mr-1" />
-                                      New Task
-                                    </button>
-                                  </div>
-                                  <div className="space-y-2">
-                                    {tasks.map(task => (
-                                      <div key={task.id} className="border border-gray-200 rounded p-2">
-                                        <div className="flex justify-between items-start">
-                                          <div className="flex-1">
-                                            <h6 className="font-medium text-gray-900">{task.name}</h6>
-                                            <p className="text-sm text-gray-600">{task.description}</p>
-                                          </div>
-                                          <div className="flex space-x-2">
-                                            <button
-                                              onClick={() => openModal('task', task)}
-                                              className="text-blue-600 hover:text-blue-800 text-sm"
-                                            >
-                                              <FaEdit />
-                                            </button>
-                                            <button
-                                              onClick={() => handleDeleteTask(task.id)}
-                                              className="text-red-600 hover:text-red-800 text-sm"
-                                            >
-                                              <FaTrash />
-                                            </button>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
+                              <div className="flex gap-2">
+                                <button className="text-blue-600 hover:text-blue-800" onClick={e => { e.stopPropagation(); openModal('editTask', t); }} title="Edit"><FaEdit /></button>
+                                <button className="text-red-600 hover:text-red-800" onClick={e => { e.stopPropagation(); openModal('deleteTask', t); }} title="Delete"><FaTrash /></button>
                                 </div>
-                              )}
                             </div>
                           ))}
                         </div>
                       </div>
-                    )}
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Assignment Section */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">Template Assignments</h2>
-                <button
-                  onClick={() => openModal('assignment')}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-                >
-                  <FaPlus className="inline mr-2" />
-                  Assign Template
-                </button>
+                  );
+                })}
               </div>
             </div>
           </div>
+        </>
         ) : (
           <ProgressDashboard />
         )}
-
-        {/* Modal */}
         {modal.type && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md">
-              <h3 className="text-lg font-semibold mb-4">
-                {modal.type === 'template' ? 'Template' : 
-                 modal.type === 'phase' ? 'Phase' : 
-                 modal.type === 'task' ? 'Task' : 'Assignment'}
-              </h3>
-              
-              {modal.type === 'template' && (
-                <TemplateForm
-                  onSubmit={modal.data ? (form) => handleEditTemplate(modal.data.id, form) : handleCreateTemplate}
-                  initialData={modal.data}
-                  onCancel={closeModal}
-                />
-              )}
-              
-              {modal.type === 'phase' && (
-                <PhaseForm
-                  onSubmit={modal.data ? (form) => handleEditPhase(modal.data.id, form) : handleCreatePhase}
-                  initialData={modal.data}
-                  onCancel={closeModal}
-                />
-              )}
-              
-              {modal.type === 'task' && (
-                <TaskForm
-                  onSubmit={modal.data ? (form) => handleEditTask(modal.data.id, form) : handleCreateTask}
-                  initialData={modal.data}
-                  onCancel={closeModal}
-                />
-              )}
-              
-              {modal.type === 'assignment' && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+          <div className="bg-white rounded shadow-lg p-6 min-w-[320px] max-w-md">
+            <button className="absolute top-2 right-2 text-gray-500" onClick={closeModal}>&#10005;</button>
+            {modal.type === 'assignTemplate' && (
+              <div>
+                <h2 className="font-bold mb-2">Assign Template</h2>
                 <AssignmentForm
-                  onSubmit={handleAssignTemplate}
                   templates={templates}
+                  onSave={handleAssignTemplate}
+                  onCancel={closeModal}
+                />
+              </div>
+            )}
+            {modal.type === 'createTemplate' && (
+              <TemplateForm
+                onSave={handleCreateTemplate}
                   onCancel={closeModal}
                 />
               )}
-            </div>
+            {modal.type === 'editTemplate' && (
+              <TemplateForm
+                initial={modal.data}
+                onSave={form => handleEditTemplate(modal.data.id, form)}
+                  onCancel={closeModal}
+                />
+              )}
+            {modal.type === 'deleteTemplate' && <div><h2 className="font-bold mb-2">Delete Template</h2><p>Are you sure?</p><button className="bg-red-600 text-white px-4 py-2 rounded mt-2" onClick={() => handleDeleteTemplate(modal.data.id)}>Delete</button></div>}
+            {modal.type === 'createPhase' && (
+              <PhaseForm
+                onSave={handleCreatePhase}
+                  onCancel={closeModal}
+                />
+              )}
+            {modal.type === 'editPhase' && (
+              <PhaseForm
+                initial={modal.data}
+                onSave={form => handleEditPhase(modal.data.id, form)}
+                  onCancel={closeModal}
+                />
+              )}
+            {modal.type === 'deletePhase' && <div><h2 className="font-bold mb-2">Delete Phase</h2><p>Are you sure?</p><button className="bg-red-600 text-white px-4 py-2 rounded mt-2" onClick={() => handleDeletePhase(modal.data.id)}>Delete</button></div>}
+            {modal.type === 'createTask' && (
+              <TaskForm
+                onSave={handleCreateTask}
+                onCancel={closeModal}
+                phaseName={selectedPhase?.name}
+              />
+            )}
+            {modal.type === 'editTask' && (
+              <TaskForm
+                initial={modal.data}
+                onSave={form => handleEditTask(modal.data.id, form)}
+                onCancel={closeModal}
+                phaseName={selectedPhase?.name}
+              />
+            )}
+            {modal.type === 'deleteTask' && <div><h2 className="font-bold mb-2">Delete Task</h2><p>Are you sure?</p><button className="bg-red-600 text-white px-4 py-2 rounded mt-2" onClick={() => handleDeleteTask(modal.data.id)}>Delete</button></div>}
+          </div>
           </div>
         )}
-      </div>
     </div>
   );
 } 
