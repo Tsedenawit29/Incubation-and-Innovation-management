@@ -24,14 +24,14 @@ export async function getMentorsForStartup(token, startupId) {
 }
 
 export async function unassignMentor(token, startupId, mentorId) {
-    const res = await fetch(`${API_URL}/mentor-assignment?startupId=${startupId}&mentorId=${mentorId}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    if (!res.ok) throw new Error('Failed to unassign mentor');
-  }
+  const res = await fetch(`${API_URL}/mentor-assignment?startupId=${startupId}&mentorId=${mentorId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  if (!res.ok) throw new Error('Failed to unassign mentor');
+}
 
 export async function getStartupsForMentor(token, mentorId) {
   const res = await fetch(`${API_URL}/mentor-assignment?mentorId=${mentorId}`, {
