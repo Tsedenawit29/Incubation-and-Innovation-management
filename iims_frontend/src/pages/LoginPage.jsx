@@ -1,13 +1,16 @@
 import { useState } from "react";
-import { useAuth } from "../hooks/useAuth";
-import { login as loginApi } from "../api/users";
+import { useAuth } from "../hooks/useAuth"; // Import useAuth hook
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  
+  // Destructure loginUser from useAuth.
+  // The 'login' function from useAuth is now intended for internal use by AuthProvider.
+  // The external function to initiate login is loginUser.
+  const { loginUser } = useAuth(); 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -15,21 +18,14 @@ export default function LoginPage() {
     setLoading(true);
     
     try {
-      const data = await loginApi(email, password);
-      console.log("Login response:", data);
-      // Use the actual user data from the response
-      const userData = {
-        id: data.userId,
-        email: data.email,
-        role: data.role,
-        fullName: data.fullName,
-        tenantId: data.tenantId || null
-      };
-      // The login function in useAuth will handle the redirection
-      login(data.token, userData);
+      // Call the loginUser function from the useAuth hook.
+      // This function already handles the API call, state updates, and redirection.
+      await loginUser(email, password);
+      // No explicit redirection needed here, as loginUser in useAuth handles window.location.href
     } catch (error) {
       console.error("Login error:", error);
-      setError(error.message || "Invalid credentials");
+      // Display the error message from the useAuth hook or a default one
+      setError(error.message || "Invalid credentials. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -108,4 +104,4 @@ export default function LoginPage() {
       </div>
     </div>
   );
-} 
+}

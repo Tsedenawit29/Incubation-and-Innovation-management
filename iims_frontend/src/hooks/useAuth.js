@@ -1,8 +1,8 @@
 import { createContext, useContext, useState, useEffect } from "react";
-// No longer importing apiLogin here, as LoginPage will handle the initial API call.
+import { login as loginApi } from "../api/users"; // Import your actual login API function
 
 // Create the authentication context
-const AuthContext = createContext(null);
+export const AuthContext = createContext(null);
 
 // Custom hook to use the auth context
 export function useAuth() {
@@ -20,6 +20,57 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState(null); // State for authentication errors
 
+  // Helper function to decode JWT and check expiration
+  const checkTokenExpiration = (jwtToken) => {
+    try {
+      const payload = JSON.parse(atob(jwtToken.split('.')[1]));
+      const exp = payload.exp; // Expiration time in seconds since epoch
+      const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds since epoch
+
+      return exp < currentTime;
+    } catch (e) {
+      console.error("Error decoding token or checking expiration:", e);
+      return true; // Assume expired or invalid if decoding fails
+    }
+  };
+
+  // Function to handle manual login (called by LoginPage)
+  const loginUser = async (email, password) => {
+    setLoading(true);
+    setAuthError(null);
+    try {
+      const loginResponse = await loginApi(email, password); // Use the imported API function
+      if (loginResponse && loginResponse.token && loginResponse.userId) {
+        const userData = {
+          id: loginResponse.userId,
+          email: loginResponse.email, // Assuming email is in response
+          role: loginResponse.role,
+          name: loginResponse.fullName, // Assuming fullName is in response
+          tenantId: loginResponse.tenantId || null
+        };
+
+        setToken(loginResponse.token);
+        setUser(userData);
+        localStorage.setItem('springBootAuthToken', loginResponse.token);
+        localStorage.setItem('springBootUser', JSON.stringify(userData));
+        console.log("Manual login successful and token stored.");
+        return loginResponse; // Return response for component to handle navigation
+      } else {
+        throw new Error("Login response missing token, userId, or role.");
+      }
+    } catch (err) {
+      console.error("Manual login failed:", err);
+      setAuthError(`Authentication failed: ${err.message}. Please check credentials.`);
+      setUser(null);
+      setToken(null);
+      localStorage.removeItem('springBootAuthToken');
+      localStorage.removeItem('springBootUser');
+      throw err; // Re-throw to allow component to catch and display error
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Check for existing token on mount
   useEffect(() => {
     const loadAuthData = () => {
@@ -35,10 +86,22 @@ export function AuthProvider({ children }) {
       if (storedToken && storedUserJson) {
         // If stored data exists, use it
         try {
-          const parsedUser = JSON.parse(storedUserJson);
-          setToken(storedToken);
-          setUser(parsedUser);
-          console.log("AuthProvider - Loaded user from localStorage:", parsedUser);
+          // Check if the token is expired before setting state
+          const isTokenExpired = checkTokenExpiration(storedToken);
+
+          if (isTokenExpired) {
+            console.log("Stored token is expired. Clearing and prompting re-login.");
+            localStorage.removeItem("springBootAuthToken");
+            localStorage.removeItem("springBootUser");
+            setUser(null);
+            setToken(null);
+            setAuthError("Your session has expired. Please log in again.");
+          } else {
+            const parsedUser = JSON.parse(storedUserJson);
+            setToken(storedToken);
+            setUser(parsedUser);
+            console.log("AuthProvider - Loaded user from localStorage:", parsedUser);
+          }
         } catch (e) {
           console.error("AuthProvider - Error parsing stored user data:", e);
           // Clear corrupted data if parsing fails
@@ -52,43 +115,6 @@ export function AuthProvider({ children }) {
 
     loadAuthData();
   }, []); // Run once on component mount
-
-  // This 'login' function is called by your LoginPage after successful API login.
-  const login = (jwt, userData) => {
-    console.log("AuthProvider - Manual login called with token:", jwt ? "present" : "missing");
-    console.log("AuthProvider - Manual login called with userData:", userData);
-
-    setToken(jwt);
-    setUser(userData);
-    localStorage.setItem("springBootAuthToken", jwt);
-    localStorage.setItem("springBootUser", JSON.stringify(userData));
-    setAuthError(null); // Clear any errors on successful manual login
-
-    // IMPORTANT: Redirect based on user role - using correct paths that match App.js routes
-    const userRole = userData?.role; // Assuming role is part of userData
-    let redirectPath = '/'; // Default redirect
-
-    if (userRole === 'SUPER_ADMIN') {
-      redirectPath = '/super-admin/dashboard';
-    } else if (userRole === 'TENANT_ADMIN') {
-      redirectPath = '/tenant-admin/dashboard';
-    } else if (userRole === 'STARTUP') {
-      redirectPath = `/startup-dashboard/${userData.id}`;
-    } else if (userRole === 'MENTOR') {
-      redirectPath = `/mentor-dashboard/${userData.id}`;
-    } else if (userRole === 'COACH') {
-      redirectPath = `/coach-dashboard/${userData.id}`;
-    } else if (userRole === 'FACILITATOR') {
-      redirectPath = `/facilitator-dashboard/${userData.id}`;
-    } else if (userRole === 'INVESTOR') {
-      redirectPath = `/investor-dashboard/${userData.id}`;
-    } else if (userRole === 'ALUMNI') {
-      redirectPath = `/alumni-dashboard/${userData.id}`;
-    }
-    
-    console.log(`Redirecting to: ${redirectPath} for role: ${userRole}`);
-    window.location.href = redirectPath; // This line will force the page to navigate
-  };
 
   const logout = () => {
     console.log("AuthProvider - Logout called");
@@ -105,7 +131,7 @@ export function AuthProvider({ children }) {
   const value = {
     token,
     user,
-    login, // This is the function LoginPage will call
+    loginUser, // Expose loginUser for LoginPage
     logout,
     isAuthenticated,
     loading,
