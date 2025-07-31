@@ -167,4 +167,37 @@ public class EmailService {
         mailMessage.setText(message);
         mailSender.send(mailMessage);
     }
-} 
+
+    // --- METHOD FOR MENTOR CREDENTIALS EMAIL ---
+    public void sendMentorCredentialsEmail(String mentorEmail, String mentorName, String username, String password, String tenantName) {
+        String subject = "Welcome to IIMS - Your Mentor Account Credentials";
+        String message = String.format("""
+            Dear %s,
+            
+            Welcome to the IIMS platform! Your mentor account has been created for %s.
+            
+            Login Credentials:
+            - Username: %s
+            - Password: %s
+            
+            Please log in and change your password after your first login.
+            
+            Login URL: http://localhost:3000/login
+            
+            If you have any questions or need support, please contact your tenant admin or the IIMS support team.
+            
+            Best regards,
+            IIMS Team
+            """, mentorName, tenantName, username, password);
+
+        log.info("Sending mentor credentials email to: {}", mentorEmail);
+        log.info("Email subject: {}", subject);
+        log.info("Email content: {}", message);
+
+        SimpleMailMessage mailMessage = new SimpleMailMessage();
+        mailMessage.setTo(mentorEmail);
+        mailMessage.setSubject(subject);
+        mailMessage.setText(message);
+        mailSender.send(mailMessage);
+    }
+}
