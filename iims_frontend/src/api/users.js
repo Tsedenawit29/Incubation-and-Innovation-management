@@ -421,3 +421,70 @@ export async function createStartupProfile(token, userId) {
   }
   return await res.json();
 }
+
+/**
+ * Fetches a mentor profile. Requires authentication.
+ * @param {string} token - The JWT for authentication.
+ * @param {string} userId - The ID of the mentor whose profile to fetch.
+ * @returns {Promise<Object>} - The mentor profile object.
+ * @throws {Error} If fetching profile fails.
+ */
+export async function getMentorProfile(token, userId) {
+  const res = await fetch(`${API_URL}/profile/mentor/${userId}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ message: 'Unknown error' }));
+    const error = new Error(errorData.message || `Failed to fetch mentor profile: ${res.status} ${res.statusText}`);
+    error.status = res.status;
+    throw error;
+  }
+  return await res.json();
+}
+
+/**
+ * Updates a mentor profile. Requires authentication.
+ * @param {string} token - The JWT for authentication.
+ * @param {string} userId - The ID of the mentor whose profile to update.
+ * @param {Object} data - The updated profile data.
+ * @returns {Promise<Object>} - The updated profile object.
+ * @throws {Error} If updating profile fails.
+ */
+export async function updateMentorProfile(token, userId, data) {
+  const res = await fetch(`${API_URL}/profile/mentor/${userId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const error = new Error(errorData.message || `Failed to update mentor profile: ${res.status} ${res.statusText}`);
+    error.status = res.status;
+    throw error;
+  }
+  return await res.json();
+}
+
+/**
+ * Creates a mentor profile. Requires authentication.
+ * @param {string} token - The JWT for authentication.
+ * @param {string} userId - The ID of the mentor for whom to create the profile.
+ * @returns {Promise<Object>} - The created profile object.
+ * @throws {Error} If creating profile fails.
+ */
+export async function createMentorProfile(token, userId) {
+  const res = await fetch(`${API_URL}/profile/mentor/${userId}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const error = new Error(errorData.message || `Failed to create mentor profile: ${res.status} ${res.statusText}`);
+    error.status = res.status;
+    throw error;
+  }
+  return await res.json();
+}
