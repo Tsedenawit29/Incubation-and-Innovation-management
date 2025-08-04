@@ -29,6 +29,9 @@ public class ApplicationFormField {
     @Column(name = "label", nullable = false)
     private String label;
 
+    @Column(name = "description", nullable = true)
+    private String description;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "field_type", nullable = false)
     private FieldType fieldType;
@@ -98,5 +101,13 @@ public class ApplicationFormField {
 
     public void setOrderIndex(Integer orderIndex) {
         this.orderIndex = orderIndex;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 }
