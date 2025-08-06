@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface CohortRepo extends JpaRepository<Cohort, Long> {
+public interface CohortRepo extends JpaRepository<Cohort, UUID> {
 
     List<Application> findByCohortId(UUID cohortId);
     List<Application> findByTenant(Tenant tenant);
