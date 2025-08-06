@@ -31,6 +31,9 @@ public class Cohort {
     @Column(length = 1000)
     private String description;
 
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = true;
+
     private LocalDate startDate;
     private LocalDate endDate;
 
@@ -72,5 +75,21 @@ public class Cohort {
 
     public void setEndDate(LocalDate endDate) {
         this.endDate = endDate;
+    }
+
+    public Tenant getTenant() {
+        return tenant;
+    }
+
+    public void setTenant(Tenant tenant) {
+        this.tenant = tenant;
+    }
+
+    public Boolean getActive() {
+        return isActive;
+    }
+
+    public void setActive(Boolean active) {
+        isActive = active;
     }
 }
