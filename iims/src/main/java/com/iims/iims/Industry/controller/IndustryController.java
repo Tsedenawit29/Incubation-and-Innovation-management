@@ -4,10 +4,8 @@ import com.iims.iims.Industry.dto.IndustryRequest;
 import com.iims.iims.Industry.dto.IndustryResponse;
 import com.iims.iims.Industry.service.IndustryService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,7 +13,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/tenants/{tenantId}/industries")
-@RequiredArgsConstructor
 public class IndustryController {
 
     private final IndustryService industryService;
