@@ -6,7 +6,6 @@ import com.iims.iims.Industry.entity.Industry;
 import com.iims.iims.Industry.repo.IndustryRepository;
 import com.iims.iims.tenant.entity.Tenant;
 import jakarta.persistence.EntityNotFoundException;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -14,7 +13,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class IndustryService {
 
     private final IndustryRepository industryRepository;
