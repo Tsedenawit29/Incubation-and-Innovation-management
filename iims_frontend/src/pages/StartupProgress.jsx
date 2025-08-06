@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { getMentorsForStartup } from '../api/mentorAssignment';
 import { getAssignedTemplatesForStartup, getPhases, getTasks, uploadSubmissionFile, createSubmission } from '../api/progresstracking';
 import { getTenantUsersByRole } from '../api/users';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Legend } from 'recharts';
 
 export default function StartupProgress() {
   const { id } = useParams();
