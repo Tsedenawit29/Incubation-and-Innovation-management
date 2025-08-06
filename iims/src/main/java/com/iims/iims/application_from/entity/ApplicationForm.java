@@ -31,6 +31,9 @@ public class ApplicationForm {
     @Column(name = "name", nullable = false)
     private String name;
 
+    @Column(name = "description", nullable = true)
+    private String description;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false)
     private ApplicationFormType type;
@@ -99,5 +102,13 @@ public class ApplicationForm {
 
     public void setFields(List<ApplicationFormField> fields) {
         this.fields = fields;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 }

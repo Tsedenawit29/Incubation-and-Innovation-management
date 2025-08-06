@@ -17,6 +17,7 @@ public class ApplicationFormResponseDto {
     private UUID id;
     private UUID tenantId;
     private String name;
+    private String description;
     private ApplicationFormType type;
     private Boolean isActive;
     private LocalDateTime createdAt;
