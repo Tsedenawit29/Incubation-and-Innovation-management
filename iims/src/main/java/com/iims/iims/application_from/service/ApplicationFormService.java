@@ -47,6 +47,7 @@ public class ApplicationFormService {
         ApplicationForm form = new ApplicationForm();
         form.setTenant(tenant);// Set the Tenant entity
         form.setName(request.getName());
+        form.setDescription(request.getDescription());
         form.setType(request.getType());
         form.setActive(request.getActive());
 
@@ -55,6 +56,7 @@ public class ApplicationFormService {
                 .map(fieldDto ->{
                     ApplicationFormField field = new ApplicationFormField();
                     field.setLabel(fieldDto.getLabel());
+                    field.setDescription(fieldDto.getDescription());
                     field.setFieldType(fieldDto.getFieldType());
                     field.setIsRequired(fieldDto.getIsRequired());
                     field.setOptions(fieldDto.getOptions());
@@ -140,6 +142,7 @@ public class ApplicationFormService {
         ApplicationForm existingForm = applicationFormRepository.findByIdAndTenant(formId, tenant)
                 .orElseThrow(() -> new EntityNotFoundException("Application form not found with ID: " + formId + " for tenant: " + tenantId));
         existingForm.setName(request.getName());
+        existingForm.setDescription(request.getDescription());
         existingForm.setType(request.getType());
         existingForm.setActive(request.getActive());
 
@@ -148,6 +151,7 @@ public class ApplicationFormService {
         request.getFields().forEach(fieldDto -> {
             ApplicationFormField field = new ApplicationFormField();
             field.setLabel(fieldDto.getLabel());
+            field.setDescription(fieldDto.getDescription());
             field.setFieldType(fieldDto.getFieldType());
             field.setIsRequired(fieldDto.getIsRequired());
             field.setOptions(fieldDto.getOptions());
@@ -212,7 +216,8 @@ public class ApplicationFormService {
 
         ApplicationForm clonedForm = new ApplicationForm();
         clonedForm.setTenant(originalForm.getTenant()); // Link to the same tenant
-        clonedForm.setName(originalForm.getName() + " (Cloned)"); // Add suffix to name
+        clonedForm.setName(originalForm.getName() + " (Cloned)");// Add suffix to name
+        clonedForm.setDescription(originalForm.getDescription());
         clonedForm.setType(originalForm.getType());
         clonedForm.setActive(true); // Cloned forms are typically active by default
         clonedForm.setCreatedAt(LocalDateTime.now()); // New creation timestamp
@@ -223,6 +228,7 @@ public class ApplicationFormService {
                     ApplicationFormField newField = new ApplicationFormField();
                     // ID will be generated automatically for newField as it's a new entity
                     newField.setLabel(originalField.getLabel());
+                    newField.setDescription(originalField.getDescription());
                     newField.setFieldType(originalField.getFieldType());
                     newField.setIsRequired(originalField.getIsRequired());
                     newField.setOptions(originalField.getOptions());
@@ -249,6 +255,7 @@ public class ApplicationFormService {
                 .map(field -> new ApplicationFormFieldDto(
                         field.getId(),
                         field.getLabel(),
+                        field.getDescription(),
                         field.getFieldType(),
                         field.getIsRequired(),
                         field.getOptions(),
@@ -259,6 +266,7 @@ public class ApplicationFormService {
                 form.getId(),
                 form.getTenant().getId(),
                 form.getName(),
+                form.getDescription(),
                 form.getType(),
                 form.getActive(),
                 form.getCreatedAt(),

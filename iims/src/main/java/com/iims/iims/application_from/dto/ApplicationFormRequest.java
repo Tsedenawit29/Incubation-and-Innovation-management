@@ -22,6 +22,8 @@ public class ApplicationFormRequest {
     @NotBlank(message = "Form name cannot be empty")
     private String name;
 
+    private String description;
+
     @NotNull(message = "Form type cannot be null")
     private ApplicationFormType type;
 
@@ -70,5 +72,13 @@ public class ApplicationFormRequest {
 
     public void setFields(List<ApplicationFormFieldDto> fields) {
         this.fields = fields;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 }
