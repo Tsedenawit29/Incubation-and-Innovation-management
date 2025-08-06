@@ -64,6 +64,10 @@ public class Tenant {
     @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason;
 
+    public UUID getId() {
+        return id;
+    }
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

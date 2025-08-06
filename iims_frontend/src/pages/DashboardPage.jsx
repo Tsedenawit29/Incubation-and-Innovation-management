@@ -16,6 +16,8 @@ import ChangeRoleModal from "../components/ChangeRoleModal";
 import ChangePasswordModal from "../components/ChangePasswordModal";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
 
+const API_URL = "http://localhost:8081/api";
+
 export default function DashboardPage() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,11 +60,16 @@ export default function DashboardPage() {
   }, [token]);
 
   const handleEdit = (user) => {
+    console.log("Edit button clicked for user:", user);
     setEditModal({ isOpen: true, user });
   };
 
   const handleEditSave = async (formData) => {
     try {
+      console.log("handleEditSave called with formData:", formData);
+      console.log("Current user being edited:", editModal.user);
+      console.log("Token present:", !!token);
+      
       // Only send the fields that are actually provided
       const profileData = {};
       if (formData.fullName !== undefined && formData.fullName !== '') {
@@ -72,65 +79,98 @@ export default function DashboardPage() {
         profileData.email = formData.email;
       }
       
+      console.log("Profile data to send:", profileData);
+      
       await updateUserProfile(token, editModal.user.id, profileData);
       await fetchUsers();
       showSuccessMessage("User updated successfully!");
     } catch (err) {
-      throw new Error("Failed to update user: " + err.message);
+      console.error("Error in handleEditSave:", err);
+      alert("Failed to update user: " + err.message);
     }
   };
 
   const handleDelete = (user) => {
+    console.log("Delete button clicked for user:", user);
     setDeleteModal({ isOpen: true, user });
   };
 
   const handleDeleteConfirm = async () => {
     try {
+      console.log("handleDeleteConfirm called for user:", deleteModal.user);
+      console.log("Token present:", !!token);
+      
       await deleteUser(token, deleteModal.user.id);
       await fetchUsers();
       showSuccessMessage("User deleted successfully!");
     } catch (err) {
-      throw new Error("Failed to delete user: " + err.message);
+      console.error("Error in handleDeleteConfirm:", err);
+      alert("Failed to delete user: " + err.message);
     }
   };
 
   const handleStatus = async (user) => {
     try {
+      console.log("handleStatus called for user:", user);
+      console.log("Token present:", !!token);
+      console.log("New status will be:", !user.active);
+      
       await updateUserStatus(token, user.id, !user.active);
       await fetchUsers();
       const action = user.active ? "deactivated" : "activated";
       showSuccessMessage(`User ${action} successfully!`);
     } catch (err) {
+      console.error("Error in handleStatus:", err);
       alert("Failed to update user status: " + err.message);
     }
   };
 
   const handleRole = (user) => {
+    console.log("Change Role button clicked for user:", user);
     setRoleModal({ isOpen: true, user });
   };
 
   const handleRoleSave = async (newRole) => {
     try {
+      console.log("handleRoleSave called with newRole:", newRole);
+      console.log("Current user:", roleModal.user);
+      console.log("Token present:", !!token);
+      
       await updateUserRole(token, roleModal.user.id, newRole);
       await fetchUsers();
       showSuccessMessage("User role updated successfully!");
     } catch (err) {
-      throw new Error("Failed to update user role: " + err.message);
+      console.error("Error in handleRoleSave:", err);
+      alert("Failed to update user role: " + err.message);
     }
   };
 
   const handleChangePassword = (user) => {
+    console.log("Change Password button clicked for user:", user);
     setPasswordModal({ isOpen: true, user });
   };
 
   const handlePasswordSave = async (currentPassword, newPassword) => {
     try {
+      console.log("handlePasswordSave called for user:", passwordModal.user);
+      console.log("Token present:", !!token);
+      
       await updateUserPassword(token, passwordModal.user.id, currentPassword, newPassword);
       showSuccessMessage("Password updated successfully!");
     } catch (err) {
-      throw new Error("Failed to update password: " + err.message);
+      console.error("Error in handlePasswordSave:", err);
+      alert("Failed to update password: " + err.message);
     }
   };
+
+  // Move the following console.log below all function definitions to avoid ReferenceError
+  console.log("DashboardPage render - Functions defined:", {
+    handleEdit: typeof handleEdit,
+    handleDelete: typeof handleDelete,
+    handleStatus: typeof handleStatus,
+    handleRole: typeof handleRole,
+    handleChangePassword: typeof handleChangePassword
+  });
 
   if (loading) {
     return (
@@ -209,14 +249,61 @@ export default function DashboardPage() {
           
           <div className="bg-white shadow rounded-lg">
             <div className="px-4 py-5 sm:p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">User Management</h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-medium text-gray-900">User Management</h2>
+                <button
+                  onClick={async () => {
+                    try {
+                      console.log("Testing backend connection...");
+                      const response = await fetch(`${API_URL}/users`, {
+                        headers: { 
+                          Authorization: `Bearer ${token}`,
+                          "Content-Type": "application/json"
+                        },
+                      });
+                      console.log("Test response status:", response.status);
+                      if (response.ok) {
+                        alert("✅ Backend connection successful!");
+                      } else {
+                        alert(`❌ Backend connection failed: ${response.status}`);
+                      }
+                    } catch (error) {
+                      console.error("Backend test error:", error);
+                      alert(`❌ Backend connection error: ${error.message}`);
+                    }
+                  }}
+                  className="px-3 py-1 bg-gray-600 text-white rounded text-sm hover:bg-gray-700"
+                >
+                  Test Backend
+                </button>
+              </div>
               <UserTable 
                 users={users} 
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                onStatus={handleStatus}
-                onRole={handleRole}
-                onChangePassword={handleChangePassword}
+                onEdit={(user) => {
+                  console.log("onEdit called with user:", user);
+                  console.log("handleEdit function:", typeof handleEdit);
+                  handleEdit(user);
+                }}
+                onDelete={(user) => {
+                  console.log("onDelete called with user:", user);
+                  console.log("handleDelete function:", typeof handleDelete);
+                  handleDelete(user);
+                }}
+                onStatus={(user) => {
+                  console.log("onStatus called with user:", user);
+                  console.log("handleStatus function:", typeof handleStatus);
+                  handleStatus(user);
+                }}
+                onRole={(user) => {
+                  console.log("onRole called with user:", user);
+                  console.log("handleRole function:", typeof handleRole);
+                  handleRole(user);
+                }}
+                onChangePassword={(user) => {
+                  console.log("onChangePassword called with user:", user);
+                  console.log("handleChangePassword function:", typeof handleChangePassword);
+                  handleChangePassword(user);
+                }}
               />
             </div>
           </div>
@@ -253,4 +340,4 @@ export default function DashboardPage() {
       />
     </div>
   );
-} 
+}

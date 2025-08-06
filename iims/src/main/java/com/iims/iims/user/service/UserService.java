@@ -134,8 +134,19 @@ public class UserService implements UserDetailsService {
         Tenant tenant = tenantRepository.findById(tenantAdmin.getTenantId())
                 .orElse(null);
         String tenantName = tenant != null ? tenant.getName() : "Your Center";
-        // Send email with credentials
-        emailService.sendAdminApprovalEmail(user.getEmail(), user.getFullName(), user.getEmail(), rawPassword, tenantName);
+
+        // --- MODIFIED EMAIL SENDING LOGIC ---
+        if (user.getRole() == Role.STARTUP) {
+            emailService.sendStartupCredentialsEmail(user.getEmail(), user.getFullName(), user.getEmail(), rawPassword, tenantName);
+        } else if (user.getRole() == Role.MENTOR) {
+            emailService.sendMentorCredentialsEmail(user.getEmail(), user.getFullName(), user.getEmail(), rawPassword, tenantName);
+        }
+        else {
+            // Default for other roles like TENANT_ADMIN, SUPER_ADMIN, etc.
+            emailService.sendAdminApprovalEmail(user.getEmail(), user.getFullName(), user.getEmail(), rawPassword, tenantName);
+        }
+        // --- END MODIFIED EMAIL SENDING LOGIC ---
+
         // Return user info without password
         user.setPassword(null);
         return user;
@@ -148,4 +159,4 @@ public class UserService implements UserDetailsService {
     public List<User> getUsersByTenantIdAndRole(UUID tenantId, Role role) {
         return userRepository.findByTenantIdAndRole(tenantId, role);
     }
-} 
+}

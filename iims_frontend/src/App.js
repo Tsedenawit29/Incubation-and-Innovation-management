@@ -10,11 +10,17 @@ import TenantApplicationForm from './components/TenantApplicationForm';
 import AdminRegistrationForm from './components/AdminRegistrationForm';
 import LandingPage from './pages/LandingPage';
 import StartupDashboard from './pages/StartupDashboard';
+import StartupProgress from './pages/StartupProgress';
 import MentorDashboard from './pages/MentorDashboard';
+import MentorProgress from './pages/MentorProgress';
+import ProgressTrackingManagement from './pages/ProgressTrackingManagement';
 import CoachDashboard from './pages/CoachDashboard';
 import FacilitatorDashboard from './pages/FacilitatorDashboard';
 import InvestorDashboard from './pages/InvestorDashboard';
 import AlumniDashboard from './pages/AlumniDashboard';
+import LandingPageManagement from './pages/LandingPageManagement';
+import PublicLandingPage from './pages/PublicLandingPage';
+import StartupManagement from './pages/StartupManagement';
 import './App.css';
 
 // Protected Route Component
@@ -89,6 +95,31 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            {/* Tenant Admin Management Routes */}
+            <Route
+              path="/tenant-admin/:tenantId/landing-page-management"
+              element={
+                <ProtectedRoute role="TENANT_ADMIN">
+                  <LandingPageManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant-admin/startup-management"
+              element={
+                <ProtectedRoute role="TENANT_ADMIN">
+                  <StartupManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant-admin/:tenantId/progress-tracking-management"
+              element={
+                <ProtectedRoute role="TENANT_ADMIN">
+                  <ProgressTrackingManagement />
+                </ProtectedRoute>
+              }
+            />
             {/* Super Admin Routes */}
             <Route 
               path="/tenant-management" 
@@ -110,8 +141,14 @@ function App() {
             <Route path="/apply-tenant" element={<TenantApplicationForm />} />
             <Route path="/register-admin" element={<AdminRegistrationForm />} />
             <Route path="/register-admin/:tenantId" element={<AdminRegistrationForm />} />
-            {/* Default redirect */}
-            <Route path="/" element={<LandingPage />} />
+            {/* Public Landing Page */}
+            <Route path="/public-landing/:tenantId" element={<PublicLandingPage />} />
+            {/* Root route - redirect authenticated users to their dashboard */}
+            <Route path="/" element={
+              <PublicRoute>
+                <LandingPage />
+              </PublicRoute>
+            } />
             {/* Startup Dashboard */}
             <Route
               path="/startup-dashboard/:id"
@@ -121,12 +158,39 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            {/* Startup Progress */}
+            <Route
+              path="/startup-progress/:id"
+              element={
+                <ProtectedRoute role="STARTUP">
+                  <StartupProgress />
+                </ProtectedRoute>
+              }
+            />
             {/* Mentor Dashboard */}
             <Route
               path="/mentor-dashboard/:id"
               element={
                 <ProtectedRoute role="MENTOR">
                   <MentorDashboard />
+                </ProtectedRoute>
+              }
+            />
+            {/* Mentor Progress */}
+            <Route
+              path="/mentor-progress/:id"
+              element={
+                <ProtectedRoute role="MENTOR">
+                  <MentorProgress />
+                </ProtectedRoute>
+              }
+            />
+            {/* Progress Tracking Management */}
+            <Route
+              path="/progress-tracking-management/:tenantId"
+              element={
+                <ProtectedRoute role="TENANT_ADMIN">
+                  <ProgressTrackingManagement />
                 </ProtectedRoute>
               }
             />
