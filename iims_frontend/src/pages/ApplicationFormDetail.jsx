@@ -252,6 +252,19 @@ export default function ApplicationFormDetail() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center py-10 px-4 font-inter">
+      {/* Back to Dashboard Button */}
+      <div className="w-full max-w-4xl mb-4">
+        <button
+          onClick={() => navigate("/tenant-admin/dashboard")}
+          className="flex items-center text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200 bg-white px-4 py-2 rounded-md shadow-sm"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+          </svg>
+          Back to Dashboard
+        </button>
+      </div>
+      
       <div className="w-full max-w-4xl bg-white rounded-lg shadow-xl p-8 relative border-t-8 border-blue-600">
         <button
           className="absolute left-6 top-6 text-blue-600 hover:text-blue-800 text-3xl transition-colors duration-200"
