@@ -21,7 +21,9 @@ public class ApplicationFormResponseDto {
     private String name;
     private String description;
     private UUID cohortId;
+    private String cohortName;
     private UUID industryId;
+    private String industryName;
     private ApplicationFormType type;
     private Boolean isActive;
     private LocalDateTime createdAt;

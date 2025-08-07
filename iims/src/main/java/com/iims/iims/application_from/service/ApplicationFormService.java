@@ -309,9 +309,12 @@ public class ApplicationFormService {
                 ))
                 .collect(Collectors.toList());
 
-        // Safely get the cohort and industry IDs by checking for null
+        // Safely get the cohort and industry IDs and names by checking for null
         UUID cohortId = (form.getCohort() != null) ? form.getCohort().getId() : null;
+        String cohortName = (form.getCohort() != null) ? form.getCohort().getName() : "N/A";
+
         UUID industryId = (form.getIndustry() != null) ? form.getIndustry().getId() : null;
+        String industryName = (form.getIndustry() != null) ? form.getIndustry().getName() : "N/A";
 
         return new ApplicationFormResponseDto(
                 form.getId(),
@@ -319,7 +322,9 @@ public class ApplicationFormService {
                 form.getName(),
                 form.getDescription(),
                 cohortId,
+                cohortName,
                 industryId,
+                industryName,
                 form.getType(),
                 form.getActive(),
                 form.getCreatedAt(),
