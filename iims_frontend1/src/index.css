@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-primary: #299DFF;
+  --brand-dark: #0A2D5C;
+}
+
+.bg-brand-primary {
+  background-color: var(--brand-primary) !important;
+}
+.bg-brand-dark {
+  background-color: var(--brand-dark) !important;
+}
+.text-brand-primary {
+  color: var(--brand-primary) !important;
+}
+.text-brand-dark {
+  color: var(--brand-dark) !important;
+}

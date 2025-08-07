@@ -1,15 +1,16 @@
 import { useState } from "react";
-import { useAuth } from "../hooks/useAuth";
-import { login as loginApi } from "../api/users";
-import { useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth"; // Import useAuth hook
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
-  const navigate = useNavigate();
+  
+  // Destructure loginUser from useAuth.
+  // The 'login' function from useAuth is now intended for internal use by AuthProvider.
+  // The external function to initiate login is loginUser.
+  const { loginUser } = useAuth(); 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -17,40 +18,14 @@ export default function LoginPage() {
     setLoading(true);
     
     try {
-      const data = await loginApi(email, password);
-      console.log("Login response:", data);
-      // Use the actual user data from the response
-      const userData = {
-        id: data.userId,
-        email: data.email,
-        role: data.role,
-        fullName: data.fullName,
-        tenantId: data.tenantId || null
-      };
-      login(data.token, userData);
-      // Redirect based on role
-      if (userData.role === "SUPER_ADMIN") {
-        navigate("/super-admin/dashboard");
-      } else if (userData.role === "TENANT_ADMIN") {
-        navigate("/tenant-admin/dashboard");
-      } else if (userData.role === "STARTUP") {
-        navigate(`/startup-dashboard/${userData.id}`);
-      } else if (userData.role === "MENTOR") {
-        navigate(`/mentor-dashboard/${userData.id}`);
-      } else if (userData.role === "COACH") {
-        navigate(`/coach-dashboard/${userData.id}`);
-      } else if (userData.role === "FACILITATOR") {
-        navigate(`/facilitator-dashboard/${userData.id}`);
-      } else if (userData.role === "INVESTOR") {
-        navigate(`/investor-dashboard/${userData.id}`);
-      } else if (userData.role === "ALUMNI") {
-        navigate(`/alumni-dashboard/${userData.id}`);
-      } else {
-        navigate("/");
-      }
+      // Call the loginUser function from the useAuth hook.
+      // This function already handles the API call, state updates, and redirection.
+      await loginUser(email, password);
+      // No explicit redirection needed here, as loginUser in useAuth handles window.location.href
     } catch (error) {
       console.error("Login error:", error);
-      setError(error.message || "Invalid credentials");
+      // Display the error message from the useAuth hook or a default one
+      setError(error.message || "Invalid credentials. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -129,4 +104,4 @@ export default function LoginPage() {
       </div>
     </div>
   );
-} 
+}
