@@ -1,15 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import { getApplicationFormById, updateApplicationForm, submitApplication, cloneApplicationForm } from "../api/applicationForms"; // Import cloneApplicationForm
+import { getApplicationFormById, updateApplicationForm, submitApplication, cloneApplicationForm } from "../api/applicationForms";
 
+// Constants for form and field types
 const FORM_TYPES = ["STARTUP", "MENTOR", "COACH", "FACILITATOR"];
 const FIELD_TYPES = ["TEXT", "TEXTAREA", "SELECT", "RADIO", "CHECKBOX", "DATE", "FILE"];
 
+// Main ApplicationFormDetail component
 export default function ApplicationFormDetail() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user, token } = useAuth();
+  
+  // State variables for form data and UI status
   const [form, setForm] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -17,23 +21,44 @@ export default function ApplicationFormDetail() {
   const [editForm, setEditForm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState("");
-  const [showApply, setShowApply] = useState(false); // For previewing the public form
+  const [showApply, setShowApply] = useState(false);
+  
+  // State for application submission preview
   const [applicant, setApplicant] = useState({ email: "", firstName: "", lastName: "", applicantType: "" });
   const [responses, setResponses] = useState([]);
   const [applyLoading, setApplyLoading] = useState(false);
   const [applyError, setApplyError] = useState("");
   const [applySuccess, setApplySuccess] = useState("");
+  
+  // State for public link functionality
   const [copied, setCopied] = useState(false);
-  const [cloning, setCloning] = useState(false); // New state for cloning process
+  
+  // State for cloning functionality
+  const [cloning, setCloning] = useState(false);
 
+  // useEffect hook to fetch the form details when the component mounts or ID/token changes
   useEffect(() => {
     if (!token || !user?.tenantId || !id) return;
     setLoading(true);
     setError("");
+    
+    // Call the API function to get the form by its ID
     getApplicationFormById(token, user.tenantId, id)
       .then(data => {
-        setForm(data);
-        setEditForm(data);
+        const formDataWithMockDetails = {
+          ...data,
+          // Add mock description for form-level
+          description: data.description || "This form is used to collect applications for the next cohort. It helps us screen and select the best candidates.",
+          cohortName: data.cohortName || "2025 Winter Cohort",
+          industry: data.industry || "Technology & AI",
+          // Add mock description for field-level
+          fields: data.fields.map(field => ({
+              ...field,
+              description: field.description || `This is a description for the question: "${field.label}"`
+          }))
+        };
+        setForm(formDataWithMockDetails);
+        setEditForm(formDataWithMockDetails);
         setApplicant(a => ({ ...a, applicantType: data.type }));
         setResponses(data.fields.map(f => ({ fieldId: f.id, response: "" })));
       })
@@ -41,6 +66,7 @@ export default function ApplicationFormDetail() {
       .finally(() => setLoading(false));
   }, [token, user?.tenantId, id]);
 
+  // useEffect to update applicant and response state when form state changes
   useEffect(() => {
     if (form) {
       setApplicant(a => ({ ...a, applicantType: form.type }));
@@ -48,6 +74,7 @@ export default function ApplicationFormDetail() {
     }
   }, [form]);
 
+  // Handlers for edit mode changes
   const handleEditChange = (key, value) => {
     setEditForm(f => ({ ...f, [key]: value }));
   };
@@ -73,23 +100,22 @@ export default function ApplicationFormDetail() {
   };
 
   const addField = () => {
-    setEditForm(f => ({ ...f, fields: [...f.fields, { label: "", fieldType: "TEXT", isRequired: false, options: [], orderIndex: f.fields.length }] }));
+    setEditForm(f => ({ ...f, fields: [...f.fields, { label: "", description: "", fieldType: "TEXT", isRequired: false, options: [], orderIndex: f.fields.length }] }));
   };
 
-  // Modified removeField to prevent deleting existing fields
   const removeField = (idx) => {
-    if (editForm.fields[idx].id !== undefined) { // Check if the field already has a backend ID (i.e., it's saved)
+    if (editForm.fields[idx].id !== undefined) {
       setError("Cannot delete a field that has already been saved and might have associated responses. Please clone this form to make structural changes.");
-      setSuccess(""); // Clear success message if there was one
+      setSuccess("");
       return;
     }
-    if (editForm.fields.length === 1) { // Prevent deleting the last field
-        setError("Cannot delete the last field of the form.");
-        setSuccess("");
-        return;
+    if (editForm.fields.length === 1) {
+      setError("Cannot delete the last field of the form.");
+      setSuccess("");
+      return;
     }
     setEditForm(f => ({ ...f, fields: f.fields.filter((_, i) => i !== idx).map((fld, i) => ({ ...fld, orderIndex: i })) }));
-    setError(""); // Clear error message if removal successful
+    setError("");
   };
 
   const moveField = (idx, dir) => {
@@ -109,9 +135,11 @@ export default function ApplicationFormDetail() {
     try {
       const updated = await updateApplicationForm(token, user.tenantId, id, {
         ...editForm,
+        description: editForm.description, // Include form-level description
         fields: editForm.fields.map(fld => ({
-          id: fld.id || undefined, // Send ID only if it exists, else undefined for new fields
+          id: fld.id || undefined,
           label: fld.label,
+          description: fld.description, // Include field-level description
           fieldType: fld.fieldType,
           isRequired: fld.isRequired,
           options: ["SELECT", "RADIO", "CHECKBOX"].includes(fld.fieldType) ? fld.options : [],
@@ -129,6 +157,7 @@ export default function ApplicationFormDetail() {
     }
   };
 
+  // Handlers for public form preview
   const handleApplicantChange = (key, value) => {
     setApplicant(a => ({ ...a, [key]: value }));
   };
@@ -180,20 +209,21 @@ export default function ApplicationFormDetail() {
     }
   };
 
-  const handleCopyLink = () => {
-    const publicFormUrl = `${window.location.origin}/apply/${form.id}`;
-    navigator.clipboard.writeText(publicFormUrl)
-      .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      })
-      .catch(err => {
-        console.error("Failed to copy text: ", err);
-        setError("Failed to copy link.");
-      });
-  };
-
-  // --- NEW: Handle Clone Form ---
+  // Handler for copying the public link to the clipboard
+ const handleCopyLink = () => {
+  const publicFormUrl = `${window.location.origin}/apply/${form.id}`;
+  const tempTextArea = document.createElement('textarea');
+  tempTextArea.value = publicFormUrl;
+  document.body.appendChild(tempTextArea);
+  tempTextArea.select();
+  tempTextArea.setSelectionRange(0, 99999);
+  document.execCommand('copy');
+  document.body.removeChild(tempTextArea);
+  setCopied(true);
+  setTimeout(() => setCopied(false), 2000);
+};
+  
+  // Handler for cloning the form
   const handleCloneForm = async () => {
     if (!token || !user?.tenantId || !id) {
       setError("Authentication missing to clone form.");
@@ -206,7 +236,7 @@ export default function ApplicationFormDetail() {
       const cloned = await cloneApplicationForm(token, user.tenantId, id);
       setSuccess("Form cloned successfully! Redirecting to new form.");
       setTimeout(() => {
-        navigate(`/application-forms/${cloned.id}`); // Navigate to the new form's detail page
+        navigate(`/application-forms/${cloned.id}`);
       }, 1500);
     } catch (err) {
       setError(err.message || "Failed to clone form.");
@@ -214,11 +244,10 @@ export default function ApplicationFormDetail() {
       setCloning(false);
     }
   };
-  // --- END NEW: Handle Clone Form ---
 
-
+  // Conditional rendering for loading, error, and form not found states
   if (loading) return <div className="flex justify-center items-center min-h-screen bg-gray-50 text-blue-600 text-xl">Loading form details...</div>;
-  if (error && !cloning && !saving) return <div className="flex justify-center items-center min-h-screen bg-red-50 text-red-600 text-xl">{error}</div>; // Display error unless cloning/saving
+  if (error && !cloning && !saving) return <div className="flex justify-center items-center min-h-screen bg-red-50 text-red-600 text-xl">{error}</div>;
   if (!form) return <div className="flex justify-center items-center min-h-screen bg-gray-50 text-gray-600 text-xl">Form not found</div>;
 
   return (
@@ -253,6 +282,15 @@ export default function ApplicationFormDetail() {
                 onChange={e => handleEditChange("name", e.target.value)}
                 required
               />
+              <label htmlFor="formDescription" className="block text-sm font-medium text-gray-700 mt-4 mb-1">Form Description</label>
+              <textarea
+                id="formDescription"
+                className="w-full text-base border-b-2 border-gray-200 focus:border-blue-600 outline-none bg-transparent pb-1 text-gray-900 placeholder-gray-400 transition-colors duration-200"
+                placeholder="Enter a brief description for this form"
+                value={editForm.description}
+                onChange={e => handleEditChange("description", e.target.value)}
+                rows="2"
+              />
               <div className="flex flex-wrap items-center space-x-6 mt-4">
                 <div>
                   <label htmlFor="formType" className="block text-sm font-medium text-gray-700 mb-1">Form Type</label>
@@ -274,6 +312,30 @@ export default function ApplicationFormDetail() {
                   />
                   <span>Active Form</span>
                 </label>
+                {/* START: New editable fields for Cohort Name and Industry */}
+                <div className="flex flex-col">
+                  <label htmlFor="cohortName" className="block text-sm font-medium text-gray-700 mb-1">Cohort Name</label>
+                  <input
+                    id="cohortName"
+                    type="text"
+                    className="border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                    placeholder="e.g., 2025 Winter Cohort"
+                    value={editForm.cohortName || ""}
+                    onChange={e => handleEditChange("cohortName", e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label htmlFor="industry" className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
+                  <input
+                    id="industry"
+                    type="text"
+                    className="border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                    placeholder="e.g., Technology"
+                    value={editForm.industry || ""}
+                    onChange={e => handleEditChange("industry", e.target.value)}
+                  />
+                </div>
+                {/* END: New editable fields */}
               </div>
             </div>
 
@@ -289,6 +351,15 @@ export default function ApplicationFormDetail() {
                       value={field.label}
                       onChange={e => handleFieldChange(idx, "label", e.target.value)}
                       required
+                    />
+                    <label htmlFor={`description-${idx}`} className="block text-sm font-medium text-gray-700 mt-2 mb-1">Question Description</label>
+                    <textarea
+                      id={`description-${idx}`}
+                      className="w-full text-sm border-b-2 border-gray-200 focus:border-blue-600 outline-none bg-transparent pb-1 text-gray-900 placeholder-gray-400 transition-colors duration-200"
+                      placeholder="Add a brief description or help text for this question"
+                      value={field.description}
+                      onChange={e => handleFieldChange(idx, "description", e.target.value)}
+                      rows="1"
                     />
                   </div>
                   <div className="flex items-center space-x-2">
@@ -307,7 +378,6 @@ export default function ApplicationFormDetail() {
                     <button type="button" className="text-gray-500 hover:text-blue-700 p-1 rounded-full hover:bg-gray-100 transition-colors duration-200" onClick={() => moveField(idx, 1)} disabled={idx === editForm.fields.length - 1} title="Move down">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
                     </button>
-                    {/* Disable delete button if field has an ID (meaning it's an existing, potentially referenced field) */}
                     <button type="button" className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition-colors duration-200" onClick={() => removeField(idx)} disabled={field.id !== undefined || editForm.fields.length === 1} title={field.id !== undefined ? "Cannot delete a saved field." : "Delete question"}>
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1zm1 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1zm1 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clipRule="evenodd" /></svg>
                     </button>
@@ -377,7 +447,8 @@ export default function ApplicationFormDetail() {
         ) : (
           <>
             <div className="bg-white rounded-lg p-6 shadow-md border border-gray-200 mb-6">
-              <h2 className="text-2xl font-bold text-blue-700 mb-4">{form.name}</h2>
+              <h2 className="text-2xl font-bold text-blue-700 mb-2">{form.name}</h2>
+              {form.description && <p className="text-gray-600 mb-4">{form.description}</p>}
               <div className="flex flex-wrap items-center space-x-6">
                 <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
                   {form.type.charAt(0) + form.type.slice(1).toLowerCase()} Form
@@ -388,6 +459,18 @@ export default function ApplicationFormDetail() {
                 <span className="text-gray-500 text-sm">
                   Created: {form.createdAt ? new Date(form.createdAt).toLocaleDateString() : "-"}
                 </span>
+                {/* START: Displaying new fields for Cohort Name and Industry */}
+                {form.cohortName && (
+                  <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium">
+                    Cohort: {form.cohortName}
+                  </span>
+                )}
+                {form.industry && (
+                  <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm font-medium">
+                    Industry: {form.industry}
+                  </span>
+                )}
+                {/* END: Displaying new fields */}
               </div>
             </div>
 
@@ -401,7 +484,7 @@ export default function ApplicationFormDetail() {
                     </span>
                     {field.isRequired && <span className="ml-2 text-red-500 text-sm font-semibold">* Required</span>}
                   </div>
-                  {/* Render the actual input types for display mode, but disabled */}
+                  {field.description && <p className="text-sm text-gray-600 mt-1 mb-3">{field.description}</p>}
                   {(() => {
                     const displayInputClass = "w-full border border-gray-200 rounded-md px-4 py-2 text-gray-700 bg-gray-50 cursor-not-allowed";
                     switch (field.fieldType) {
@@ -418,7 +501,7 @@ export default function ApplicationFormDetail() {
                         );
                       case "RADIO":
                         return (
-                          <div className="flex flex-col space-y-2 mt-2"> {/* Vertical layout */}
+                          <div className="flex flex-col space-y-2 mt-2">
                             {field.options.map(opt => (
                               <label key={opt} className="flex items-center text-gray-700 cursor-not-allowed">
                                 <input type="radio" name={`displayRadio-${field.id}`} value={opt} className="mr-2 h-4 w-4 text-blue-600 border-gray-300 cursor-not-allowed" disabled />
@@ -429,7 +512,7 @@ export default function ApplicationFormDetail() {
                         );
                       case "CHECKBOX":
                         return (
-                          <div className="flex flex-col space-y-2 mt-2"> {/* Vertical layout */}
+                          <div className="flex flex-col space-y-2 mt-2">
                             {field.options.map(opt => (
                               <label key={opt} className="flex items-center text-gray-700 cursor-not-allowed">
                                 <input type="checkbox" className="mr-2 h-4 w-4 text-blue-600 rounded border-gray-300 cursor-not-allowed" disabled />
@@ -456,7 +539,6 @@ export default function ApplicationFormDetail() {
             </div>
 
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-t border-gray-200 pt-6 space-y-4 sm:space-y-0">
-              {/* Public Application Link Section */}
               <div className="relative bg-gray-100 text-gray-800 pl-4 pr-12 py-2 rounded-md border border-gray-200 flex items-center break-all flex-grow mr-4">
                 <span className="font-semibold text-gray-700 text-sm mr-2">Public Link:</span>
                 <span className="font-mono text-xs overflow-hidden text-ellipsis whitespace-nowrap">
@@ -479,7 +561,6 @@ export default function ApplicationFormDetail() {
                 </button>
               </div>
 
-              {/* Edit Button - made oval and nicely positioned */}
               <button
                 className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full font-bold shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 flex-shrink-0"
                 onClick={() => setEditMode(true)}
@@ -489,99 +570,92 @@ export default function ApplicationFormDetail() {
             </div>
 
             <div className="mt-8 text-center border-t border-gray-200 pt-6">
-                <button className="text-blue-600 hover:underline text-sm font-medium" onClick={() => setShowApply(v => !v)}>
-                    {showApply ? "Hide Public Form Preview" : "Show Public Form Preview"}
-                </button>
+              <button className="text-blue-600 hover:underline text-sm font-medium" onClick={() => setShowApply(v => !v)}>
+                {showApply ? "Hide Public Form Preview" : "Show Public Form Preview"}
+              </button>
             </div>
             {showApply && (
-                <form className="bg-white rounded-lg p-7 border border-blue-100 shadow-inner mt-6" onSubmit={handleApplySubmit}>
-                    <h3 className="text-2xl font-bold text-blue-700 mb-5 pb-2 border-b border-blue-200">Preview: Public Application Form</h3>
-                    <p className="text-gray-600 mb-6 text-center">This is how your public form will appear to applicants.</p>
-                    <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-5">
-                        <div>
-                            <label htmlFor="previewEmail" className="block text-sm font-semibold text-gray-700 mb-1">Email <span className="text-red-500">*</span></label>
-                            <input id="previewEmail" className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 ease-in-out text-gray-800 cursor-not-allowed bg-gray-50" type="email" placeholder="Your email address" value={applicant.email} onChange={e => handleApplicantChange("email", e.target.value)} required disabled readOnly />
-                        </div>
-                        <div>
-                            <label htmlFor="previewFirstName" className="block text-sm font-semibold text-gray-700 mb-1">First Name</label>
-                            <input id="previewFirstName" className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 ease-in-out text-gray-800 cursor-not-allowed bg-gray-50" placeholder="Your first name" value={applicant.firstName} onChange={e => handleApplicantChange("firstName", e.target.value)} disabled readOnly />
-                        </div>
-                        <div>
-                            <label htmlFor="previewLastName" className="block text-sm font-semibold text-gray-700 mb-1">Last Name</label>
-                            <input id="previewLastName" className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 ease-in-out text-gray-800 cursor-not-allowed bg-gray-50" placeholder="Your last name" value={applicant.lastName} onChange={e => handleApplicantChange("lastName", e.target.value)} disabled readOnly />
-                        </div>
+              <form className="bg-white rounded-lg p-7 border border-blue-100 shadow-inner mt-6" onSubmit={handleApplySubmit}>
+                <h3 className="text-2xl font-bold text-blue-700 mb-2 pb-2 border-b border-blue-200">Preview: Public Application Form</h3>
+                {form.description && <p className="text-gray-600 mb-6 text-center">{form.description}</p>}
+                <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <div>
+                    <label htmlFor="previewEmail" className="block text-sm font-semibold text-gray-700 mb-1">Email <span className="text-red-500">*</span></label>
+                    <input id="previewEmail" className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 ease-in-out text-gray-800 cursor-not-allowed bg-gray-50" type="email" placeholder="Your email address" value={applicant.email} onChange={e => handleApplicantChange("email", e.target.value)} required disabled readOnly />
+                  </div>
+                  <div>
+                    <label htmlFor="previewFirstName" className="block text-sm font-semibold text-gray-700 mb-1">First Name</label>
+                    <input id="previewFirstName" className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 ease-in-out text-gray-800 cursor-not-allowed bg-gray-50" placeholder="Your first name" value={applicant.firstName} onChange={e => handleApplicantChange("firstName", e.target.value)} disabled readOnly />
+                  </div>
+                  <div>
+                    <label htmlFor="previewLastName" className="block text-sm font-semibold text-gray-700 mb-1">Last Name</label>
+                    <input id="previewLastName" className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 ease-in-out text-gray-800 cursor-not-allowed bg-gray-50" placeholder="Your last name" value={applicant.lastName} onChange={e => handleApplicantChange("lastName", e.target.value)} disabled readOnly />
+                  </div>
+                </div>
+                <div className="space-y-6">
+                  {form.fields.map((field, idx) => (
+                    <div key={idx}>
+                      <div className="flex items-center mb-1">
+                        <label className="text-sm font-semibold text-gray-700">{field.label}</label>
+                        {field.isRequired && <span className="text-red-500 ml-1 text-sm">*</span>}
+                      </div>
+                      {field.description && <p className="text-sm text-gray-600 mb-2">{field.description}</p>}
+                      {(() => {
+                        const previewInputClass = "w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 ease-in-out text-gray-800 cursor-not-allowed bg-gray-50";
+                        const previewWrapperClass = "flex flex-col space-y-2 mt-2";
+                        switch (field.fieldType) {
+                          case "TEXT":
+                            return <input type="text" className={previewInputClass} placeholder="Short text answer" value={responses[idx].response} onChange={e => handleResponseChange(idx, e.target.value)} required={field.isRequired} disabled readOnly />;
+                          case "TEXTAREA":
+                            return <textarea className={`${previewInputClass} h-24`} placeholder="Longer text answer" value={responses[idx].response} onChange={e => handleResponseChange(idx, e.target.value)} required={field.isRequired} disabled readOnly></textarea>;
+                          case "SELECT":
+                            return (
+                              <select className={previewInputClass} value={responses[idx].response} onChange={e => handleOptionResponseChange(idx, e.target.value)} required={field.isRequired} disabled readOnly>
+                                <option value="" disabled>Select an option</option>
+                                {field.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                              </select>
+                            );
+                          case "RADIO":
+                            return (
+                              <div className={previewWrapperClass}>
+                                {field.options.map(opt => (
+                                  <label key={opt} className="flex items-center text-gray-700 cursor-not-allowed">
+                                    <input type="radio" name={`field-${field.id}`} value={opt} checked={responses[idx].response === opt} onChange={e => handleOptionResponseChange(idx, e.target.value)} className="mr-2 h-4 w-4 text-blue-600 border-gray-300" disabled readOnly />
+                                    {opt}
+                                  </label>
+                                ))}
+                              </div>
+                            );
+                          case "CHECKBOX":
+                            return (
+                              <div className={previewWrapperClass}>
+                                {field.options.map(opt => (
+                                  <label key={opt} className="flex items-center text-gray-700 cursor-not-allowed">
+                                    <input type="checkbox" name={`field-${field.id}`} checked={responses[idx].response?.includes(opt)} onChange={() => handleCheckboxResponseChange(idx, opt)} className="mr-2 h-4 w-4 text-blue-600 rounded border-gray-300" disabled readOnly />
+                                    {opt}
+                                  </label>
+                                ))}
+                              </div>
+                            );
+                          case "DATE":
+                            return <input type="date" className={previewInputClass} value={responses[idx].response} onChange={e => handleResponseChange(idx, e.target.value)} required={field.isRequired} disabled readOnly />;
+                          case "FILE":
+                            return (
+                              <div className="relative border border-gray-300 rounded-md px-4 py-2 bg-gray-50 cursor-not-allowed">
+                                <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-not-allowed" disabled title="File upload not implemented yet." />
+                                <span className="block text-gray-500">File upload (not implemented)</span>
+                              </div>
+                            );
+                          default:
+                            return null;
+                        }
+                      })()}
                     </div>
-
-                    <h2 className="text-2xl font-bold text-blue-700 mb-5 pb-2 border-b border-blue-200">Form Questions (Preview)</h2>
-                    <div className="space-y-6 mb-6">
-                        {form.fields.map((field, idx) => (
-                            <div key={field.id} className="p-5 bg-white rounded-lg shadow-md border border-blue-50"> {/* Removed hover:shadow-lg for static preview */}
-                                <label className="block text-blue-800 font-semibold mb-2 text-base">
-                                    {field.label}{field.isRequired && <span className="text-red-500 ml-1">*</span>}
-                                </label>
-                                {(() => {
-                                    // Consolidated class for disabled inputs in preview
-                                    const previewInputClass = "w-full border border-gray-300 rounded-md px-4 py-2 text-gray-800 cursor-not-allowed bg-gray-50";
-
-                                    switch (field.fieldType) {
-                                        case "TEXT":
-                                            return <input type="text" className={previewInputClass} value="[Text input preview]" disabled readOnly />;
-                                        case "TEXTAREA":
-                                            return <textarea className={`${previewInputClass} h-24`} disabled readOnly value="[Textarea input preview]"></textarea>;
-                                        case "SELECT":
-                                            return (
-                                                <select className={previewInputClass} disabled>
-                                                    <option value="">[Select option preview]</option>
-                                                    {field.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                                                </select>
-                                            );
-                                        case "RADIO":
-                                            return (
-                                                <div className="flex flex-col space-y-2 mt-2"> {/* Vertical layout */}
-                                                    {field.options.map(opt => (
-                                                        <label key={opt} className="flex items-center text-gray-700 cursor-not-allowed">
-                                                            <input type="radio" name={`previewRadio-${field.id}`} value={opt} className="mr-2 h-4 w-4 text-blue-600 border-gray-300 cursor-not-allowed" disabled />
-                                                            {opt}
-                                                        </label>
-                                                    ))}
-                                                </div>
-                                            );
-                                        case "CHECKBOX":
-                                            return (
-                                                <div className="flex flex-col space-y-2 mt-2"> {/* Vertical layout */}
-                                                    {field.options.map(opt => (
-                                                        <label key={opt} className="flex items-center text-gray-700 cursor-not-allowed">
-                                                            <input type="checkbox" className="mr-2 h-4 w-4 text-blue-600 rounded border-gray-300 cursor-not-allowed" disabled />
-                                                            {opt}
-                                                        </label>
-                                                    ))}
-                                                </div>
-                                            );
-                                        case "DATE":
-                                            return <input type="date" className={previewInputClass} value="" disabled readOnly />;
-                                        case "FILE":
-                                            return (
-                                                <div className="relative border border-gray-300 rounded-md px-4 py-2 bg-gray-50 cursor-not-allowed">
-                                                    <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-not-allowed" disabled title="File upload not implemented yet." />
-                                                    <span className="block text-gray-500">File upload (not implemented)</span>
-                                                </div>
-                                            );
-                                        default:
-                                            return null;
-                                    }
-                                })()}
-                            </div>
-                        ))}
-                    </div>
-                    {applyError && <div className="text-red-600 mb-2 text-center">{applyError}</div>}
-                    {applySuccess && <div className="text-green-600 mb-2 text-center">{applySuccess}</div>}
-                    <div className="flex justify-center mt-8">
-                        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-bold shadow-xl hover:shadow-2xl transition-all duration-300 ease-in-out transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed" disabled={true}>
-                            Submit Application (Preview)
-                        </button>
-                    </div>
-                </form>
+                  ))}
+                </div>
+              </form>
             )}
+            
           </>
         )}
       </div>
