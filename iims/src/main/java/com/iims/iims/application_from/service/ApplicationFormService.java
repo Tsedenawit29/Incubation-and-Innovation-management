@@ -1,5 +1,9 @@
 package com.iims.iims.application_from.service;
 
+import com.iims.iims.Cohort.entity.Cohort;
+import com.iims.iims.Cohort.repos.CohortRepo;
+import com.iims.iims.Industry.entity.Industry;
+import com.iims.iims.Industry.repo.IndustryRepository;
 import com.iims.iims.application_from.dto.ApplicationFormFieldDto;
 import com.iims.iims.application_from.dto.ApplicationFormRequest;
 import com.iims.iims.application_from.dto.ApplicationFormResponseDto;
@@ -10,10 +14,10 @@ import com.iims.iims.application_from.repository.ApplicationFormRepository;
 import com.iims.iims.tenant.entity.Tenant;
 import com.iims.iims.tenant.repository.TenantRepository;
 import jakarta.persistence.EntityNotFoundException;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,35 +29,59 @@ public class ApplicationFormService {
 
     private final ApplicationFormRepository applicationFormRepository;
     private final TenantRepository tenantRepository;
+    private final CohortRepo cohortRepo;
+    private final IndustryRepository industryRepository;
 
     @Autowired
-    public ApplicationFormService(ApplicationFormRepository applicationFormRepository, TenantRepository tenantRepository){
-        this.applicationFormRepository= applicationFormRepository;
-        this.tenantRepository= tenantRepository;
+    public ApplicationFormService(
+            ApplicationFormRepository applicationFormRepository,
+            TenantRepository tenantRepository,
+            CohortRepo cohortRepo,
+            IndustryRepository industryRepository) {
+        this.applicationFormRepository = applicationFormRepository;
+        this.tenantRepository = tenantRepository;
+        this.cohortRepo = cohortRepo;
+        this.industryRepository = industryRepository;
     }
 
     /**
      * Creates a new application form for a given tenant.
      *
      * @param tenantId The UUID of the tenant creating the form.
-     * @param request  The ApplicationFormRequest DTO containing form details.
+     * @param request The ApplicationFormRequest DTO containing form details.
      * @return The created ApplicationFormResponseDto.
-     * @throws EntityNotFoundException if the tenant is not found.
+     * @throws EntityNotFoundException if the tenant, cohort, or industry is not found.
      */
     @Transactional
-    public ApplicationFormResponseDto createApplicationForm(UUID tenantId, ApplicationFormRequest request){
+    public ApplicationFormResponseDto createApplicationForm(UUID tenantId, ApplicationFormRequest request) {
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new EntityNotFoundException("Tenant not found with ID: " + tenantId));
+
+        // Fetch Cohort and Industry entities based on IDs from the request
+        Cohort cohort = null;
+        if (request.getCohortId() != null) {
+            cohort = cohortRepo.findByIdAndTenant(request.getCohortId(), tenant)
+                    .orElseThrow(() -> new EntityNotFoundException("Cohort not found with ID: " + request.getCohortId() + " for this tenant."));
+        }
+
+        Industry industry = null;
+        if (request.getIndustryId() != null) {
+            industry = industryRepository.findByIdAndTenant(request.getIndustryId(), tenant)
+                    .orElseThrow(() -> new EntityNotFoundException("Industry not found with ID: " + request.getIndustryId() + " for this tenant."));
+        }
+
         ApplicationForm form = new ApplicationForm();
-        form.setTenant(tenant);// Set the Tenant entity
+        form.setTenant(tenant);
         form.setName(request.getName());
         form.setDescription(request.getDescription());
+        form.setCohort(cohort);
+        form.setIndustry(industry);
         form.setType(request.getType());
         form.setActive(request.getActive());
 
         // Map DTO fields to entity fields
         List<ApplicationFormField> fields = request.getFields().stream()
-                .map(fieldDto ->{
+                .map(fieldDto -> {
                     ApplicationFormField field = new ApplicationFormField();
                     field.setLabel(fieldDto.getLabel());
                     field.setDescription(fieldDto.getDescription());
@@ -81,13 +109,13 @@ public class ApplicationFormService {
      * @throws EntityNotFoundException if the tenant or form is not found for the given tenant.
      */
     @Transactional(readOnly = true)
-    public ApplicationFormResponseDto getApplicationFormById(UUID formId, UUID tenantId){
+    public ApplicationFormResponseDto getApplicationFormById(UUID formId, UUID tenantId) {
         Tenant tenant = tenantRepository.findById(tenantId)
-                .orElseThrow(() -> new EntityNotFoundException(("Tenant not found with ID: " + tenantId)));
+                .orElseThrow(() -> new EntityNotFoundException("Tenant not found with ID: " + tenantId));
 
         ApplicationForm form = applicationFormRepository.findByIdAndTenant(formId, tenant)
-                .orElseThrow(() -> new EntityNotFoundException("Application form not found with ID: " + formId + "from tenant" + tenantId));
-                return convertToDto(form);
+                .orElseThrow(() -> new EntityNotFoundException("Application form not found with ID: " + formId + " from tenant " + tenantId));
+        return convertToDto(form);
     }
 
     /**
@@ -98,7 +126,7 @@ public class ApplicationFormService {
      * @throws EntityNotFoundException if the tenant is not found.
      */
     @Transactional(readOnly = true)
-    public List<ApplicationFormResponseDto> getAllApplicationFormsByTenant(UUID tenantId){
+    public List<ApplicationFormResponseDto> getAllApplicationFormsByTenant(UUID tenantId) {
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new EntityNotFoundException("Tenant not found with ID: " + tenantId));
         List<ApplicationForm> forms = applicationFormRepository.findByTenant(tenant);
@@ -119,12 +147,12 @@ public class ApplicationFormService {
     public List<ApplicationFormResponseDto> getActiveApplicationFormsByTenantAndType(UUID tenantId, ApplicationFormType type) {
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new EntityNotFoundException("Tenant not found with ID: " + tenantId));
-        // CORRECTED: Call the method with the updated name
         List<ApplicationForm> forms = applicationFormRepository.findByTenantAndTypeAndIsActive(tenant, type, true);
         return forms.stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
+
     /**
      * Updates an existing application form for a given tenant.
      * This method handles adding, updating, and removing fields.
@@ -133,16 +161,33 @@ public class ApplicationFormService {
      * @param tenantId The UUID of the tenant owning the form.
      * @param request  The ApplicationFormRequest DTO with updated details.
      * @return The updated ApplicationFormResponseDto.
-     * @throws EntityNotFoundException if the tenant or form is not found for the given tenant.
+     * @throws EntityNotFoundException if the tenant, cohort, or industry is not found.
      */
     @Transactional
-    public ApplicationFormResponseDto updateApplicationForm(UUID formId, UUID tenantId, ApplicationFormRequest request){
+    public ApplicationFormResponseDto updateApplicationForm(UUID formId, UUID tenantId, ApplicationFormRequest request) {
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new EntityNotFoundException("Tenant not found with ID: " + tenantId));
         ApplicationForm existingForm = applicationFormRepository.findByIdAndTenant(formId, tenant)
                 .orElseThrow(() -> new EntityNotFoundException("Application form not found with ID: " + formId + " for tenant: " + tenantId));
+
         existingForm.setName(request.getName());
         existingForm.setDescription(request.getDescription());
+
+        // Fetch Cohort and Industry entities based on IDs from the request
+        Cohort cohort = null;
+        if (request.getCohortId() != null) {
+            cohort = cohortRepo.findByIdAndTenant(request.getCohortId(), tenant)
+                    .orElseThrow(() -> new EntityNotFoundException("Cohort not found with ID: " + request.getCohortId() + " for this tenant."));
+        }
+        existingForm.setCohort(cohort);
+
+        Industry industry = null;
+        if (request.getIndustryId() != null) {
+            industry = industryRepository.findByIdAndTenant(request.getIndustryId(), tenant)
+                    .orElseThrow(() -> new EntityNotFoundException("Industry not found with ID: " + request.getIndustryId() + " for this tenant."));
+        }
+        existingForm.setIndustry(industry);
+
         existingForm.setType(request.getType());
         existingForm.setActive(request.getActive());
 
@@ -162,6 +207,7 @@ public class ApplicationFormService {
         ApplicationForm updatesForm = applicationFormRepository.save(existingForm);
         return convertToDto(updatesForm);
     }
+
     /**
      * Deletes an application form by its ID and tenant ID.
      *
@@ -170,7 +216,7 @@ public class ApplicationFormService {
      * @throws EntityNotFoundException if the tenant or form is not found for the given tenant.
      */
     @Transactional
-    public void deleteApplicationForm(UUID formId, UUID tenantId){
+    public void deleteApplicationForm(UUID formId, UUID tenantId) {
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new EntityNotFoundException("Tenant not found with ID: " + tenantId));
         ApplicationForm form = applicationFormRepository.findByIdAndTenant(formId, tenant)
@@ -179,7 +225,7 @@ public class ApplicationFormService {
     }
 
     /**
-     * Deletes an application form by its ID and tenant ID.
+     * Retrieves a public application form by its ID.
      *
      * @param formId   The UUID of the form to delete.
      * @throws AccessDeniedException if application form is not active for public use.
@@ -189,8 +235,7 @@ public class ApplicationFormService {
         ApplicationForm form = applicationFormRepository.findById(formId)
                 .orElseThrow(() -> new EntityNotFoundException("Application form not found with ID: " + formId));
 
-        // Use getActive() method as defined in your entity
-        if (!form.getActive()) { // <--- CHANGE THIS LINE
+        if (!form.getActive()) {
             throw new AccessDeniedException("This application form is not active for public access.");
         }
         return convertToDto(form);
@@ -218,6 +263,8 @@ public class ApplicationFormService {
         clonedForm.setTenant(originalForm.getTenant()); // Link to the same tenant
         clonedForm.setName(originalForm.getName() + " (Cloned)");// Add suffix to name
         clonedForm.setDescription(originalForm.getDescription());
+        clonedForm.setCohort(originalForm.getCohort());
+        clonedForm.setIndustry(originalForm.getIndustry());
         clonedForm.setType(originalForm.getType());
         clonedForm.setActive(true); // Cloned forms are typically active by default
         clonedForm.setCreatedAt(LocalDateTime.now()); // New creation timestamp
@@ -226,7 +273,6 @@ public class ApplicationFormService {
         List<ApplicationFormField> clonedFields = originalForm.getFields().stream()
                 .map(originalField -> {
                     ApplicationFormField newField = new ApplicationFormField();
-                    // ID will be generated automatically for newField as it's a new entity
                     newField.setLabel(originalField.getLabel());
                     newField.setDescription(originalField.getDescription());
                     newField.setFieldType(originalField.getFieldType());
@@ -250,7 +296,7 @@ public class ApplicationFormService {
      * @param form The ApplicationForm entity.
      * @return The ApplicationFormResponseDto.
      */
-    private ApplicationFormResponseDto convertToDto(ApplicationForm form){
+    private ApplicationFormResponseDto convertToDto(ApplicationForm form) {
         List<ApplicationFormFieldDto> fieldDtos = form.getFields().stream()
                 .map(field -> new ApplicationFormFieldDto(
                         field.getId(),
@@ -262,11 +308,18 @@ public class ApplicationFormService {
                         field.getOrderIndex()
                 ))
                 .collect(Collectors.toList());
+
+        // Safely get the cohort and industry IDs by checking for null
+        UUID cohortId = (form.getCohort() != null) ? form.getCohort().getId() : null;
+        UUID industryId = (form.getIndustry() != null) ? form.getIndustry().getId() : null;
+
         return new ApplicationFormResponseDto(
                 form.getId(),
                 form.getTenant().getId(),
                 form.getName(),
                 form.getDescription(),
+                cohortId,
+                industryId,
                 form.getType(),
                 form.getActive(),
                 form.getCreatedAt(),

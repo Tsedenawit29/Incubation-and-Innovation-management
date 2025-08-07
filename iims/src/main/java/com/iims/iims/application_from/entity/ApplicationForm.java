@@ -1,5 +1,7 @@
 package com.iims.iims.application_from.entity;
 
+import com.iims.iims.Cohort.entity.Cohort;
+import com.iims.iims.Industry.entity.Industry;
 import com.iims.iims.tenant.entity.Tenant;
 import jakarta.persistence.Entity;
 import jakarta.persistence.*;
@@ -33,6 +35,14 @@ public class ApplicationForm {
 
     @Column(name = "description", nullable = true)
     private String description;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cohort_id", nullable = true)
+    private Cohort cohort;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "industry_id", nullable = true)
+    private Industry industry;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false)
@@ -110,5 +120,21 @@ public class ApplicationForm {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public Cohort getCohort() {
+        return cohort;
+    }
+
+    public void setCohort(Cohort cohort) {
+        this.cohort = cohort;
+    }
+
+    public Industry getIndustry() {
+        return industry;
+    }
+
+    public void setIndustry(Industry industry) {
+        this.industry = industry;
     }
 }
