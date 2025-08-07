@@ -230,6 +230,15 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            {/* Applications Page */}
+            <Route
+              path="/applications"
+              element={
+                <ProtectedRoute role="TENANT_ADMIN">
+                  <ApplicationsPage />
+                </ProtectedRoute>
+              }
+            />
             {/* Catch all route - must be last */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
