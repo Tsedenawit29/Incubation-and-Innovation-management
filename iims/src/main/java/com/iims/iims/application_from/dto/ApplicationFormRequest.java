@@ -1,5 +1,7 @@
 package com.iims.iims.application_from.dto;
 
+import com.iims.iims.Cohort.entity.Cohort;
+import com.iims.iims.Industry.entity.Industry;
 import com.iims.iims.application_from.entity.ApplicationFormType;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -21,6 +23,12 @@ public class ApplicationFormRequest {
 
     @NotBlank(message = "Form name cannot be empty")
     private String name;
+
+    private String description;
+
+    private UUID cohortId;
+
+    private UUID industryId;
 
     @NotNull(message = "Form type cannot be null")
     private ApplicationFormType type;
@@ -70,5 +78,29 @@ public class ApplicationFormRequest {
 
     public void setFields(List<ApplicationFormFieldDto> fields) {
         this.fields = fields;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public UUID getCohortId() {
+        return cohortId;
+    }
+
+    public void setCohortId(UUID cohortId) {
+        this.cohortId = cohortId;
+    }
+
+    public UUID getIndustryId() {
+        return industryId;
+    }
+
+    public void setIndustryId(UUID industryId) {
+        this.industryId = industryId;
     }
 }
