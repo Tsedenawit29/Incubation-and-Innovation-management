@@ -33,8 +33,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         
         System.out.println("JWT Filter - Processing request: " + request.getMethod() + " " + request.getRequestURI());
         
-        if (request.getServletPath().contains("/api/auth")) {
-            System.out.println("JWT Filter - Skipping auth endpoints");
+        // Skip JWT processing for public endpoints
+        if (isPublicEndpoint(request)) {
+            System.out.println("JWT Filter - Skipping public endpoint: " + request.getRequestURI());
             filterChain.doFilter(request, response);
             return;
         }
@@ -91,5 +92,27 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
         
         filterChain.doFilter(request, response);
+    }
+    
+    private boolean isPublicEndpoint(HttpServletRequest request) {
+        String requestURI = request.getRequestURI();
+        String method = request.getMethod();
+        
+        System.out.println("JWT Filter - Checking if public endpoint: " + method + " " + requestURI);
+        
+        // Public endpoints that should skip JWT processing
+        boolean isPublic = requestURI.contains("/api/auth") ||
+               requestURI.contains("/ping") ||
+               requestURI.contains("/api/tenant/apply") ||
+               requestURI.contains("/api/users/request-admin") ||
+               requestURI.contains("/api/v1/applications/submit") ||
+               requestURI.contains("/error") ||
+               requestURI.contains("/uploads/") ||
+               (requestURI.matches("/api/tenants/.*/landing-page/.*") && "GET".equals(method)) ||
+               (requestURI.contains("/api/tenants/") && "GET".equals(method)) ||
+               "OPTIONS".equals(method);
+        
+        System.out.println("JWT Filter - Is public endpoint: " + isPublic);
+        return isPublic;
     }
 } 
