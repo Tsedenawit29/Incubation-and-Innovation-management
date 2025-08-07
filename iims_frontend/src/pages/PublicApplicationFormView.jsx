@@ -28,6 +28,8 @@ export default function PublicApplicationFormView() {
     // Call the API without token/tenantId for public access
     getApplicationFormById(null, null, formId)
       .then(data => {
+        console.log("Received form data:", data);
+        console.log("Industry data:", data.industryName, data.industry);
         setForm(data);
         setApplicant(a => ({ ...a, applicantType: data.type }));
         setResponses(data.fields.map(f => ({ fieldId: f.id, response: "" })));
@@ -97,27 +99,42 @@ export default function PublicApplicationFormView() {
   if (!form) return <div className="p-10 text-center text-gray-700">Application form not found or is inactive.</div>;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col items-center py-10 px-4 font-inter"> {/* Background and font */}
-      <div className="w-full max-w-3xl bg-white rounded-xl shadow-2xl p-8 border-t-8 border-blue-600"> {/* Wider, shadows, border */}
-        <h1 className="text-4xl font-extrabold text-blue-800 mb-2 text-center tracking-wide"> {/* Title style */}
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center py-10 px-4 font-inter"> {/* Match ApplicationFormDetail background */}
+      <div className="w-full max-w-4xl bg-white rounded-lg shadow-xl p-8 border-t-8 border-blue-600"> {/* Match ApplicationFormDetail container */}
+        <h1 className="text-4xl font-extrabold text-blue-800 mb-2 text-center tracking-tight"> {/* Match ApplicationFormDetail title */}
           {form.name}
         </h1>
-        <p className="text-lg text-gray-600 mb-8 text-center leading-relaxed"> {/* Description style */}
-          Please fill out the form below to apply for our {form.type.toLowerCase()} program.
-        </p>
+        {form.description && (
+          <p className="text-lg text-gray-600 mb-4 text-center">{form.description}</p>
+        )}
+        <div className="flex flex-wrap items-center justify-center space-x-4 mb-6">
+          <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
+            {form.type.charAt(0) + form.type.slice(1).toLowerCase()} Form
+          </span>
+          {form.cohortName && (
+            <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium">
+              Cohort: {form.cohortName}
+            </span>
+          )}
+          {form.industryName && (
+            <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm font-medium">
+              Industry: {form.industryName}
+            </span>
+          )}
+        </div>
 
         {applySuccess && (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-6 py-4 rounded-lg mb-6 text-center text-lg font-semibold shadow-md" role="alert">
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-md mb-4 text-center shadow-sm" role="alert">
             {applySuccess}
           </div>
         )}
         {applyError && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded-lg mb-6 text-center text-lg font-semibold shadow-md" role="alert">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mb-4 text-center shadow-sm" role="alert">
             {applyError}
           </div>
         )}
 
-        <form className="bg-white rounded-lg p-7 border border-gray-200 shadow-inner" onSubmit={handleApplySubmit}> {/* Form container style */}
+        <form className="bg-white rounded-lg p-7 border border-blue-100 shadow-inner" onSubmit={handleApplySubmit}> {/* Match ApplicationFormDetail form container */}
           <h2 className="text-2xl font-bold text-blue-700 mb-5 pb-2 border-b border-blue-200">Applicant Information</h2> {/* Section header */}
           <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-5"> {/* Grid for applicant info */}
             <div>
@@ -157,12 +174,14 @@ export default function PublicApplicationFormView() {
           <h2 className="text-2xl font-bold text-blue-700 mb-5 pb-2 border-b border-blue-200">Form Questions</h2> {/* Section header */}
           <div className="space-y-6 mb-6"> {/* Consistent vertical spacing */}
             {form.fields.map((field, idx) => (
-              <div key={field.id} className="p-5 bg-white rounded-lg shadow-md border border-blue-50 transition-all duration-200 hover:shadow-lg"> {/* Card-like questions */}
-                <label className="block text-blue-800 font-semibold mb-2 text-base">
-                  {field.label}{field.isRequired && <span className="text-red-500 ml-1">*</span>}
-                </label>
+              <div key={field.id} className="bg-white rounded-lg p-6 shadow-md border border-gray-200"> {/* Match ApplicationFormDetail question cards */}
+                <div className="flex items-center mb-1">
+                  <label className="text-sm font-semibold text-gray-700">{field.label}</label>
+                  {field.isRequired && <span className="text-red-500 ml-1 text-sm">*</span>}
+                </div>
+                {field.description && <p className="text-sm text-gray-600 mb-2">{field.description}</p>}
                 {(() => {
-                  const inputClass = "w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 ease-in-out text-gray-800";
+                  const inputClass = "w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 ease-in-out text-gray-800"; // Keep the same input class
                   const currentResponse = responses[idx]?.response || "";
 
                   switch (field.fieldType) {
@@ -266,7 +285,7 @@ export default function PublicApplicationFormView() {
           <div className="flex justify-center mt-8">
             <button
               type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-bold shadow-xl hover:shadow-2xl transition-all duration-300 ease-in-out transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full font-bold shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={applyLoading}
             >
               {applyLoading ? "Submitting..." : "Submit Application"}
