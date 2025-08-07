@@ -21,6 +21,11 @@ import AlumniDashboard from './pages/AlumniDashboard';
 import LandingPageManagement from './pages/LandingPageManagement';
 import PublicLandingPage from './pages/PublicLandingPage';
 import StartupManagement from './pages/StartupManagement';
+import ApplicationFormsPage from './pages/ApplicationFormsPage';
+import CreateApplicationFormPage from './pages/CreateApplicationFormPage';
+import ApplicationFormDetail from './pages/ApplicationFormDetail';
+import ApplicationsPage from './pages/ApplicationsPage';
+import PublicApplicationFormView from './pages/PublicApplicationFormView';
 import './App.css';
 
 // Protected Route Component
@@ -230,7 +235,32 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            {/* Applications Page */}
+            {/* Application Forms Routes */}
+            <Route
+              path="/application-forms"
+              element={
+                <ProtectedRoute role="TENANT_ADMIN">
+                  <ApplicationFormsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/application-forms/new"
+              element={
+                <ProtectedRoute role="TENANT_ADMIN">
+                  <CreateApplicationFormPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/application-forms/:id"
+              element={
+                <ProtectedRoute role="TENANT_ADMIN">
+                  <ApplicationFormDetail />
+                </ProtectedRoute>
+              }
+            />
+            {/* Applications Management Route */}
             <Route
               path="/applications"
               element={
@@ -239,6 +269,8 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            {/* Public Application Form View */}
+            <Route path="/public/application-forms/:id" element={<PublicApplicationFormView />} />
             {/* Catch all route - must be last */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
