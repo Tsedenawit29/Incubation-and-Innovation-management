@@ -822,41 +822,50 @@ export default function LandingPageManagement() {
   console.log('LandingPageManagement - TenantId:', tenantId);
   console.log('LandingPageManagement - User role:', user?.role);
 
-  useEffect(() => {
-    if (!tenantId) {
-      console.log('LandingPageManagement - No tenantId available');
-      setError('No tenant ID available. Please make sure you are logged in as a tenant admin.');
-      setLoading(false);
-      return;
-    }
-    if (!token) {
-      console.log('LandingPageManagement - No token available');
-      setError('No authentication token available. Please log in again.');
-      setLoading(false);
-      return;
-    }
-    if (user?.role !== 'TENANT_ADMIN') {
-      console.log('LandingPageManagement - User does not have TENANT_ADMIN role');
-      setError('Access denied. You must be a tenant admin to access this page.');
-      setLoading(false);
-      return;
-    }
-    console.log('LandingPageManagement - Fetching landing page for tenant:', tenantId);
-    getLandingPage(tenantId, false, token)
-      .then(data => {
-        console.log('LandingPageManagement - Successfully fetched landing page data:', data);
-        setThemeColors([data.themeColor || '#1976d2', data.themeColor2 || '#43a047', data.themeColor3 || '#fbc02d']);
-        setSections((data.sections || []).map(s => ({ ...s, contentJson: s.contentJson || JSON.stringify(defaultSectionContent[s.type] || {}) })));
-        setSocialLinks(data.socialLinks || {});
-        setButtonUrls(data.buttonUrls || {});
+  // ...existing code...
+useEffect(() => {
+  if (!tenantId) {
+    console.log('LandingPageManagement - No tenantId available');
+    setError('No tenant ID available. Please make sure you are logged in as a tenant admin.');
+    setLoading(false);
+    return;
+  }
+  if (!token) {
+    console.log('LandingPageManagement - No token available');
+    setError('No authentication token available. Please log in again.');
+    setLoading(false);
+    return;
+  }
+  if (user?.role !== 'TENANT_ADMIN') {
+    console.log('LandingPageManagement - User does not have TENANT_ADMIN role');
+    setError('Access denied. You must be a tenant admin to access this page.');
+    setLoading(false);
+    return;
+  }
+  console.log('LandingPageManagement - Fetching landing page for tenant:', tenantId);
+  getLandingPage(tenantId, false, token)
+    .then(data => {
+      console.log('LandingPageManagement - Successfully fetched landing page data:', data);
+      setThemeColors([data.themeColor || '#1976d2', data.themeColor2 || '#43a047', data.themeColor3 || '#fbc02d']);
+      setSections((data.sections || []).map(s => ({ ...s, contentJson: s.contentJson || JSON.stringify(defaultSectionContent[s.type] || {}) })));
+      setSocialLinks(data.socialLinks || {});
+      setButtonUrls(data.buttonUrls || {});
+      setError(null);
+    })
+    .catch(error => {
+      // If 404, treat as "no landing page yet" and show empty builder
+      if (error.status === 404 || (error.message && error.message.includes('404'))) {
+        setSections([]);
+        setSocialLinks({});
+        setButtonUrls({});
         setError(null);
-      })
-      .catch(error => {
-        console.error('LandingPageManagement - Error fetching landing page:', error);
+      } else {
         setError(`Failed to load landing page: ${error.message}`);
-      })
-      .finally(() => setLoading(false));
-  }, [tenantId, token, user?.role]);
+      }
+    })
+    .finally(() => setLoading(false));
+}, [tenantId, token, user?.role]);
+// ...existing code...
 
   const handleSectionChange = (idx, newSection) => {
     setSections(sections => sections.map((s, i) => (i === idx ? { ...newSection, sectionOrder: i } : s)));
