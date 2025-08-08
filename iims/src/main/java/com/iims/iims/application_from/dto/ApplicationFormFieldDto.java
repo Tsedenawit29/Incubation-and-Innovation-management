@@ -20,6 +20,8 @@ public class ApplicationFormFieldDto {
     @NotBlank(message = "Field label cannot be null")
     private String label;
 
+    private String description;
+
     @NotNull(message = "Field type cannot be null")
     private FieldType fieldType;
 
@@ -71,5 +73,13 @@ public class ApplicationFormFieldDto {
 
     public Boolean getIsRequired() {
         return isRequired;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 }

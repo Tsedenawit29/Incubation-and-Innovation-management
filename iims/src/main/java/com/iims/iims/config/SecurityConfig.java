@@ -70,6 +70,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/progresstracking/submissions/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/progresstracking/submission-files/upload").hasAnyRole("TENANT_ADMIN", "STARTUP", "MENTOR")
                         .requestMatchers("/api/progresstracking/**").authenticated()
+                        .requestMatchers("/api/v1/applications/submit").permitAll()
+                        .requestMatchers("/api/v1/public/application-forms/*").permitAll()
                         
                         // User management endpoints
                         .requestMatchers("/api/users/pending-admins", "/api/users/admin-requests", "/api/users/approve-admin/**", "/api/users/reject-admin/**").hasRole("SUPER_ADMIN")

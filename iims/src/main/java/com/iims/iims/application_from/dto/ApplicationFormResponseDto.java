@@ -1,5 +1,7 @@
 package com.iims.iims.application_from.dto;
 
+import com.iims.iims.Cohort.entity.Cohort;
+import com.iims.iims.Industry.entity.Industry;
 import com.iims.iims.application_from.entity.ApplicationFormType;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -17,6 +19,11 @@ public class ApplicationFormResponseDto {
     private UUID id;
     private UUID tenantId;
     private String name;
+    private String description;
+    private UUID cohortId;
+    private String cohortName;
+    private UUID industryId;
+    private String industryName;
     private ApplicationFormType type;
     private Boolean isActive;
     private LocalDateTime createdAt;
