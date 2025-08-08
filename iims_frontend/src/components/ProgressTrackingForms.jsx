@@ -163,14 +163,33 @@ export const TaskForm = ({ task, phaseId, users, onSubmit, onCancel, loading }) 
     description: task?.description || '',
     dueDays: task?.dueDays || 7,
     dueDate: task?.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
-    orderIndex: task?.orderIndex || 1,
     phaseId: phaseId,
     mentorId: task?.mentorId || ''
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(form);
+    
+    // Prepare the data according to backend expectations
+    const taskData = {
+      taskName: form.taskName,
+      description: form.description,
+      dueDays: form.dueDays,
+      phaseId: form.phaseId,
+      mentorId: form.mentorId || null
+    };
+    
+    // Only include dueDate if it's provided
+    if (form.dueDate) {
+      taskData.dueDate = new Date(form.dueDate).toISOString();
+    }
+    
+    // Only include mentorId if it's provided and not empty
+    if (form.mentorId && form.mentorId !== '') {
+      taskData.mentorId = form.mentorId;
+    }
+    
+    onSubmit(taskData);
   };
 
   return (
@@ -248,18 +267,6 @@ export const TaskForm = ({ task, phaseId, users, onSubmit, onCancel, loading }) 
             </select>
           </div>
           
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Order Index</label>
-            <input
-              type="number"
-              value={form.orderIndex}
-              onChange={(e) => setForm({...form, orderIndex: parseInt(e.target.value)})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              min="1"
-              required
-            />
-          </div>
-          
           <div className="flex gap-3 pt-4">
             <button
               type="button"
@@ -290,7 +297,7 @@ export const AssignmentForm = ({ templates, users, currentUser, onSubmit, onCanc
   const [form, setForm] = useState({
     templateId: '',
     assignedToId: '',
-    assignedToType: 'STARTUP',
+    assignedToType: 'USER',
     assignedById: currentUser?.id || ''
   });
 

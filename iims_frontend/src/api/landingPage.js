@@ -65,17 +65,55 @@ export const deleteLandingPage = (tenantId, token) => {
   });
 };
 
-export const uploadLandingPageImage = (tenantId, file, token) => {
+export const uploadLandingPageImage = async (tenantId, file, token) => {
+  console.log('🖼️ Starting image upload:', {
+    tenantId,
+    fileName: file.name,
+    fileSize: file.size,
+    fileType: file.type,
+    hasToken: !!token
+  });
+
   const formData = new FormData();
   formData.append('file', file);
-  return fetch(`${API_URL}/tenants/${tenantId}/landing-page/upload-image`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`
-    },
-    body: formData
-  }).then(res => {
-    if (!res.ok) throw new Error('Failed to upload image');
-    return res.json().then(data => data.url);
-  });
+  
+  try {
+    const response = await fetch(`${API_URL}/tenants/${tenantId}/landing-page/upload-image`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    });
+    
+    console.log('📤 Upload response status:', response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Upload failed:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorText
+      });
+      throw new Error(`Failed to upload image: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+    
+    const data = await response.json();
+    console.log('✅ Upload successful, response data:', data);
+    
+    // Handle different possible response formats
+    const imageUrl = data.url || data.imageUrl || data.filePath || data;
+    
+    if (!imageUrl || typeof imageUrl !== 'string') {
+      console.error('❌ Invalid response format:', data);
+      throw new Error('Invalid response format from server');
+    }
+    
+    console.log('✅ Returning image URL:', imageUrl);
+    return imageUrl;
+    
+  } catch (error) {
+    console.error('❌ Image upload error:', error);
+    throw error;
+  }
 }; 
