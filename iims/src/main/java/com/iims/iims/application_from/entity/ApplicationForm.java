@@ -1,5 +1,7 @@
 package com.iims.iims.application_from.entity;
 
+import com.iims.iims.Cohort.entity.Cohort;
+import com.iims.iims.Industry.entity.Industry;
 import com.iims.iims.tenant.entity.Tenant;
 import jakarta.persistence.Entity;
 import jakarta.persistence.*;
@@ -31,6 +33,17 @@ public class ApplicationForm {
     @Column(name = "name", nullable = false)
     private String name;
 
+    @Column(name = "description", nullable = true)
+    private String description;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cohort_id", nullable = true)
+    private Cohort cohort;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "industry_id", nullable = true)
+    private Industry industry;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false)
     private ApplicationFormType type;
@@ -41,7 +54,7 @@ public class ApplicationForm {
     @Column(name = "created_at", updatable = false, nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    @OneToMany(mappedBy = "form", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "form", cascade = {CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REFRESH, CascadeType.DETACH}, fetch = FetchType.LAZY)
     @OrderBy("orderIndex ASC")
     private List<ApplicationFormField> fields;
 
@@ -99,5 +112,29 @@ public class ApplicationForm {
 
     public void setFields(List<ApplicationFormField> fields) {
         this.fields = fields;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public Cohort getCohort() {
+        return cohort;
+    }
+
+    public void setCohort(Cohort cohort) {
+        this.cohort = cohort;
+    }
+
+    public Industry getIndustry() {
+        return industry;
+    }
+
+    public void setIndustry(Industry industry) {
+        this.industry = industry;
     }
 }

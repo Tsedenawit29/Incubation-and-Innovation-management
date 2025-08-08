@@ -76,6 +76,10 @@ public class Tenant {
         }
     }
 
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();

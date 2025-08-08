@@ -26,6 +26,8 @@ const ROLES = [
   "ALUMNI"
 ];
 
+const TABS = [...ROLES, "APPLICATIONS", "APPLICATION_FORMS"];
+
 export default function TenantAdminDashboard() {
   const { user, token, logout } = useAuth();
   const [users, setUsers] = useState([]);
@@ -63,6 +65,7 @@ export default function TenantAdminDashboard() {
     }
   };
 
+  // Only fetch users for real roles
   useEffect(() => {
     if (token) fetchUsers();
     // eslint-disable-next-line
@@ -72,6 +75,8 @@ export default function TenantAdminDashboard() {
     setActiveTab(tab);
     fetchUsers(tab);
   };
+
+  // Remove Application Forms fetching logic and UI
 
   const openModal = () => {
     setForm({ fullName: "", email: "", role: activeTab === 'ALL' ? ROLES[0] : activeTab });
