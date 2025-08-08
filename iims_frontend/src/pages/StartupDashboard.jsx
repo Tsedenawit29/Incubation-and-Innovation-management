@@ -290,22 +290,17 @@ export default function StartupDashboard() {
   // Progress tracking functions
   const fetchTemplates = async () => {
     if (!user?.id || !token) return;
-
+    
     setProgressLoading(true); 
     setProgressError('');
     try {
       const data = await getAssignedTemplatesForStartup(user.id);
+      // Filter templates by current user's tenantId
       const filtered = user?.tenantId ? data.filter(t => t.tenantId === user.tenantId) : data;
       setTemplates(filtered);
-      // Auto-select the first assigned template if available
-      if (filtered.length > 0) {
-        setSelectedTemplate(filtered[0]);
-        fetchPhases(filtered[0].id);
-      } else {
-        setSelectedTemplate(null);
-        setPhases([]);
-        setTasksByPhase({});
-      }
+      setSelectedTemplate(null);
+      setPhases([]); // Clear phases
+      setTasksByPhase({});  // Clear tasks
     } catch (e) {
       setProgressError('Failed to load templates');
     } finally {
@@ -759,7 +754,7 @@ export default function StartupDashboard() {
 
   // Main component rendering
   return (
-    <div className="min-h-screen bg-gray-100 font-inter p-4 sm:p-8 relative">
+    <div className="min-h-screen bg-gray-100 font-inter flex items-center justify-center p-4 sm:p-8 relative overflow-hidden">
       {/* Background animated shapes */}
       <div className="absolute top-1/4 left-1/4 w-48 h-48 bg-brand-primary rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slow"></div>
       <div className="absolute bottom-1/3 right-1/4 w-64 h-64 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slower"></div> {/* Changed from purple-300 */}
@@ -890,15 +885,7 @@ export default function StartupDashboard() {
           {/* Logout Section */}
           <div className="mt-10">
             <button
-  onClick={() => {
-    console.log('Logout button clicked');
-    console.log('Logout function:', logout);
-    if (logout) {
-      logout();
-    } else {
-      console.error('Logout function not available');
-    }
-  }}
+  onClick={logout}
   className="flex items-center px-4 py-2 text-red-600 font-bold rounded-full hover:bg-red-50 hover:text-red-800 transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 text-base"
 >
   <LogOut className="mr-2" size={20} /> Logout
@@ -1198,14 +1185,14 @@ export default function StartupDashboard() {
                       <GraduationCap size={32} className="text-gray-400" />
                     </div>
                     <h4 className="text-lg font-semibold text-gray-700 mb-2">No Mentors Assigned Yet</h4>
-                    <p className="text-gray-600 mb-4">
-                      You haven't been assigned any mentors yet. Please contact your tenant admin to get assigned a mentor.
-                    </p>
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <p className="text-sm text-blue-800">
-                        <strong>What to expect:</strong> Once assigned, mentors will help guide your startup's progress,
-                        provide feedback on your submissions, and offer valuable insights for your growth.
-                      </p>
+                    <p className="text-gray-600 mb-4">You haven't been assigned any mentors yet. Please contact your tenant admin to get assigned a mentor.</p>
+                    <div className="flex justify-center gap-4">
+                      <button 
+                        onClick={() => setCurrentPage('myMentor')} 
+                        className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                      >
+                        View Mentor Page
+                      </button>
                     </div>
                   </div>
                 </div>

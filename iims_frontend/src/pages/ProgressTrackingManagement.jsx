@@ -456,11 +456,14 @@ export default function ProgressTrackingManagement() {
   const handleAssignTemplate = async (form) => {
     setLoading(true);
     try {
-      await assignTemplate(form);
+      console.log('Assigning template with data:', form);
+      const result = await assignTemplate(form);
+      console.log('Template assignment result:', result);
       setSuccess('Template assigned successfully!');
       closeModal();
     } catch (e) {
-      setError('Failed to assign template');
+      console.error('Failed to assign template:', e);
+      setError('Failed to assign template: ' + e.message);
     } finally {
       setLoading(false);
     }
@@ -670,17 +673,18 @@ export default function ProgressTrackingManagement() {
                         <div className={`transition-all duration-300 overflow-hidden ${
                           expanded ? 'max-h-[1000px] opacity-100 mt-4' : 'max-h-0 opacity-0'
                         }`}>
-                          {selectedPhase?.id === p.id && (
-                            <div className="mb-4">
-                              <button
-                                className="bg-purple-600 text-white px-3 py-1 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors flex items-center gap-2"
-                                onClick={() => openModal('createTask')}
-                              >
-                                <FaPlus />
-                                New Task
-                              </button>
-                            </div>
-                          )}
+                          <div className="mb-4">
+                            <button
+                              className="bg-purple-600 text-white px-3 py-1 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors flex items-center gap-2"
+                              onClick={() => {
+                                setSelectedPhase(p);
+                                openModal('createTask');
+                              }}
+                            >
+                              <FaPlus />
+                              New Task
+                            </button>
+                          </div>
                           
                           <div className="space-y-2">
                             {tasks.filter(t => t.phaseId === p.id).map(task => (
