@@ -95,7 +95,7 @@ export const createSubmission = async (trackingId, taskId, token) => {
 
 export const getAssignedTemplatesForStartup = async (startupId) => {
   // Fetch assignments for this startup
-  const assignments = await axios.get(`/api/progresstracking/assignments/assigned/USER/${startupId}`).then(res => res.data);
+  const assignments = await axios.get(`/api/progresstracking/assignments/assigned/STARTUP/${startupId}`).then(res => res.data);
   // For each assignment, fetch the template details
   const templateIds = assignments.map(a => a.templateId).filter(Boolean);
   if (templateIds.length === 0) return [];
