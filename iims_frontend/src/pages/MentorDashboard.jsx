@@ -1376,6 +1376,56 @@ export default function MentorDashboard() {
             </div>
           )}
 
+          {currentPage === 'progressTracking' && (
+            <div className="animate-fade-in">
+              <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center">
+                <CheckCircle2 size={28} className="mr-3 text-brand-primary" /> Progress Tracking
+              </h3>
+
+              {/* Startup Selection for Progress Tracking */}
+              {assignedStartups.length > 0 ? (
+                <div className="space-y-6">
+                  <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
+                    <h4 className="text-lg font-bold text-brand-dark mb-4">Select Startup to Track Progress</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {assignedStartups.map(startup => (
+                        <div 
+                          key={startup.id} 
+                          className="p-4 border border-gray-200 rounded-lg hover:border-brand-primary hover:shadow-md transition-all cursor-pointer"
+                          onClick={() => {
+                            // Navigate to dedicated mentor progress page for this startup
+                            window.open(`/mentor-progress/${startup.id}`, '_blank');
+                          }}
+                        >
+                          <div className="flex items-center mb-3">
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-500 text-white font-bold flex items-center justify-center text-sm mr-3">
+                              {startup.fullName ? startup.fullName.substring(0, 2).toUpperCase() : 'SU'}
+                            </div>
+                            <div>
+                              <h5 className="font-semibold text-gray-800">{startup.fullName || 'Startup'}</h5>
+                              <p className="text-xs text-gray-600">{startup.email}</p>
+                            </div>
+                          </div>
+                          <button className="w-full px-4 py-2 bg-brand-primary text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors">
+                            Track Progress
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 text-center">
+                  <Users size={48} className="mx-auto text-gray-400 mb-4" />
+                  <h4 className="text-lg font-semibold text-gray-700 mb-2">No Startups Assigned</h4>
+                  <p className="text-gray-600">
+                    You haven't been assigned any startups yet. Once assigned, you'll be able to track their progress here.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {currentPage === 'notifications' && (
             <div className="animate-fade-in">
               <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center">

@@ -27,4 +27,12 @@ public class ProgressTemplateAssignmentService {
     public List<ProgressTemplateAssignment> getAssignmentsByAssignedTo(UUID assignedToId, String assignedToType) {
         return assignmentRepo.findByAssignedToIdAndAssignedToType(assignedToId, assignedToType);
     }
-} 
+
+    public List<ProgressTemplateAssignment> getAllAssignments() {
+        return assignmentRepo.findAll();
+    }
+
+    public void deleteAssignment(UUID assignmentId) {
+        assignmentRepo.deleteById(assignmentId);
+    }
+}

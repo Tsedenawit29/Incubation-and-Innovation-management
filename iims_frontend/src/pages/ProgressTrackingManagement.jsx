@@ -15,6 +15,8 @@ import {
   updateTask,
   deleteTask,
   assignTemplate,
+  getAllAssignments,
+  deleteAssignment,
   getTrackings,
   getSubmissions
 } from '../api/progresstracking';
@@ -39,6 +41,7 @@ export default function ProgressTrackingManagement() {
   const [templateSearch, setTemplateSearch] = useState('');
   const [expandedPhases, setExpandedPhases] = useState([]);
   const [users, setUsers] = useState([]);
+  const [assignments, setAssignments] = useState([]);
 
   // Fetch templates on mount
   useEffect(() => {
@@ -75,6 +78,7 @@ export default function ProgressTrackingManagement() {
     fetchTemplates();
     fetchDashboardData();
     fetchUsers();
+    fetchAssignments();
   }, [tenantId]);
 
   const fetchTemplates = async () => {
@@ -175,6 +179,18 @@ export default function ProgressTrackingManagement() {
     } catch (e) {
       console.error('Failed to fetch users:', e);
       setError('Failed to load users');
+    }
+  };
+
+  const fetchAssignments = async () => {
+    try {
+      console.log('Fetching all assignments...');
+      const assignmentsData = await getAllAssignments();
+      console.log('Assignments fetched:', assignmentsData);
+      setAssignments(assignmentsData);
+    } catch (e) {
+      console.error('Failed to fetch assignments:', e);
+      setError('Failed to load assignments');
     }
   };
 
@@ -460,6 +476,8 @@ export default function ProgressTrackingManagement() {
       const result = await assignTemplate(form);
       console.log('Template assignment result:', result);
       setSuccess('Template assigned successfully!');
+      // Refresh assignments after successful assignment
+      await fetchAssignments();
       closeModal();
     } catch (e) {
       console.error('Failed to assign template:', e);
@@ -469,7 +487,22 @@ export default function ProgressTrackingManagement() {
     }
   };
 
-
+  const handleDeleteAssignment = async (assignmentId) => {
+    setLoading(true);
+    try {
+      console.log('Deleting assignment with ID:', assignmentId);
+      await deleteAssignment(assignmentId);
+      setSuccess('Assignment deleted successfully!');
+      // Refresh assignments after successful deletion
+      await fetchAssignments();
+      closeModal();
+    } catch (e) {
+      console.error('Failed to delete assignment:', e);
+      setError('Failed to delete assignment: ' + e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   function Toast({ message, type, onClose }) {
     if (!message) return null;
@@ -530,6 +563,17 @@ export default function ProgressTrackingManagement() {
           >
             <FaChartLine />
             Progress Dashboard
+          </button>
+          <button
+            className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+              activeTab === 'assignments' 
+                ? 'bg-blue-600 text-white shadow-lg' 
+                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+            }`}
+            onClick={() => setActiveTab('assignments')}
+          >
+            <FaEdit />
+            Assignment Management
           </button>
         </div>
 
@@ -720,8 +764,117 @@ export default function ProgressTrackingManagement() {
               </div>
             </div>
           </div>
-        ) : (
+        ) : activeTab === 'dashboard' ? (
           <ProgressDashboard trackings={trackings} submissions={submissions} />
+        ) : (
+          // Assignment Management Tab
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-6">📋 Template Assignments Overview</h3>
+              
+              {assignments.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="bg-gray-50 rounded-lg p-8">
+                    <FaEdit size={48} className="mx-auto text-gray-400 mb-4" />
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">No Assignments Found</h4>
+                    <p className="text-gray-600">
+                      No progress tracking templates have been assigned yet. 
+                      Use the "Assign Template" button in the Manage Templates tab to create assignments.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {assignments.map(assignment => {
+                    // Find the template and user details
+                    const template = templates.find(t => t.id === assignment.templateId);
+                    const user = users.find(u => u.id === assignment.assignedToId);
+                    
+                    return (
+                      <div key={assignment.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h4 className="text-lg font-semibold text-gray-900">
+                                {template?.name || 'Unknown Template'}
+                              </h4>
+                              <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                                {assignment.assignedToType}
+                              </span>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <span className="font-medium text-gray-700">Assigned to:</span>
+                                <p className="text-gray-600">
+                                  {user?.fullName || user?.name || user?.email || 'Unknown User'}
+                                  {user?.startupName && (
+                                    <span className="block text-xs text-gray-500">
+                                      Startup: {user.startupName}
+                                    </span>
+                                  )}
+                                </p>
+                              </div>
+                              
+                              <div>
+                                <span className="font-medium text-gray-700">Assigned on:</span>
+                                <p className="text-gray-600">
+                                  {assignment.assignedAt ? new Date(assignment.assignedAt).toLocaleDateString() : 'Unknown'}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {template?.description && (
+                              <div className="mt-3">
+                                <span className="font-medium text-gray-700">Template Description:</span>
+                                <p className="text-gray-600 text-sm">{template.description}</p>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="flex flex-col gap-2 ml-4">
+                            <button 
+                              className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-colors flex items-center gap-2" 
+                              onClick={() => openModal('deleteAssignment', assignment)}
+                              title="Delete Assignment"
+                            >
+                              <FaTrash />
+                              <span className="text-sm">Delete</span>
+                            </button>
+                            <span className="text-xs text-gray-500">
+                              ID: {assignment.id.slice(0, 8)}...
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                <h5 className="font-medium text-blue-900 mb-2">📊 Assignment Summary</h5>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium text-blue-800">Total Assignments:</span>
+                    <span className="ml-2 text-blue-700">{assignments.length}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-blue-800">Unique Templates:</span>
+                    <span className="ml-2 text-blue-700">
+                      {new Set(assignments.map(a => a.templateId)).size}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-blue-800">Assigned Startups:</span>
+                    <span className="ml-2 text-blue-700">
+                      {new Set(assignments.map(a => a.assignedToId)).size}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Modals */}
@@ -872,7 +1025,43 @@ export default function ProgressTrackingManagement() {
             loading={loading}
           />
         )}
+
+        {modal.type === 'deleteAssignment' && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">🗑️ Delete Assignment</h3>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete this assignment? This will remove the template assignment from the startup and they will no longer see it on their dashboard.
+              </p>
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <div className="text-sm">
+                  <div className="font-medium text-gray-900 mb-1">
+                    Template: {templates.find(t => t.id === modal.data?.templateId)?.name || 'Unknown'}
+                  </div>
+                  <div className="text-gray-600">
+                    Assigned to: {users.find(u => u.id === modal.data?.assignedToId)?.fullName || 'Unknown User'}
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={closeModal}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDeleteAssignment(modal.data.id)}
+                  disabled={loading}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+                >
+                  {loading ? 'Deleting...' : 'Delete Assignment'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
-} 
+}

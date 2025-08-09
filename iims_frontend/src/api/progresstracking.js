@@ -93,15 +93,42 @@ export const createSubmission = async (trackingId, taskId, token) => {
   return res.json();
 };
 
-export const getAssignedTemplatesForStartup = async (startupId) => {
-  // Fetch assignments for this startup
-  const assignments = await axios.get(`/api/progresstracking/assignments/assigned/STARTUP/${startupId}`).then(res => res.data);
-  // For each assignment, fetch the template details
-  const templateIds = assignments.map(a => a.templateId).filter(Boolean);
-  if (templateIds.length === 0) return [];
-  // Fetch all templates for tenant (or all), then filter
-  const allTemplates = await axios.get(`/api/progresstracking/templates`).then(res => res.data);
-  return allTemplates.filter(t => templateIds.includes(t.id));
+export const getAssignedTemplatesForStartup = async (startupId, token) => {
+  console.log('🔍 Fetching assigned templates for startup:', startupId);
+  const url = `/api/progresstracking/assignments/assigned-templates/USER/${startupId}`;
+  console.log('🔗 API URL:', url);
+  console.log('🔑 Using token for auth:', !!token);
+  
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  const response = await fetch(url, { headers });
+  console.log('📡 Response status:', response.status);
+  
+  if (!response.ok) {
+    const errorData = await response.json();
+    console.error('❌ API Error:', errorData);
+    throw new Error(`API Error: ${response.status} ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  console.log('✅ Assigned templates response:', data);
+  return data;
+};
+
+export const getAllAssignments = async () => {
+  const response = await axios.get('/api/progresstracking/assignments');
+  return response.data;
+};
+
+export const deleteAssignment = async (assignmentId) => {
+  const response = await axios.delete(`/api/progresstracking/assignments/${assignmentId}`);
+  return response.data;
 };
 
 export const getStartupsForMentor = async (mentorId) => {
