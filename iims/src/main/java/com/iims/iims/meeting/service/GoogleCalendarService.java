@@ -1,19 +1,16 @@
 package com.iims.iims.meeting.service;
 
 import com.iims.iims.meeting.dto.MeetingRequestDto;
-import com.iims.iims.meeting.service.GoogleOAuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
-import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-
+import java.util.ArrayList;
 import java.util.*;
 
-@Service
 @RequiredArgsConstructor
 public class GoogleCalendarService {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+      private final RestTemplate restTemplate;
 
     /**
      * Create event using Google Calendar REST API with conferenceData (meet)

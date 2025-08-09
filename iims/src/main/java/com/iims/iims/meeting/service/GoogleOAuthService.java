@@ -27,8 +27,7 @@ public class GoogleOAuthService {
     private final UserRepository userRepo;
     private final TenantRepository tenantRepo;
     private final TokenEncryptor encryptor;
-    private final RestTemplate restTemplate = new RestTemplate();
-
+    private final RestTemplate restTemplate;
     /**
      * Build the Google OAuth2 authorization URL
      * type = "user" or "tenant"
