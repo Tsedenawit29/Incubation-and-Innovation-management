@@ -32,8 +32,7 @@ public class AuthService {
             );
             User user = userRepo.findByEmail(req.getEmail())
                 .orElseThrow(() -> new RuntimeException("User not found"));
-
-            // *** THE FIX IS HERE: Call a method that handles update or creation ***
+                
             String refreshToken = refreshTokenService.createOrUpdateRefreshToken(user).getToken();
 
             return new AuthResponse(
