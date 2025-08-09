@@ -1,7 +1,9 @@
 package com.iims.iims.auth.entity;
 
+import com.iims.iims.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.Instant;
 import java.util.UUID;
 
@@ -18,12 +20,12 @@ public class RefreshToken {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(nullable = false, unique = true)
-    private String token;
-
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", referencedColumnName = "id")
-    private com.iims.iims.user.entity.User user;
+    @JoinColumn(name = "user_id", referencedColumnName = "id", unique = true)
+    private User user;
+
+    @Column(nullable = false)
+    private String token;
 
     @Column(nullable = false)
     private Instant expiryDate;
