@@ -234,11 +234,20 @@ export default function MentorProgressReview({ mentorId, token }) {
   const getStatusIcon = (status) => {
     switch (status) {
       case 'COMPLETED':
+      case 'APPROVED':
         return <CheckCircle className="w-5 h-5 text-green-500" />;
+      case 'SUBMITTED':
+      case 'UNDER_REVIEW':
+        return <Eye className="w-5 h-5 text-blue-500" />;
       case 'PENDING':
         return <Clock className="w-5 h-5 text-yellow-500" />;
-      case 'OVERDUE':
+      case 'REJECTED':
+      case 'NEEDS_REVISION':
         return <AlertCircle className="w-5 h-5 text-red-500" />;
+      case 'IN_PROGRESS':
+        return <Clock className="w-5 h-5 text-orange-500" />;
+      case 'OVERDUE':
+        return <AlertCircle className="w-5 h-5 text-red-600" />;
       default:
         return <Clock className="w-5 h-5 text-gray-400" />;
     }
@@ -247,13 +256,63 @@ export default function MentorProgressReview({ mentorId, token }) {
   const getStatusColor = (status) => {
     switch (status) {
       case 'COMPLETED':
-        return 'bg-green-100 text-green-800';
+      case 'APPROVED':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'SUBMITTED':
+      case 'UNDER_REVIEW':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'PENDING':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'REJECTED':
+      case 'NEEDS_REVISION':
+        return 'bg-red-100 text-red-800 border-red-200';
+      case 'IN_PROGRESS':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
       case 'OVERDUE':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-200 text-red-900 border-red-300';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'COMPLETED':
+      case 'APPROVED':
+        return '✅ Approved';
+      case 'SUBMITTED':
+      case 'UNDER_REVIEW':
+        return '👁️ Under Review';
+      case 'PENDING':
+        return '⏳ Pending';
+      case 'REJECTED':
+        return '❌ Rejected';
+      case 'NEEDS_REVISION':
+        return '🔄 Needs Revision';
+      case 'IN_PROGRESS':
+        return '🚧 In Progress';
+      case 'OVERDUE':
+        return '⚠️ Overdue';
+      default:
+        return '⏳ Not Started';
+    }
+  };
+
+  // Quick status update function for checkbox-style interactions
+  const handleQuickStatusUpdate = async (submissionId, newStatus) => {
+    setLoading(true);
+    try {
+      await updateSubmission(submissionId, {
+        status: newStatus,
+        feedbackDate: new Date().toISOString()
+      }, token);
+      
+      // Refresh data to show updated status
+      await fetchData();
+    } catch (e) {
+      console.error('Failed to update submission status:', e);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -599,15 +658,70 @@ export default function MentorProgressReview({ mentorId, token }) {
                           </div>
                           
                           <div className="flex items-center gap-2">
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(submission.status)}`}>
-                              {submission.status}
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(submission.status)}`}>
+                              {getStatusText(submission.status)}
                             </span>
+                            
+                            {/* Quick Status Update Checkboxes */}
+                            <div className="flex items-center gap-2 ml-4">
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="checkbox"
+                                  id={`approve-${submission.id}`}
+                                  checked={submission.status === 'APPROVED' || submission.status === 'COMPLETED'}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      handleQuickStatusUpdate(submission.id, 'APPROVED');
+                                    }
+                                  }}
+                                  className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500"
+                                />
+                                <label htmlFor={`approve-${submission.id}`} className="text-sm text-green-600 font-medium">
+                                  Approve
+                                </label>
+                              </div>
+                              
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="checkbox"
+                                  id={`revision-${submission.id}`}
+                                  checked={submission.status === 'NEEDS_REVISION'}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      handleQuickStatusUpdate(submission.id, 'NEEDS_REVISION');
+                                    }
+                                  }}
+                                  className="w-4 h-4 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500"
+                                />
+                                <label htmlFor={`revision-${submission.id}`} className="text-sm text-orange-600 font-medium">
+                                  Needs Revision
+                                </label>
+                              </div>
+                              
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="checkbox"
+                                  id={`reject-${submission.id}`}
+                                  checked={submission.status === 'REJECTED'}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      handleQuickStatusUpdate(submission.id, 'REJECTED');
+                                    }
+                                  }}
+                                  className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500"
+                                />
+                                <label htmlFor={`reject-${submission.id}`} className="text-sm text-red-600 font-medium">
+                                  Reject
+                                </label>
+                              </div>
+                            </div>
+                            
                             <button
                               onClick={() => handleReviewSubmission(submission)}
-                              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 ml-4"
                             >
-                              <Eye className="w-4 h-4" />
-                              Review
+                              <MessageCircle className="w-4 h-4" />
+                              Add Feedback
                             </button>
                           </div>
                         </div>

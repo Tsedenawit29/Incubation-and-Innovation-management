@@ -11,6 +11,7 @@ import {
   getPhases, 
   getTasks 
 } from '../api/progresstracking';
+import MentorProgressReview from '../components/MentorProgressReview';
 
 // Import Lucide React icons
 import {
@@ -1163,127 +1164,7 @@ export default function MentorDashboard() {
 
           {currentPage === 'progressTracking' && (
             <div className="animate-fade-in">
-              <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center">
-                <CheckCircle2 size={28} className="mr-3 text-brand-primary" /> Progress Tracking
-              </h3>
-
-              <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 mb-8">
-                <div className="flex flex-col md:flex-row items-center justify-between mb-6">
-                  <div>
-                    <h4 className="text-lg font-semibold text-gray-800">Select a Startup</h4>
-                    <div className="relative mt-2">
-                      <select 
-                        className="block appearance-none w-full bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg shadow-sm leading-tight focus:outline-none focus:bg-white focus:border-brand-primary transition duration-200 text-sm"
-                        onChange={(e) => console.log("Selected startup:", e.target.value)}
-                      >
-                        <option value="">All Startups</option>
-                        {assignedStartups.map(startup => (
-                          <option key={startup.id} value={startup.id}>{startup.startupName}</option>
-                        ))}
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                        <ChevronDown size={16} />
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-4 md:mt-0">
-                    <h4 className="text-lg font-semibold text-gray-800">Select a Template</h4>
-                    <div className="relative mt-2">
-                      <select 
-                        className="block appearance-none w-full bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg shadow-sm leading-tight focus:outline-none focus:bg-white focus:border-brand-primary transition duration-200 text-sm"
-                        onChange={(e) => handleSelectTemplate(templates.find(t => t.id === e.target.value))}
-                        value={selectedTemplate?.id || ''}
-                      >
-                        <option value="">Select Template</option>
-                        {templates.map(template => (
-                          <option key={template.id} value={template.id}>{template.name}</option>
-                        ))}
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                        <ChevronDown size={16} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {selectedTemplate && (
-                  <div className="mt-8">
-                    <div className="flex items-center justify-between mb-6">
-                      <h4 className="text-xl font-bold text-brand-dark">{selectedTemplate.name}</h4>
-                      <div className="flex items-center">
-                        <CircularProgressBar progress={getProgressStats().percentage} size={80} strokeWidth={8} />
-                        <div className="ml-4">
-                          <p className="text-sm text-gray-600">{getProgressStats().completed} of {getProgressStats().total} tasks completed</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      {phases.map(phase => (
-                        <div key={phase.id} className="border border-gray-200 rounded-lg overflow-hidden">
-                          <button
-                            onClick={() => togglePhase(phase.id)}
-                            className="w-full flex justify-between items-center p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
-                          >
-                            <div className="flex items-center">
-                              <h5 className="font-semibold text-gray-800">{phase.name}</h5>
-                              <span className="ml-3 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                                {phase.sequenceNumber}
-                              </span>
-                            </div>
-                            <ChevronDown 
-                              size={20} 
-                              className={`text-gray-500 transition-transform ${expandedPhases.includes(phase.id) ? 'transform rotate-180' : ''}`}
-                            />
-                          </button>
-
-                          {expandedPhases.includes(phase.id) && (
-                            <div className="p-4 bg-white border-t border-gray-200">
-                              {!tasksByPhase[phase.id] ? (
-                                <div className="text-center py-4">
-                                  <button 
-                                    onClick={() => fetchTasks(phase.id)}
-                                    className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm"
-                                  >
-                                    Load Tasks
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="space-y-3">
-                                  {tasksByPhase[phase.id].map(task => (
-                                    <div key={task.id} className="p-3 bg-gray-50 rounded-lg flex items-start">
-                                      <div className="flex-1">
-                                        <h6 className="font-medium text-gray-800">{task.name}</h6>
-                                        <p className="text-sm text-gray-600">{task.description}</p>
-                                        <div className="flex items-center mt-2 text-xs text-gray-500">
-                                          <span className={`px-2 py-1 rounded-full ${
-                                            task.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
-                                            task.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
-                                            'bg-gray-100 text-gray-800'
-                                          }`}>
-                                            {task.status.replace('_', ' ')}
-                                          </span>
-                                          {task.dueDate && (
-                                            <span className="ml-2 flex items-center">
-                                              <CalendarDays size={12} className="mr-1" />
-                                              {new Date(task.dueDate).toLocaleDateString()}
-                                            </span>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <MentorProgressReview mentorId={user?.id} token={token} />
             </div>
           )}
 
