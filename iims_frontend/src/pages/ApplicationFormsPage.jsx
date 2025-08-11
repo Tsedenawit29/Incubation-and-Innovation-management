@@ -5,7 +5,7 @@ import { getAllApplicationForms, deleteApplicationForm, updateApplicationForm } 
 
 export default function ApplicationFormsPage() {
   const navigate = useNavigate();
-  const { user, token, logout } = useAuth();
+  const { user, token } = useAuth();
   const [forms, setForms] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -52,25 +52,19 @@ export default function ApplicationFormsPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
-      {/* Header/Profile (copied from TenantAdminDashboard) */}
-      <header className="bg-gradient-to-r from-blue-700 to-blue-400 shadow-lg p-6 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-blue-700 font-bold text-2xl border-4 border-blue-300">
-            {user?.fullName ? user.fullName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">{user?.fullName || user?.email}</h1>
-            <p className="text-blue-100 text-sm">Tenant Admin</p>
-            <p className="text-blue-200 text-xs">Tenant ID: <span className="font-mono">{user?.tenantId}</span></p>
-          </div>
-        </div>
+      {/* Back to Dashboard Button */}
+      <div className="bg-white shadow-md py-4 px-6">
         <button
-          onClick={logout}
-          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-medium shadow"
+          onClick={() => navigate("/tenant-admin/dashboard")}
+          className="flex items-center text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200"
         >
-          Logout
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+          </svg>
+          Back to Dashboard
         </button>
-      </header>
+      </div>
+      
       {/* Main content */}
       <div className="flex-1 flex flex-col items-center py-10">
         <div className="w-full max-w-4xl">
@@ -134,4 +128,4 @@ export default function ApplicationFormsPage() {
       </div>
     </div>
   );
-} 
+}

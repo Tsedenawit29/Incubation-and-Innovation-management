@@ -10,7 +10,9 @@ import {
   FaSignOutAlt,
   FaBuilding,
   FaClipboardList,
-  FaBell
+  FaBell,
+  FaWpforms,
+  FaFileAlt
 } from 'react-icons/fa';
 
 export default function TenantAdminSidebar({ user, onLogout }) {
@@ -46,6 +48,18 @@ export default function TenantAdminSidebar({ user, onLogout }) {
       icon: <FaUserPlus />,
       label: 'Mentor Assignment',
       description: 'Assign mentors to startups'
+    },
+    {
+      path: '/application-forms',
+      icon: <FaWpforms />,
+      label: 'Application Forms',
+      description: 'Create and manage forms'
+    },
+    {
+      path: '/applications',
+      icon: <FaFileAlt />,
+      label: 'Applications',
+      description: 'Review submitted applications'
     }
   ];
 
@@ -154,4 +168,4 @@ export default function TenantAdminSidebar({ user, onLogout }) {
       </div>
     </div>
   );
-} 
+}

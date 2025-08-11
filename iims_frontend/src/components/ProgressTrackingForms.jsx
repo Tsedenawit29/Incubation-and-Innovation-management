@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaTimes, FaSave, FaSpinner } from 'react-icons/fa';
+
 
 export const TemplateForm = ({ template, onSubmit, onCancel, loading }) => {
   const [form, setForm] = useState({
@@ -162,14 +163,33 @@ export const TaskForm = ({ task, phaseId, users, onSubmit, onCancel, loading }) 
     description: task?.description || '',
     dueDays: task?.dueDays || 7,
     dueDate: task?.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
-    orderIndex: task?.orderIndex || 1,
     phaseId: phaseId,
     mentorId: task?.mentorId || ''
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(form);
+    
+    // Prepare the data according to backend expectations
+    const taskData = {
+      taskName: form.taskName,
+      description: form.description,
+      dueDays: form.dueDays,
+      phaseId: form.phaseId,
+      mentorId: form.mentorId || null
+    };
+    
+    // Only include dueDate if it's provided
+    if (form.dueDate) {
+      taskData.dueDate = new Date(form.dueDate).toISOString();
+    }
+    
+    // Only include mentorId if it's provided and not empty
+    if (form.mentorId && form.mentorId !== '') {
+      taskData.mentorId = form.mentorId;
+    }
+    
+    onSubmit(taskData);
   };
 
   return (
@@ -247,18 +267,6 @@ export const TaskForm = ({ task, phaseId, users, onSubmit, onCancel, loading }) 
             </select>
           </div>
           
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Order Index</label>
-            <input
-              type="number"
-              value={form.orderIndex}
-              onChange={(e) => setForm({...form, orderIndex: parseInt(e.target.value)})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              min="1"
-              required
-            />
-          </div>
-          
           <div className="flex gap-3 pt-4">
             <button
               type="button"
@@ -282,16 +290,36 @@ export const TaskForm = ({ task, phaseId, users, onSubmit, onCancel, loading }) 
   );
 };
 
-export const AssignmentForm = ({ templates, users, onSubmit, onCancel, loading }) => {
+
+
+
+export const AssignmentForm = ({ templates, users, currentUser, onSubmit, onCancel, loading }) => {
   const [form, setForm] = useState({
     templateId: '',
-    userId: '',
-    assignedBy: ''
+    assignedToId: '',
+    assignedToType: 'USER',
+    assignedById: currentUser?.id || ''
   });
+
+  // Keep assignedById in sync if currentUser changes
+  useEffect(() => {
+    if (currentUser?.id) {
+      setForm(prev => ({ ...prev, assignedById: currentUser.id }));
+    }
+  }, [currentUser]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(form);
+
+    // Send camelCase fields to match backend DTO
+    const payload = {
+      templateId: form.templateId,
+      assignedToId: form.assignedToId,
+      assignedToType: form.assignedToType,
+      assignedById: form.assignedById
+    };
+
+    onSubmit(payload);
   };
 
   return (
@@ -308,45 +336,45 @@ export const AssignmentForm = ({ templates, users, onSubmit, onCancel, loading }
           <p className="text-sm text-gray-600 mb-4">
             Assign a progress tracking template to a startup. The startup will be able to view and complete tasks from this template.
           </p>
+
+          {/* Template selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Progress Template</label>
             <select
               value={form.templateId}
-              onChange={(e) => setForm({...form, templateId: e.target.value})}
+              onChange={(e) => setForm({ ...form, templateId: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               required
             >
               <option value="">Select a progress template</option>
               {templates.map(template => (
                 <option key={template.id} value={template.id}>
-                  {template.name}
-                  {template.description && ` - ${template.description}`}
+                  {template.name}{template.description && ` - ${template.description}`}
                 </option>
               ))}
             </select>
           </div>
-          
+
+          {/* Startup selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Startup</label>
             <select
-              value={form.userId}
-              onChange={(e) => setForm({...form, userId: e.target.value})}
+              value={form.assignedToId}
+              onChange={(e) => setForm({ ...form, assignedToId: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               required
             >
               <option value="">Select a startup</option>
-              {users.length === 0 ? (
-                <option value="" disabled>No users available</option>
-              ) : (
-                users.map(user => (
-                  <option key={user.id} value={user.id}>
-                    {user.fullName || user.name || user.email} 
-                    {user.startupName && ` - ${user.startupName}`}
-                    {!user.fullName && !user.name && !user.startupName && ` (${user.email})`}
-                    {user.role && ` [${user.role}]`}
-                  </option>
-                ))
-              )}
+              {users.length === 0
+                ? <option value="" disabled>No users available</option>
+                : users.map(user => (
+                    <option key={user.id} value={user.id}>
+                      {user.fullName || user.name || user.email}
+                      {user.startupName && ` - ${user.startupName}`}
+                      {user.role && ` [${user.role}]`}
+                    </option>
+                  ))
+              }
             </select>
             {users.length === 0 && (
               <p className="text-sm text-red-600 mt-1">
@@ -354,7 +382,8 @@ export const AssignmentForm = ({ templates, users, onSubmit, onCancel, loading }
               </p>
             )}
           </div>
-          
+
+          {/* Buttons */}
           <div className="flex gap-3 pt-4">
             <button
               type="button"
@@ -376,4 +405,4 @@ export const AssignmentForm = ({ templates, users, onSubmit, onCancel, loading }
       </div>
     </div>
   );
-}; 
+};

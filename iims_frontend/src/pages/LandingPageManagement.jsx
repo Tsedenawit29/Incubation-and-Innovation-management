@@ -11,11 +11,116 @@ import { Navigation, Pagination, Autoplay } from 'swiper/modules';
 import { Link } from 'react-router-dom';
 import '../index.css';
 
-// Helper function to construct full image URLs
+// Helper function to construct full image URLs with error handling
 const getImageUrl = (imagePath) => {
-  if (!imagePath) return '';
-  if (imagePath.startsWith('http')) return imagePath;
-  return `http://localhost:8081${imagePath}`;
+  if (!imagePath) {
+    console.log('🖼️ getImageUrl: No image path provided');
+    return '';
+  }
+  
+  // If it's already a full URL, return as is
+  if (imagePath.startsWith('http')) {
+    console.log('🖼️ getImageUrl: Full URL provided:', imagePath);
+    return imagePath;
+  }
+  
+  // Ensure the path starts with a slash
+  const normalizedPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+  const fullUrl = `http://localhost:8081${normalizedPath}`;
+  
+  console.log('🖼️ getImageUrl: Constructed URL:', {
+    originalPath: imagePath,
+    normalizedPath,
+    fullUrl
+  });
+  
+  return fullUrl;
+};
+
+// Image component with error handling
+const SafeImage = ({ src, alt, className, onError, ...props }) => {
+  const [imageError, setImageError] = useState(false);
+  const [loading, setLoading] = useState(true);
+  
+  const handleImageError = (e) => {
+    console.error('🚨 SafeImage: Image failed to load:', {
+      src,
+      alt,
+      error: e,
+      naturalWidth: e.target?.naturalWidth,
+      naturalHeight: e.target?.naturalHeight,
+      complete: e.target?.complete
+    });
+    setImageError(true);
+    setLoading(false);
+    if (onError) onError(e);
+  };
+  
+  const handleImageLoad = (e) => {
+    console.log('✅ SafeImage: Image loaded successfully:', {
+      src,
+      alt,
+      naturalWidth: e.target?.naturalWidth,
+      naturalHeight: e.target?.naturalHeight
+    });
+    setLoading(false);
+    setImageError(false);
+  };
+  
+  // Reset states when src changes
+  React.useEffect(() => {
+    if (src) {
+      setImageError(false);
+      setLoading(true);
+      console.log('🖼️ SafeImage: Loading new image:', src);
+    }
+  }, [src]);
+  
+  if (imageError) {
+    return (
+      <div className={`bg-gray-200 flex items-center justify-center ${className}`} {...props}>
+        <div className="text-center text-gray-500 p-2">
+          <svg className="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <div className="text-xs">Image Error</div>
+          <div className="text-xs mt-1 opacity-75">Check console for details</div>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!src) {
+    return (
+      <div className={`bg-gray-100 flex items-center justify-center ${className}`} {...props}>
+        <div className="text-center text-gray-400 p-2">
+          <svg className="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <div className="text-xs">No Image</div>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="relative">
+      {loading && (
+        <div className={`absolute inset-0 bg-gray-100 flex items-center justify-center ${className}`}>
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+        </div>
+      )}
+      <img 
+        src={src} 
+        alt={alt} 
+        className={className}
+        onError={handleImageError}
+        onLoad={handleImageLoad}
+        style={loading ? { opacity: 0 } : { opacity: 1 }}
+        {...props}
+      />
+    </div>
+  );
 };
 
 const SECTION_TYPES = [
@@ -53,30 +158,110 @@ function SectionEditor({ section, onChange, tenantId }) {
   // Helper for image upload (handles nested arrays)
   const handleImage = async (field, e, idx = null, arrField = null) => {
     const file = e.target.files[0];
-    if (!file) return;
+    if (!file) {
+      console.log('No file selected');
+      return;
+    }
+    
+    console.log('🖼️ Starting image upload:', {
+      field,
+      fileName: file.name,
+      fileSize: file.size,
+      idx,
+      arrField,
+      tenantId,
+      hasToken: !!token
+    });
+    
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setUploadError(`Invalid file type. Please upload: ${allowedTypes.join(', ')}`);
+      return;
+    }
+    
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError('File size too large. Please upload files smaller than 5MB.');
+      return;
+    }
+    
     setUploading(true);
     setUploadError('');
+    
     try {
+      console.log('📤 Calling uploadLandingPageImage API...');
+      
+      // Ensure we have the required parameters
+      if (!tenantId) {
+        throw new Error('Tenant ID is required for image upload');
+      }
+      if (!token) {
+        throw new Error('Authentication token is required for image upload');
+      }
+      
       const url = await uploadLandingPageImage(tenantId, file, token);
+      console.log('✅ Upload successful, received URL:', url);
+      
+      if (!url) {
+        throw new Error('No URL returned from server');
+      }
+      
+      // Test if the uploaded image is accessible
+      const testUrl = getImageUrl(url);
+      console.log('🧪 Testing image accessibility at:', testUrl);
+      
+      // Try to fetch the image to verify it's accessible
+      try {
+        const testResponse = await fetch(testUrl, { method: 'HEAD' });
+        if (testResponse.ok) {
+          console.log('✅ Image is accessible via URL');
+        } else {
+          console.warn('⚠️ Image URL returned non-OK status:', testResponse.status, testResponse.statusText);
+        }
+      } catch (testError) {
+        console.warn('⚠️ Image accessibility test failed:', testError.message);
+      }
+      
       let newContent = { ...content };
+      
       if (arrField && idx !== null) {
-        // For nested array fields (e.g., projects, testimonials, team, gallery)
+        console.log('📝 Updating nested array field:', arrField, 'at index:', idx);
+        // For nested array fields (e.g., projects, testimonials, team, news)
         const arr = [...(newContent[arrField] || [])];
+        if (!arr[idx]) {
+          arr[idx] = {};
+        }
         arr[idx][field] = url;
         newContent[arrField] = arr;
       } else if (arrField === 'images' && idx !== null) {
+        console.log('📝 Updating gallery images at index:', idx);
         // For gallery images (array of strings)
         const arr = [...(newContent.images || [])];
         arr[idx] = url;
         newContent.images = arr;
       } else {
+        console.log('📝 Updating simple field:', field);
         newContent[field] = url;
       }
+      
+      console.log('📝 Updated content:', newContent);
       onChange({ ...section, contentJson: JSON.stringify(newContent) });
+      console.log('✅ Image upload and content update complete');
+      
+      // Clear any previous errors on success
+      setUploadError('');
+      
     } catch (err) {
-      setUploadError('Image upload failed');
+      console.error('❌ Image upload failed:', err);
+      const errorMessage = err.message || 'Unknown error occurred during upload';
+      setUploadError(`Image upload failed: ${errorMessage}`);
     } finally {
       setUploading(false);
+      // Clear the file input to allow re-uploading the same file if needed
+      if (e.target) {
+        e.target.value = '';
+      }
     }
   };
 
@@ -98,7 +283,7 @@ function SectionEditor({ section, onChange, tenantId }) {
             </div>
             {content.logo && (
               <div className="w-16 h-16 rounded-lg border-2 border-gray-200 overflow-hidden">
-                <img src={getImageUrl(content.logo)} alt="logo" className="w-full h-full object-cover" />
+                <SafeImage src={getImageUrl(content.logo)} alt="logo" className="w-full h-full object-cover" />
               </div>
             )}
           </div>
@@ -118,7 +303,7 @@ function SectionEditor({ section, onChange, tenantId }) {
             />
             {content.bgImage && (
               <div className="w-full h-32 rounded-lg border-2 border-gray-200 overflow-hidden">
-                <img src={getImageUrl(content.bgImage)} alt="bg" className="w-full h-full object-cover" />
+                <SafeImage src={getImageUrl(content.bgImage)} alt="bg" className="w-full h-full object-cover" />
               </div>
             )}
           </div>
@@ -216,7 +401,7 @@ function SectionEditor({ section, onChange, tenantId }) {
         <input type="file" accept="image/*" onChange={e => handleImage('image', e)} />
         {uploading && <p>Uploading about image...</p>}
         {uploadError && <p className="text-red-500">{uploadError}</p>}
-        {content.image && <img src={getImageUrl(content.image)} alt="about" className="h-20 my-2" />}
+        {content.image && <SafeImage src={getImageUrl(content.image)} alt="about" className="h-20 my-2" />}
         <label className="block font-semibold">Title:</label>
         <input className="w-full border rounded p-1 mb-2" value={content.title} onChange={e => onChange({ ...section, contentJson: JSON.stringify({ ...content, title: e.target.value }) })} />
         <label className="block font-semibold">Description:</label>
@@ -822,41 +1007,50 @@ export default function LandingPageManagement() {
   console.log('LandingPageManagement - TenantId:', tenantId);
   console.log('LandingPageManagement - User role:', user?.role);
 
-  useEffect(() => {
-    if (!tenantId) {
-      console.log('LandingPageManagement - No tenantId available');
-      setError('No tenant ID available. Please make sure you are logged in as a tenant admin.');
-      setLoading(false);
-      return;
-    }
-    if (!token) {
-      console.log('LandingPageManagement - No token available');
-      setError('No authentication token available. Please log in again.');
-      setLoading(false);
-      return;
-    }
-    if (user?.role !== 'TENANT_ADMIN') {
-      console.log('LandingPageManagement - User does not have TENANT_ADMIN role');
-      setError('Access denied. You must be a tenant admin to access this page.');
-      setLoading(false);
-      return;
-    }
-    console.log('LandingPageManagement - Fetching landing page for tenant:', tenantId);
-    getLandingPage(tenantId, false, token)
-      .then(data => {
-        console.log('LandingPageManagement - Successfully fetched landing page data:', data);
-        setThemeColors([data.themeColor || '#1976d2', data.themeColor2 || '#43a047', data.themeColor3 || '#fbc02d']);
-        setSections((data.sections || []).map(s => ({ ...s, contentJson: s.contentJson || JSON.stringify(defaultSectionContent[s.type] || {}) })));
-        setSocialLinks(data.socialLinks || {});
-        setButtonUrls(data.buttonUrls || {});
+  // ...existing code...
+useEffect(() => {
+  if (!tenantId) {
+    console.log('LandingPageManagement - No tenantId available');
+    setError('No tenant ID available. Please make sure you are logged in as a tenant admin.');
+    setLoading(false);
+    return;
+  }
+  if (!token) {
+    console.log('LandingPageManagement - No token available');
+    setError('No authentication token available. Please log in again.');
+    setLoading(false);
+    return;
+  }
+  if (user?.role !== 'TENANT_ADMIN') {
+    console.log('LandingPageManagement - User does not have TENANT_ADMIN role');
+    setError('Access denied. You must be a tenant admin to access this page.');
+    setLoading(false);
+    return;
+  }
+  console.log('LandingPageManagement - Fetching landing page for tenant:', tenantId);
+  getLandingPage(tenantId, false, token)
+    .then(data => {
+      console.log('LandingPageManagement - Successfully fetched landing page data:', data);
+      setThemeColors([data.themeColor || '#1976d2', data.themeColor2 || '#43a047', data.themeColor3 || '#fbc02d']);
+      setSections((data.sections || []).map(s => ({ ...s, contentJson: s.contentJson || JSON.stringify(defaultSectionContent[s.type] || {}) })));
+      setSocialLinks(data.socialLinks || {});
+      setButtonUrls(data.buttonUrls || {});
+      setError(null);
+    })
+    .catch(error => {
+      // If 404, treat as "no landing page yet" and show empty builder
+      if (error.status === 404 || (error.message && error.message.includes('404'))) {
+        setSections([]);
+        setSocialLinks({});
+        setButtonUrls({});
         setError(null);
-      })
-      .catch(error => {
-        console.error('LandingPageManagement - Error fetching landing page:', error);
+      } else {
         setError(`Failed to load landing page: ${error.message}`);
-      })
-      .finally(() => setLoading(false));
-  }, [tenantId, token, user?.role]);
+      }
+    })
+    .finally(() => setLoading(false));
+}, [tenantId, token, user?.role]);
+// ...existing code...
 
   const handleSectionChange = (idx, newSection) => {
     setSections(sections => sections.map((s, i) => (i === idx ? { ...newSection, sectionOrder: i } : s)));

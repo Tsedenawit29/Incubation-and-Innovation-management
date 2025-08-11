@@ -118,12 +118,17 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     console.log("AuthProvider - Logout called");
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem("springBootAuthToken");
-    localStorage.removeItem("springBootUser");
-    setAuthError(null); // Clear any errors on logout
-    window.location.href = '/login'; // Redirect directly to login page on logout
+    try {
+      setToken(null);
+      setUser(null);
+      localStorage.removeItem("springBootAuthToken");
+      localStorage.removeItem("springBootUser");
+      setAuthError(null); // Clear any errors on logout
+    } finally {
+      // Use absolute URL and replace to avoid back navigation into protected pages
+      const loginUrl = `${window.location.origin}/login`;
+      window.location.replace(loginUrl);
+    }
   };
 
   const isAuthenticated = !!token && !!user; // User is authenticated if both token and user object exist

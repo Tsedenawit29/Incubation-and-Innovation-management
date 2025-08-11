@@ -28,11 +28,15 @@ export default function StartupProgressTracking({ userId, token }) {
   const [feedback, setFeedback] = useState('');
 
   useEffect(() => {
-    fetchTemplates();
-  }, [userId]);
+    if (userId && token) {
+      fetchTemplates();
+    }
+  }, [userId, token]);
 
   const fetchTemplates = async () => {
-    if (!userId || !token) return;
+    if (!userId || !token) {
+      return;
+    }
     
     setLoading(true);
     try {
@@ -40,7 +44,7 @@ export default function StartupProgressTracking({ userId, token }) {
       setTemplates(data);
       if (data.length > 0) {
         setSelectedTemplate(data[0]);
-        fetchPhases(data[0].id);
+        await fetchPhases(data[0].id);
       }
     } catch (e) {
       console.error('Failed to load templates:', e);
@@ -50,26 +54,42 @@ export default function StartupProgressTracking({ userId, token }) {
   };
 
   const fetchPhases = async (templateId) => {
+    if (!templateId) return;
+    
     setLoading(true);
     try {
       const phasesData = await getPhases(templateId);
       setPhases(phasesData);
       
-      // Fetch tasks for all phases
+      // Auto-expand all phases
+      setExpandedPhases(phasesData.map(phase => phase.id));
+      
+      // Fetch all tasks for all phases
       const allTasks = [];
       for (const phase of phasesData) {
         try {
           const phaseTasks = await getTasks(phase.id);
-          allTasks.push(...phaseTasks);
-        } catch (e) {
-          console.error(`Failed to load tasks for phase ${phase.id}:`, e);
+          // Ensure each task has the correct phaseId
+          const tasksWithPhaseId = phaseTasks.map(task => ({
+            ...task,
+            phaseId: phase.id
+          }));
+          allTasks.push(...tasksWithPhaseId);
+        } catch (error) {
+          console.error(`Failed to fetch tasks for phase ${phase.id}:`, error);
         }
       }
+      
       setTasks(allTasks);
       
       // Fetch submissions
-      const submissionsData = await getSubmissions();
-      setSubmissions(submissionsData);
+      try {
+        const submissionsData = await getSubmissions();
+        setSubmissions(submissionsData);
+      } catch (error) {
+        console.error('Failed to fetch submissions:', error);
+        setSubmissions([]);
+      }
     } catch (e) {
       console.error('Failed to load phases:', e);
     } finally {
@@ -77,13 +97,14 @@ export default function StartupProgressTracking({ userId, token }) {
     }
   };
 
-  const handleTemplateChange = (template) => {
+  const handleTemplateChange = async (template) => {
     setSelectedTemplate(template);
     setPhases([]);
     setTasks([]);
     setSubmissions([]);
+    setExpandedPhases([]);
     if (template) {
-      fetchPhases(template.id);
+      await fetchPhases(template.id);
     }
   };
 
@@ -98,19 +119,11 @@ export default function StartupProgressTracking({ userId, token }) {
   const handleFileUpload = async (file, taskId) => {
     setUploadStatus(prev => ({ ...prev, [taskId]: 'Uploading...' }));
     try {
-      console.log('Starting file upload for task:', taskId);
-      console.log('File details:', { name: file.name, size: file.size, type: file.type });
-      console.log('Token available:', !!token);
-      
       // Create submission first
-      console.log('Creating submission...');
       const submission = await createSubmission(null, taskId, token);
-      console.log('Submission created:', submission);
       
       // Then upload file
-      console.log('Uploading file...');
       const uploadResult = await uploadSubmissionFile(file, submission.id, token);
-      console.log('File upload result:', uploadResult);
       
       setUploadStatus(prev => ({ ...prev, [taskId]: 'Uploaded!' }));
       
@@ -180,6 +193,8 @@ export default function StartupProgressTracking({ userId, token }) {
     }
   };
 
+  // Component is working! Now let's show the proper UI
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -190,7 +205,7 @@ export default function StartupProgressTracking({ userId, token }) {
 
   return (
     <div className="space-y-6">
-      {/* Enhanced Header with Beautiful Progress Visualization */}
+      {/* Enhanced Header with Progress Visualization */}
       <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl shadow-xl p-8 border border-blue-100">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -200,7 +215,7 @@ export default function StartupProgressTracking({ userId, token }) {
             <p className="text-gray-600 text-lg">Track your incubation journey with detailed insights</p>
           </div>
           <div className="flex items-center gap-8">
-            {/* Enhanced Progress Circle */}
+            {/* Progress Circle */}
             <div className="text-center">
               <div className="w-32 h-32 relative">
                 <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 36 36">
@@ -239,7 +254,7 @@ export default function StartupProgressTracking({ userId, token }) {
               </div>
             </div>
             
-            {/* Enhanced Progress Stats */}
+            {/* Progress Stats */}
             <div className="grid grid-cols-2 gap-6">
               <div className="text-center bg-white rounded-xl p-4 shadow-lg border border-gray-100">
                 <div className="text-3xl font-bold text-green-600">{getProgressStats().completed}</div>
@@ -253,7 +268,7 @@ export default function StartupProgressTracking({ userId, token }) {
           </div>
         </div>
 
-        {/* Enhanced Progress Bar */}
+        {/* Progress Bar */}
         <div className="mb-8">
           <div className="flex justify-between items-center mb-3">
             <span className="text-lg font-semibold text-gray-700">Overall Progress</span>
@@ -261,13 +276,13 @@ export default function StartupProgressTracking({ userId, token }) {
           </div>
           <div className="w-full bg-gray-200 rounded-full h-4 shadow-inner">
             <div 
-                              className="bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 h-4 rounded-full transition-all duration-1000 ease-out shadow-lg"
+              className="bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 h-4 rounded-full transition-all duration-1000 ease-out shadow-lg"
               style={{ width: `${getTemplateProgress()}%` }}
             ></div>
           </div>
         </div>
 
-        {/* Enhanced Phase Progress Bars */}
+        {/* Phase Progress Bars */}
         {phases.length > 0 && (
           <div className="space-y-4">
             <h4 className="text-xl font-semibold text-gray-900 mb-4">Phase Progress</h4>
@@ -567,4 +582,4 @@ export default function StartupProgressTracking({ userId, token }) {
       )}
     </div>
   );
-} 
+}
