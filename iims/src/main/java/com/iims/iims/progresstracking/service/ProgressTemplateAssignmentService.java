@@ -35,4 +35,14 @@ public class ProgressTemplateAssignmentService {
     public void deleteAssignment(UUID assignmentId) {
         assignmentRepo.deleteById(assignmentId);
     }
+
+    /**
+     * Delete all assignments for a specific template
+     */
+    public void deleteAssignmentsByTemplateId(UUID templateId) {
+        List<ProgressTemplateAssignment> assignments = assignmentRepo.findByTemplateId(templateId);
+        for (ProgressTemplateAssignment assignment : assignments) {
+            assignmentRepo.deleteById(assignment.getId());
+        }
+    }
 }

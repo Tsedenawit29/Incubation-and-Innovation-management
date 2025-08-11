@@ -37,15 +37,21 @@ export default function StartupProgressTracking({ userId, token }) {
       case 'APPROVED':
         return 'bg-green-100 text-green-800 border-green-200';
       case 'SUBMITTED':
-      case 'UNDER_REVIEW':
         return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'UNDER_REVIEW':
+        return 'bg-indigo-100 text-indigo-800 border-indigo-200';
       case 'PENDING':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'REJECTED':
-      case 'NEEDS_REVISION':
         return 'bg-red-100 text-red-800 border-red-200';
-      case 'IN_PROGRESS':
+      case 'NEEDS_REVISION':
         return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'IN_PROGRESS':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'OVERDUE':
+        return 'bg-red-200 text-red-900 border-red-300';
+      case 'NOT_STARTED':
+        return 'bg-gray-100 text-gray-800 border-gray-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -57,16 +63,21 @@ export default function StartupProgressTracking({ userId, token }) {
       case 'APPROVED':
         return '✅ Approved';
       case 'SUBMITTED':
+        return '📋 Submitted';
       case 'UNDER_REVIEW':
         return '👁️ Under Review';
       case 'PENDING':
-        return '⏳ Pending';
+        return '⏳ Pending Review';
       case 'REJECTED':
         return '❌ Rejected';
       case 'NEEDS_REVISION':
         return '🔄 Needs Revision';
       case 'IN_PROGRESS':
         return '🚧 In Progress';
+      case 'OVERDUE':
+        return '⚠️ Overdue';
+      case 'NOT_STARTED':
+        return '⏳ Not Started';
       default:
         return '⏳ Not Started';
     }
@@ -78,15 +89,16 @@ export default function StartupProgressTracking({ userId, token }) {
       case 'APPROVED':
         return <CheckCircle className="w-5 h-5 text-green-500" />;
       case 'SUBMITTED':
-      case 'UNDER_REVIEW':
         return <Eye className="w-5 h-5 text-blue-500" />;
+      case 'UNDER_REVIEW':
+        return <Eye className="w-5 h-5 text-indigo-500" />;
       case 'PENDING':
         return <Clock className="w-5 h-5 text-yellow-500" />;
       case 'REJECTED':
       case 'NEEDS_REVISION':
         return <AlertCircle className="w-5 h-5 text-red-500" />;
       case 'IN_PROGRESS':
-        return <Clock className="w-5 h-5 text-orange-500" />;
+        return <Clock className="w-5 h-5 text-purple-500" />;
       default:
         return <Clock className="w-5 h-5 text-gray-500" />;
     }
@@ -114,8 +126,18 @@ export default function StartupProgressTracking({ userId, token }) {
       setTasks(allTasks);
       
       try {
+        console.log('Fetching submissions for startup:', userId);
         const submissionsData = await getSubmissions(token);
-        setSubmissions(submissionsData);
+        console.log('Fetched submissions:', submissionsData.length);
+        
+        // Filter submissions for this startup only
+        const startupSubmissions = submissionsData.filter(sub => {
+          console.log('Checking submission:', sub.id, 'startupId:', sub.startupId, 'userId:', userId);
+          return sub.startupId === userId || sub.userId === userId;
+        });
+        
+        console.log('Filtered startup submissions:', startupSubmissions.length);
+        setSubmissions(startupSubmissions);
       } catch (error) {
         console.error('Failed to fetch submissions:', error);
         setSubmissions([]);
@@ -129,54 +151,91 @@ export default function StartupProgressTracking({ userId, token }) {
 
   const handleFileUpload = async (files, taskId, description) => {
     setSubmitting(true);
+    setUploadStatus(prev => ({ ...prev, [taskId]: 'Creating submission...' }));
+    
     try {
-      // Create submission with null trackingId and the actual taskId
-      const submission = await createSubmission(null, taskId, token);
+      console.log('Creating submission for task:', taskId);
+      console.log('Files to upload:', files.length);
+      console.log('Description:', description);
+      
+      // Create submission with null trackingId, the actual taskId, and startup ID
+      console.log('Creating submission with userId (startupId):', userId);
+      const submission = await createSubmission(null, taskId, token, userId);
+      console.log('Created submission:', submission);
+      console.log('Submission created:', submission);
+      
+      setUploadStatus(prev => ({ ...prev, [taskId]: 'Uploading files...' }));
       
       // Upload all files
-      for (const file of files) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        console.log(`Uploading file ${i + 1}/${files.length}:`, file.name);
+        setUploadStatus(prev => ({ ...prev, [taskId]: `Uploading file ${i + 1}/${files.length}: ${file.name}` }));
         await uploadSubmissionFile(file, submission.id, token);
       }
       
-      // Update submission with description and set status to SUBMITTED
+      setUploadStatus(prev => ({ ...prev, [taskId]: 'Finalizing submission...' }));
+      
+      // Update submission with description and status
       const updateData = {
         status: 'SUBMITTED',
         submissionDate: new Date().toISOString()
       };
       
+      // Add description if provided
       if (description && description.trim()) {
-        updateData.comments = description;
+        updateData.comments = description.trim();
       }
       
-      try {
-        await updateSubmission(submission.id, updateData, token);
-      } catch (updateError) {
-        console.warn('Failed to update submission status:', updateError);
-        // Don't fail the entire submission if status update fails
-      }
+      await updateSubmission(submission.id, updateData, token);
       
-      setUploadStatus(prev => ({ ...prev, [taskId]: 'Submitted successfully!' }));
+      console.log('Submission status updated to SUBMITTED');
+      setUploadStatus(prev => ({ ...prev, [taskId]: 'Submission completed successfully!' }));
+      
+      // Show success message
+      alert('Work submitted successfully! Your mentor will review it soon.');
+      
+      // Clear form and close modal
       setSubmissionFiles([]);
       setSubmissionDescription('');
       setShowSubmissionModal(false);
       setSelectedTask(null);
       
-      // Refresh data to show updated status
+      // Refresh phases to update UI
       if (selectedTemplate) {
         await fetchPhases(selectedTemplate.id);
       }
     } catch (e) {
       console.error('Failed to submit work:', e);
-      setUploadStatus(prev => ({ ...prev, [taskId]: `Submission failed: ${e.message}` }));
+      const errorMessage = e.message || 'Unknown error occurred';
+      setUploadStatus(prev => ({ ...prev, [taskId]: `Submission failed: ${errorMessage}` }));
+      alert(`Submission failed: ${errorMessage}. Please try again.`);
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleModalSubmit = async () => {
-    if (selectedTask && (submissionFiles.length > 0 || submissionDescription.trim())) {
-      await handleFileUpload(submissionFiles, selectedTask.id, submissionDescription);
+    if (!selectedTask) {
+      alert('No task selected. Please try again.');
+      return;
     }
+    
+    if (!submissionDescription.trim() && submissionFiles.length === 0) {
+      alert('Please provide either a description or upload files before submitting.');
+      return;
+    }
+    
+    if (!submissionDescription.trim()) {
+      alert('Please provide a description of your work.');
+      return;
+    }
+    
+    console.log('Submitting work for task:', selectedTask.id);
+    console.log('Files:', submissionFiles.length);
+    console.log('Description length:', submissionDescription.trim().length);
+    
+    await handleFileUpload(submissionFiles, selectedTask.id, submissionDescription);
   };
 
   const togglePhaseExpansion = (phaseId) => {
@@ -359,8 +418,9 @@ export default function StartupProgressTracking({ userId, token }) {
                             <div className="space-y-3">
                               {phaseTasks.map(task => {
                                 const taskSubmission = submissions.find(sub => sub.taskId === task.id);
-                                const isCompleted = taskSubmission?.status === 'APPROVED' || taskSubmission?.status === 'COMPLETED';
-                                const isPending = taskSubmission?.status === 'SUBMITTED' || taskSubmission?.status === 'UNDER_REVIEW';
+                                const hasSubmitted = taskSubmission && (['SUBMITTED', 'COMPLETED', 'APPROVED', 'REJECTED', 'NEEDS_REVISION', 'UNDER_REVIEW', 'PENDING'].includes(taskSubmission.status));
+                                const isPending = taskSubmission && (['PENDING', 'IN_PROGRESS'].includes(taskSubmission.status));
+                                const needsAction = taskSubmission && (['NEEDS_REVISION'].includes(taskSubmission.status));
                                 
                                 return (
                                   <div key={task.id} className="bg-white rounded-lg p-4 border border-gray-200">
@@ -395,21 +455,30 @@ export default function StartupProgressTracking({ userId, token }) {
                                       </div>
                                       
                                       <div className="ml-4">
-                                        {isCompleted ? (
-                                          <span className={`px-3 py-1 text-sm font-medium rounded-full border ${getStatusColor(taskSubmission.status)}`}>
-                                            {getStatusText(taskSubmission.status)}
-                                          </span>
-                                        ) : isPending ? (
-                                          <span className={`px-3 py-1 text-sm font-medium rounded-full border ${getStatusColor(taskSubmission.status)}`}>
-                                            {getStatusText(taskSubmission.status)}
-                                          </span>
+                                        {hasSubmitted ? (
+                                          <div className="flex items-center gap-2">
+                                            <span className={`px-3 py-1 text-sm font-medium rounded-full border ${getStatusColor(taskSubmission.status)}`}>
+                                              {getStatusText(taskSubmission.status)}
+                                            </span>
+                                            {needsAction && (
+                                              <button
+                                                onClick={() => {
+                                                  setSelectedTask(task);
+                                                  setShowSubmissionModal(true);
+                                                }}
+                                                className="px-3 py-1 bg-orange-600 text-white text-xs font-medium rounded-lg hover:bg-orange-700 transition-colors"
+                                              >
+                                                🔄 Resubmit
+                                              </button>
+                                            )}
+                                          </div>
                                         ) : (
                                           <button
                                             onClick={() => {
                                               setSelectedTask(task);
                                               setShowSubmissionModal(true);
                                             }}
-                                            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                                            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
                                           >
                                             📝 Submit Work
                                           </button>
@@ -436,10 +505,25 @@ export default function StartupProgressTracking({ userId, token }) {
                                         
                                         {/* Mentor Feedback */}
                                         {taskSubmission.mentorFeedback && (
-                                          <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                          <div className={`mt-3 p-4 rounded-lg border-2 ${
+                                            taskSubmission.status === 'APPROVED' ? 'bg-green-50 border-green-200' :
+                                            taskSubmission.status === 'NEEDS_REVISION' ? 'bg-orange-50 border-orange-200' :
+                                            taskSubmission.status === 'REJECTED' ? 'bg-red-50 border-red-200' :
+                                            'bg-blue-50 border-blue-200'
+                                          }`}>
                                             <div className="flex items-center gap-2 mb-2">
-                                              <MessageCircle className="w-4 h-4 text-blue-600" />
-                                              <span className="text-sm font-medium text-blue-900">Mentor Feedback</span>
+                                              <MessageCircle className={`w-4 h-4 ${
+                                                taskSubmission.status === 'APPROVED' ? 'text-green-600' :
+                                                taskSubmission.status === 'NEEDS_REVISION' ? 'text-orange-600' :
+                                                taskSubmission.status === 'REJECTED' ? 'text-red-600' :
+                                                'text-blue-600'
+                                              }`} />
+                                              <span className={`text-sm font-medium ${
+                                                taskSubmission.status === 'APPROVED' ? 'text-green-900' :
+                                                taskSubmission.status === 'NEEDS_REVISION' ? 'text-orange-900' :
+                                                taskSubmission.status === 'REJECTED' ? 'text-red-900' :
+                                                'text-blue-900'
+                                              }`}>Mentor Feedback</span>
                                               {taskSubmission.score && (
                                                 <div className="flex items-center gap-1 ml-auto">
                                                   <Star className="w-4 h-4 text-yellow-500" />
@@ -447,9 +531,19 @@ export default function StartupProgressTracking({ userId, token }) {
                                                 </div>
                                               )}
                                             </div>
-                                            <p className="text-sm text-blue-800">{taskSubmission.mentorFeedback}</p>
+                                            <p className={`text-sm ${
+                                              taskSubmission.status === 'APPROVED' ? 'text-green-800' :
+                                              taskSubmission.status === 'NEEDS_REVISION' ? 'text-orange-800' :
+                                              taskSubmission.status === 'REJECTED' ? 'text-red-800' :
+                                              'text-blue-800'
+                                            }`}>{taskSubmission.mentorFeedback}</p>
                                             {taskSubmission.feedbackDate && (
-                                              <p className="text-xs text-blue-600 mt-2">
+                                              <p className={`text-xs mt-2 ${
+                                                taskSubmission.status === 'APPROVED' ? 'text-green-600' :
+                                                taskSubmission.status === 'NEEDS_REVISION' ? 'text-orange-600' :
+                                                taskSubmission.status === 'REJECTED' ? 'text-red-600' :
+                                                'text-blue-600'
+                                              }`}>
                                                 Reviewed: {new Date(taskSubmission.feedbackDate).toLocaleDateString()}
                                               </p>
                                             )}

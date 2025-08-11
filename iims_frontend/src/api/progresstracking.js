@@ -1,24 +1,40 @@
 import axios from './axiosConfig';
 
 // Templates
-export const getTemplates = (tenantId) => {
-  if (tenantId) {
-    return axios.get(`/api/progresstracking/templates/tenant/${tenantId}`).then(res => res.data);
+export const getTemplates = (token, tenantId) => {
+  const headers = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
-  return axios.get(`/api/progresstracking/templates`).then(res => res.data);
+  if (tenantId) {
+    return axios.get(`/api/progresstracking/templates/tenant/${tenantId}`, { headers }).then(res => res.data);
+  }
+  return axios.get(`/api/progresstracking/templates`, { headers }).then(res => res.data);
 };
 export const createTemplate = (data) => axios.post(`/api/progresstracking/templates`, data).then(res => res.data);
 export const updateTemplate = (id, data) => axios.put(`/api/progresstracking/templates/${id}`, data).then(res => res.data);
 export const deleteTemplate = (id) => axios.delete(`/api/progresstracking/templates/${id}`).then(res => res.data);
 
 // Phases
-export const getPhases = (templateId) => axios.get(`/api/progresstracking/phases`, { params: { templateId } }).then(res => res.data);
+export const getPhases = (token, templateId) => {
+  const headers = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return axios.get(`/api/progresstracking/phases`, { params: { templateId }, headers }).then(res => res.data);
+};
 export const createPhase = (data) => axios.post(`/api/progresstracking/phases`, data).then(res => res.data);
 export const updatePhase = (id, data) => axios.put(`/api/progresstracking/phases/${id}`, data).then(res => res.data);
 export const deletePhase = (id) => axios.delete(`/api/progresstracking/phases/${id}`).then(res => res.data);
 
 // Tasks
-export const getTasks = (phaseId) => axios.get(`/api/progresstracking/tasks`, { params: { phaseId } }).then(res => res.data);
+export const getTasks = (token, phaseId) => {
+  const headers = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return axios.get(`/api/progresstracking/tasks`, { params: { phaseId }, headers }).then(res => res.data);
+};
 export const createTask = (data) => axios.post(`/api/progresstracking/tasks`, data).then(res => res.data);
 export const updateTask = (id, data) => axios.put(`/api/progresstracking/tasks/${id}`, data).then(res => res.data);
 export const deleteTask = (id) => axios.delete(`/api/progresstracking/tasks/${id}`).then(res => res.data);
@@ -29,8 +45,13 @@ export const assignTemplate = (data) =>
 export const getTrackings = () =>
   axios.get('/api/progresstracking/trackings').then(res => res.data);
 
-export const getSubmissions = () =>
-  axios.get('/api/progresstracking/submissions').then(res => res.data);
+export const getSubmissions = (token) => {
+  const headers = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return axios.get('/api/progresstracking/submissions', { headers }).then(res => res.data);
+};
 
 export const updateSubmission = async (submissionId, data, token) => {
   const res = await fetch(`${API_URL}/progresstracking/submissions/${submissionId}`, {
@@ -76,14 +97,24 @@ export const uploadSubmissionFile = async (file, submissionId, token) => {
   return result;
 };
 
-export const createSubmission = async (trackingId, taskId, token) => {
+export const createSubmission = async (trackingId, taskId, token, startupId = null) => {
+  const submissionData = { trackingId, taskId };
+  
+  // Add startupId if provided
+  if (startupId) {
+    submissionData.startupId = startupId;
+    submissionData.userId = startupId; // Also set userId for backward compatibility
+  }
+  
+  console.log('Creating submission with data:', submissionData);
+  
   const res = await fetch(`${API_URL}/progresstracking/submissions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,
     },
-    body: JSON.stringify({ trackingId, taskId }),
+    body: JSON.stringify(submissionData),
   });
   if (!res.ok) {
     const errorText = await res.text();
@@ -131,12 +162,35 @@ export const deleteAssignment = async (assignmentId) => {
   return response.data;
 };
 
-export const getStartupsForMentor = async (mentorId) => {
-  const response = await axios.get(`/api/mentor-assignment?mentorId=${mentorId}`);
+export const getStartupsForMentor = async (mentorId, token) => {
+  const headers = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  const response = await axios.get(`/api/mentor-assignments/mentor/${mentorId}/startups`, { headers });
   return response.data;
 };
 
-export const getSubmissionFiles = async (submissionId) => {
-  const response = await axios.get(`/api/progresstracking/submission-files?submissionId=${submissionId}`);
+export const getSubmissionFiles = async (token) => {
+  const headers = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  const response = await axios.get('/api/progresstracking/submission-files', { headers });
   return response.data;
+};
+
+export const deleteSubmission = async (submissionId, token) => {
+  const res = await fetch(`${API_URL}/progresstracking/submissions/${submissionId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('Delete submission error:', errorText);
+    throw new Error(`Failed to delete submission: ${res.status} ${res.statusText}`);
+  }
+  return res.ok;
 }; 
