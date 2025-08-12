@@ -750,6 +750,7 @@ export default function StartupDashboard() {
     { name: 'My Mentor', icon: GraduationCap, page: 'myMentor' },
     { name: 'Opportunities', icon: Briefcase, page: 'opportunities' },
     { name: 'Notifications', icon: BellRing, page: 'notifications' },
+    { name: 'Chats', icon: Users, page: 'notifications' }
   ];
 
   // Main component rendering

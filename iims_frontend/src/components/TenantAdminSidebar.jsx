@@ -60,6 +60,12 @@ export default function TenantAdminSidebar({ user, onLogout }) {
       icon: <FaFileAlt />,
       label: 'Applications',
       description: 'Review submitted applications'
+    },
+    {
+      path: '/applications',
+      icon: <FaUsers />,
+      label: 'Chats',
+      description: 'Review submitted applications'
     }
   ];
 

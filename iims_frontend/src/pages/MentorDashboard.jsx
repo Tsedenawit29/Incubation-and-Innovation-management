@@ -623,6 +623,7 @@ export default function MentorDashboard() {
     { name: 'Progress Tracking', icon: CheckCircle2, page: 'progressTracking' },
     { name: 'Resources', icon: BookOpen, page: 'resources' },
     { name: 'Notifications', icon: BellRing, page: 'notifications' },
+    { name: 'Chats', icon: Users, page: 'notifications' }
   ];
 
   // Main component rendering
