@@ -9,6 +9,7 @@ import {
 import { getMentorsForStartup } from '../api/mentorAssignment';
 import { getAssignedTemplatesForStartup, getPhases, getTasks, uploadSubmissionFile, createSubmission } from '../api/progresstracking';
 import StartupProgressTracking from '../components/StartupProgressTracking';
+import ChatOverview from '../components/ChatOverview';
 
 // Import Lucide React icons
 import {
@@ -56,7 +57,8 @@ import {
   FileText, // For documents
   File, // Generic file icon
   Filter, // For filter dropdown
-  CalendarDays // For apply by date
+  CalendarDays, // For apply by date
+  MessageSquare // For chat functionality
 } from 'lucide-react';
 
 // Animated Counter Component (kept for potential future use, though not used in current dashboard view)
@@ -750,7 +752,7 @@ export default function StartupDashboard() {
     { name: 'My Mentor', icon: GraduationCap, page: 'myMentor' },
     { name: 'Opportunities', icon: Briefcase, page: 'opportunities' },
     { name: 'Notifications', icon: BellRing, page: 'notifications' },
-    { name: 'Chats', icon: Users, page: 'notifications' }
+    { name: 'Chats', icon: MessageSquare, page: 'chats' }
   ];
 
   // Main component rendering
@@ -1864,6 +1866,15 @@ export default function StartupDashboard() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {currentPage === 'chats' && (
+            <div className="animate-fade-in">
+              <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center">
+                <MessageSquare size={28} className="mr-3 text-brand-primary" /> Your Chats
+              </h3>
+              <ChatOverview token={token} currentUser={user} />
             </div>
           )}
 

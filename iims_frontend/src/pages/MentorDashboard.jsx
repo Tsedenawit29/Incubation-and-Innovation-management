@@ -12,6 +12,7 @@ import {
   getTasks 
 } from '../api/progresstracking';
 import MentorProgressReview from '../components/MentorProgressReview';
+import ChatOverview from '../components/ChatOverview';
 
 // Import Lucide React icons
 import {
@@ -623,7 +624,7 @@ export default function MentorDashboard() {
     { name: 'Progress Tracking', icon: CheckCircle2, page: 'progressTracking' },
     { name: 'Resources', icon: BookOpen, page: 'resources' },
     { name: 'Notifications', icon: BellRing, page: 'notifications' },
-    { name: 'Chats', icon: Users, page: 'notifications' }
+    { name: 'Chats', icon: MessageSquare, page: 'chats' }
   ];
 
   // Main component rendering
@@ -1347,6 +1348,15 @@ export default function MentorDashboard() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {currentPage === 'chats' && (
+            <div className="animate-fade-in">
+              <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center">
+                <MessageSquare size={28} className="mr-3 text-brand-primary" /> Your Chats
+              </h3>
+              <ChatOverview token={token} currentUser={user} />
             </div>
           )}
         </div>

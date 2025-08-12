@@ -1,5 +1,6 @@
 package com.iims.iims.mentorassignment.service;
 
+import com.iims.iims.chat.service.ChatService;
 import com.iims.iims.mentorassignment.entity.StartupMentorAssignment;
 import com.iims.iims.mentorassignment.repository.StartupMentorAssignmentRepository;
 import com.iims.iims.user.entity.User;
@@ -18,17 +19,31 @@ public class StartupMentorAssignmentService {
     private StartupMentorAssignmentRepository assignmentRepo;
     @Autowired
     private UserRepository userRepo;
+    @Autowired
+    private ChatService chatService;
 
     public StartupMentorAssignment assignMentor(UUID startupId, UUID mentorId) {
         Optional<User> startup = userRepo.findById(startupId);
         Optional<User> mentor = userRepo.findById(mentorId);
         if (startup.isEmpty() || mentor.isEmpty()) throw new IllegalArgumentException("Invalid user IDs");
+        
         StartupMentorAssignment assignment = new StartupMentorAssignment();
         assignment.setId(UUID.randomUUID());
         assignment.setStartup(startup.get());
         assignment.setMentor(mentor.get());
         assignment.setAssignedAt(LocalDateTime.now());
-        return assignmentRepo.save(assignment);
+        
+        StartupMentorAssignment savedAssignment = assignmentRepo.save(assignment);
+        
+        // Automatically create a chat room for the startup-mentor pair
+        try {
+            chatService.createIndividualChatRoom(startupId, mentorId, startup.get().getTenantId());
+        } catch (Exception e) {
+            // Log the error but don't fail the assignment
+            System.err.println("Failed to create chat room for startup " + startupId + " and mentor " + mentorId + ": " + e.getMessage());
+        }
+        
+        return savedAssignment;
     }
 
     public List<StartupMentorAssignment> getMentorsForStartup(UUID startupId) {

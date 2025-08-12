@@ -62,10 +62,10 @@ export default function TenantAdminSidebar({ user, onLogout }) {
       description: 'Review submitted applications'
     },
     {
-      path: '/applications',
+      path: '/tenant-admin/chats',
       icon: <FaUsers />,
       label: 'Chats',
-      description: 'Review submitted applications'
+      description: 'Manage and monitor chat conversations'
     }
   ];
 
