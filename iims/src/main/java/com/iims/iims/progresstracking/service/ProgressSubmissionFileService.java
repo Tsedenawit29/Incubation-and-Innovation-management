@@ -4,6 +4,7 @@ import com.iims.iims.progresstracking.entity.ProgressSubmissionFile;
 import com.iims.iims.progresstracking.repository.ProgressSubmissionFileRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -34,4 +35,15 @@ public class ProgressSubmissionFileService {
     public void deleteFile(UUID id) {
         fileRepo.deleteById(id);
     }
-} 
+
+    // Find all files associated with a specific submission
+    public List<ProgressSubmissionFile> getFilesBySubmissionId(UUID submissionId) {
+        return fileRepo.findBySubmissionId(submissionId);
+    }
+
+    // Delete all files associated with a specific submission (for cascading delete)
+    @Transactional
+    public void deleteFilesBySubmissionId(UUID submissionId) {
+        fileRepo.deleteBySubmissionId(submissionId);
+    }
+}
