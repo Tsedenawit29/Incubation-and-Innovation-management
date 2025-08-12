@@ -58,11 +58,7 @@ import {
   File, // Generic file icon
   Filter, // For filter dropdown
   CalendarDays, // For apply by date
-<<<<<<< HEAD
   MessageSquare // For chat functionality
-=======
-  MessageSquare // For Chats
->>>>>>> 4c7134906d633bfaecfdcc37d88fa45f1d9faf10
 } from 'lucide-react';
 
 // Animated Counter Component (kept for potential future use, though not used in current dashboard view)
@@ -756,11 +752,7 @@ export default function StartupDashboard() {
     { name: 'My Mentor', icon: GraduationCap, page: 'myMentor' },
     { name: 'Opportunities', icon: Briefcase, page: 'opportunities' },
     { name: 'Notifications', icon: BellRing, page: 'notifications' },
-<<<<<<< HEAD
     { name: 'Chats', icon: MessageSquare, page: 'chats' }
-=======
-    { name: 'Chats', icon: Users, page: 'teamMembers' }
->>>>>>> 4c7134906d633bfaecfdcc37d88fa45f1d9faf10
   ];
 
   // Main component rendering
