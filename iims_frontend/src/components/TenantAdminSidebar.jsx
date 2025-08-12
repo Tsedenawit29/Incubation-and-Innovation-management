@@ -4,7 +4,6 @@ import {
   FaHome, 
   FaUsers, 
   FaChartLine, 
-  FaCogs, 
   FaPalette, 
   FaUserPlus, 
   FaSignOutAlt,

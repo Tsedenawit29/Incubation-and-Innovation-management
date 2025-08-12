@@ -25,6 +25,7 @@ const App = () => {
           <Route path="/contact" element={<Contact />} />
           <Route path="/application" element={<Application />} />
           <Route path="/documentation" element={<Documentation />} />
+          {/* Add other routes as needed */}
         </Routes>
       </main>
       <Footer />
