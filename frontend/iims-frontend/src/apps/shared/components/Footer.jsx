@@ -21,6 +21,7 @@ const Footer = () => (
         <Link to="/application" className="hover:text-[#299DFF] transition-colors">Admin Registration</Link>
         <Link to="/documentation" className="hover:text-[#299DFF] transition-colors">FAQs / Troubleshooting</Link>
         <Link to="/contact" className="hover:text-[#299DFF] transition-colors">Contact</Link>
+        <Link to="/privacy-policy" className="hover:text-[#299DFF] transition-colors">Privacy Policy</Link>
       </div>
       {/* Contact Info */}
       <div className="flex flex-col gap-3 items-center md:items-start col-span-1">
