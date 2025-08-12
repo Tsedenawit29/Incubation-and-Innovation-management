@@ -12,6 +12,7 @@ import {
   Video
 } from 'lucide-react';
 
+
 /**
  * Component to display a single chat room and handle message sending.
  */

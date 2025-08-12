@@ -32,7 +32,9 @@ const ChatOverview = ({ token, currentUser }) => {
     useEffect(() => {
         const fetchChatRooms = async () => {
             try {
+
                 setLoading(true);
+
                 const response = await axios.get('http://localhost:8081/api/chat-rooms', {
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -41,6 +43,7 @@ const ChatOverview = ({ token, currentUser }) => {
                 setChatRooms(response.data);
             } catch (error) {
                 console.error("Failed to fetch chat rooms:", error);
+
                 setError('Failed to load chat rooms. Please try again.');
                 // Mock data for development
                 setChatRooms([
