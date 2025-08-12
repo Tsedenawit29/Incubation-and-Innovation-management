@@ -1,72 +1,74 @@
 package com.iims.iims.chat.config;
 
+import com.iims.iims.auth.service.JwtService;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.simp.stomp.StompCommand;
+import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
+import org.springframework.messaging.support.ChannelInterceptor;
+import org.springframework.messaging.support.MessageHeaderAccessor;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.stereotype.Component;
 
-import org.springframework.context.annotation.Configuration;
-import org.springframework.messaging.simp.config.ChannelRegistration;
-import org.springframework.messaging.simp.config.MessageBrokerRegistry;
-import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
-import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
-import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import java.util.Objects;
 
 /**
- * Configuration class to enable and configure WebSocket support.
- * It sets up the message broker and STOMP endpoints for client connections.
+ * Interceptor to validate the JWT token during the WebSocket handshake.
+ * It extracts the token from the STOMP headers and authenticates the user.
  */
-@Configuration
-@EnableWebSocketMessageBroker
-public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+@Component
+public class JwtWebSocketInterceptor implements ChannelInterceptor {
 
-    private final JwtWebSocketInterceptor jwtWebSocketInterceptor;
+    private final JwtService jwtService;
+    private final UserDetailsService userDetailsService;
 
     /**
-     * Constructs the WebSocketConfig with the JWT WebSocket interceptor.
+     * Constructs the JwtWebSocketInterceptor with the JWT provider and user details service.
      *
-     * @param jwtWebSocketInterceptor The interceptor to secure WebSocket connections.
+     * @param jwtService The service for JWT token validation and parsing.
+     * @param userDetailsService The service for loading user details.
      */
-    public WebSocketConfig(JwtWebSocketInterceptor jwtWebSocketInterceptor) {
-        this.jwtWebSocketInterceptor = jwtWebSocketInterceptor;
+    public JwtWebSocketInterceptor(JwtService jwtService, UserDetailsService userDetailsService) {
+        this.jwtService = jwtService;
+        this.userDetailsService = userDetailsService;
     }
 
     /**
-     * Configures the message broker for routing messages to clients.
-     * It enables a simple in-memory message broker for topics and user queues.
+     * Intercepts messages before they are sent to the channel.
      *
-     * @param registry The MessageBrokerRegistry to configure.
+     * @param message The message to be intercepted.
+     * @param channel The message channel.
+     * @return The message, potentially with added authentication details.
      */
     @Override
-    public void configureMessageBroker(MessageBrokerRegistry registry) {
-        // Enables a simple in-memory message broker.
-        // "/topic" prefix is for general subscriptions (e.g., group chats).
-        // "/user" prefix is for private messages.
-        registry.enableSimpleBroker("/topic", "/user");
+    public Message<?> preSend(Message<?> message, MessageChannel channel) {
+        StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
 
-        // Defines the prefix for all messages coming from clients to the server.
-        registry.setApplicationDestinationPrefixes("/app");
+        if (StompCommand.CONNECT.equals(Objects.requireNonNull(accessor).getCommand())) {
+            String authorizationHeader = accessor.getFirstNativeHeader("Authorization");
 
-        // Defines the prefix for private user-specific destinations.
-        registry.setUserDestinationPrefix("/user");
-    }
+            if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+                String token = authorizationHeader.substring(7);
 
-    /**
-     * Registers the STOMP endpoint for WebSocket connections.
-     * This is the URL that clients will connect to.
-     *
-     * @param registry The StompEndpointRegistry to configure.
-     */
-    @Override
-    public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // Registers the "/ws" endpoint, enabling SockJS for fallback.
-        registry.addEndpoint("/ws").setAllowedOriginPatterns("*").withSockJS();
-    }
+                try {
+                    String username = jwtService.extractUsername(token);
+                    UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-    /**
-     * Configures the client inbound channel to add an interceptor.
-     * This is where the JWT token is validated during the WebSocket handshake.
-     *
-     * @param registration The ChannelRegistration to configure.
-     */
-    @Override
-    public void configureClientInboundChannel(ChannelRegistration registration) {
-        registration.interceptors(jwtWebSocketInterceptor);
+                    if (jwtService.isTokenValid(token, userDetails)) {
+                        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                                userDetails, null, userDetails.getAuthorities());
+
+                        accessor.setUser(authentication);
+                    }
+                } catch (Exception e) {
+                    // Log the exception for debugging, but don't crash the application.
+                    // This will prevent the user from connecting via WebSocket.
+                    System.err.println("JWT token validation failed: " + e.getMessage());
+                }
+            }
+        }
+        return message;
     }
 }
