@@ -399,13 +399,18 @@ export default function ProgressTrackingManagement() {
     try {
       await createTask(form);
       setSuccess('Task created successfully!');
-      // Refresh all tasks for the template
+      // Refresh all tasks for the template - fix duplication by clearing array first
       const phasesData = await getPhases(selectedTemplate.id);
       const allTasks = [];
       for (const phase of phasesData) {
         try {
           const phaseTasks = await getTasks(phase.id);
-          allTasks.push(...phaseTasks);
+          // Only add tasks that aren't already in the array to prevent duplicates
+          phaseTasks.forEach(task => {
+            if (!allTasks.find(existingTask => existingTask.id === task.id)) {
+              allTasks.push(task);
+            }
+          });
         } catch (e) {
           console.error(`Failed to load tasks for phase ${phase.id}:`, e);
         }
@@ -424,13 +429,18 @@ export default function ProgressTrackingManagement() {
     try {
       await updateTask(id, form);
       setSuccess('Task updated successfully!');
-      // Refresh all tasks for the template
+      // Refresh all tasks for the template - fix duplication by preventing duplicates
       const phasesData = await getPhases(selectedTemplate.id);
       const allTasks = [];
       for (const phase of phasesData) {
         try {
           const phaseTasks = await getTasks(phase.id);
-          allTasks.push(...phaseTasks);
+          // Only add tasks that aren't already in the array to prevent duplicates
+          phaseTasks.forEach(task => {
+            if (!allTasks.find(existingTask => existingTask.id === task.id)) {
+              allTasks.push(task);
+            }
+          });
         } catch (e) {
           console.error(`Failed to load tasks for phase ${phase.id}:`, e);
         }
@@ -449,13 +459,18 @@ export default function ProgressTrackingManagement() {
     try {
       await deleteTask(id);
       setSuccess('Task deleted successfully!');
-      // Refresh all tasks for the template
+      // Refresh all tasks for the template - fix duplication by preventing duplicates
       const phasesData = await getPhases(selectedTemplate.id);
       const allTasks = [];
       for (const phase of phasesData) {
         try {
           const phaseTasks = await getTasks(phase.id);
-          allTasks.push(...phaseTasks);
+          // Only add tasks that aren't already in the array to prevent duplicates
+          phaseTasks.forEach(task => {
+            if (!allTasks.find(existingTask => existingTask.id === task.id)) {
+              allTasks.push(task);
+            }
+          });
         } catch (e) {
           console.error(`Failed to load tasks for phase ${phase.id}:`, e);
         }

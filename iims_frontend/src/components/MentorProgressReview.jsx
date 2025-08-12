@@ -15,7 +15,10 @@ import {
   ThumbsUp,
   ThumbsDown,
   Edit,
-  X
+  X,
+  ChevronDown,
+  ChevronRight,
+  Upload
 } from 'lucide-react';
 import { getSubmissions, updateSubmission, getTasks, getPhases, getTemplates, getStartupsForMentor, getSubmissionFiles, deleteSubmission } from '../api/progresstracking';
 
@@ -36,6 +39,10 @@ export default function MentorProgressReview({ mentorId, token }) {
   const [selectedStartup, setSelectedStartup] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [notifications, setNotifications] = useState([]);
+  const [expandedPhases, setExpandedPhases] = useState([]);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackSubmission, setFeedbackSubmission] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -376,7 +383,80 @@ export default function MentorProgressReview({ mentorId, token }) {
     }
   };
 
-  // Filter submissions based on status and search
+  const togglePhaseExpansion = (phaseId) => {
+    setExpandedPhases(prev => 
+      prev.includes(phaseId) 
+        ? prev.filter(id => id !== phaseId)
+        : [...prev, phaseId]
+    );
+  };
+
+  const handleFeedbackModal = (submission) => {
+    setFeedbackSubmission(submission);
+    setFeedback(submission.mentorFeedback || '');
+    setScore(submission.score || '');
+    setStatus(submission.status || 'PENDING');
+    setShowFeedbackModal(true);
+  };
+
+  const handleSubmitFeedback = async () => {
+    if (!feedbackSubmission) return;
+    
+    try {
+      setLoading(true);
+      const updateData = {
+        status,
+        mentorFeedback: feedback,
+        score: score ? parseInt(score) : null
+      };
+      
+      await updateSubmission(feedbackSubmission.id, updateData, token);
+      
+      // Update local state
+      setSubmissions(prev => prev.map(sub => 
+        sub.id === feedbackSubmission.id 
+          ? { ...sub, ...updateData }
+          : sub
+      ));
+      
+      setShowFeedbackModal(false);
+      setFeedbackSubmission(null);
+      setFeedback('');
+      setScore('');
+      setStatus('PENDING');
+      
+      // Add success notification
+      setNotifications(prev => [...prev, {
+        id: Date.now(),
+        type: 'success',
+        message: 'Feedback submitted successfully!'
+      }]);
+      
+    } catch (error) {
+      console.error('Failed to submit feedback:', error);
+      setNotifications(prev => [...prev, {
+        id: Date.now(),
+        type: 'error',
+        message: 'Failed to submit feedback. Please try again.'
+      }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Get available templates for mentor
+  const getAvailableTemplates = () => {
+    const templateIds = [...new Set(filteredSubmissions.map(sub => {
+      const task = getTaskById(sub.taskId);
+      if (!task) return null;
+      const phase = getPhaseById(task.phaseId);
+      return phase ? phase.templateId : null;
+    }).filter(Boolean))];
+    
+    return templates.filter(template => templateIds.includes(template.id));
+  };
+
+  // Filter submissions based on mentor's assigned startups
   const filteredSubmissions = getMentorSubmissions().filter(submission => {
     const matchesStatus = filterStatus === 'ALL' || submission.status === filterStatus;
     const task = getTaskById(submission.taskId);
@@ -387,7 +467,26 @@ export default function MentorProgressReview({ mentorId, token }) {
     return matchesStatus && matchesSearch;
   });
 
-  // Group submissions by template and phase
+  // Get structured data for phase-based view
+  const getStructuredData = () => {
+    if (!selectedTemplate) return { phases: [], tasks: [] };
+    
+    const templatePhases = phases.filter(phase => phase.templateId === selectedTemplate.id);
+    const templateTasks = tasks.filter(task => 
+      templatePhases.some(phase => phase.id === task.phaseId)
+    );
+    
+    return {
+      phases: templatePhases,
+      tasks: templateTasks
+    };
+  };
+
+  const getTaskSubmissions = (taskId) => {
+    return filteredSubmissions.filter(sub => sub.taskId === taskId);
+  };
+
+  // Group submissions by template and phase (legacy function for backward compatibility)
   const groupedSubmissions = () => {
     const groups = {};
     
@@ -486,200 +585,284 @@ export default function MentorProgressReview({ mentorId, token }) {
         </div>
       </div>
 
-      {/* Grouped Submissions by Template and Phase */}
-      <div className="space-y-6">
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Submissions ({filteredSubmissions.length})
-          </h3>
+      {/* Template Selection */}
+      {getAvailableTemplates().length > 1 && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4">📋 Available Templates</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {getAvailableTemplates().map(template => (
+              <button
+                key={template.id}
+                onClick={() => {
+                  setSelectedTemplate(template);
+                  setExpandedPhases([]);
+                }}
+                className={`p-4 rounded-lg border-2 text-left transition-all ${
+                  selectedTemplate?.id === template.id
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 hover:border-blue-300 hover:shadow-md'
+                }`}
+              >
+                <h4 className="font-medium text-gray-900">{template.name}</h4>
+                <p className="text-gray-600 text-sm mt-1">{template.description}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
-          {filteredSubmissions.length === 0 ? (
-            <div className="text-center py-12">
-              <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Submissions Found</h3>
-              <p className="text-gray-600">No submissions match your current filters.</p>
-              <div className="mt-4 p-4 bg-gray-50 rounded-lg text-left text-sm">
-                <p className="font-medium text-gray-700 mb-2">Debug Info:</p>
-                <p>Total submissions in system: {submissions.length}</p>
-                <p>Assigned startups: {assignedStartups.length}</p>
-                <p>Filter status: {filterStatus}</p>
-                <p>Search term: "{searchTerm}"</p>
-                {submissions.length > 0 && (
-                  <div className="mt-2">
-                    <p className="font-medium">Sample submission IDs:</p>
-                    <ul className="list-disc list-inside">
-                      {submissions.slice(0, 3).map(sub => (
-                        <li key={sub.id}>ID: {sub.id}, StartupID: {sub.startupId || 'null'}, UserID: {sub.userId || 'null'}, Status: {sub.status}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+      {/* Auto-select first template if only one available */}
+      {getAvailableTemplates().length === 1 && !selectedTemplate && (
+        <div style={{ display: 'none' }}>
+          {(() => {
+            const firstTemplate = getAvailableTemplates()[0];
+            if (firstTemplate && !selectedTemplate) {
+              setSelectedTemplate(firstTemplate);
+            }
+            return null;
+          })()}
+        </div>
+      )}
+
+      {/* Selected Template Progress Review */}
+      {selectedTemplate && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">{selectedTemplate.name}</h2>
+            <p className="text-gray-600">{selectedTemplate.description}</p>
+          </div>
+
+          {/* Progress Overview */}
+          <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
+            <h3 className="text-lg font-semibold text-blue-900 mb-2">📊 Review Overview</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div>
+                <span className="font-medium text-blue-800">Total Phases:</span>
+                <span className="ml-2 text-blue-700">{getStructuredData().phases.length}</span>
+              </div>
+              <div>
+                <span className="font-medium text-blue-800">Total Tasks:</span>
+                <span className="ml-2 text-blue-700">{getStructuredData().tasks.length}</span>
+              </div>
+              <div>
+                <span className="font-medium text-blue-800">Pending Reviews:</span>
+                <span className="ml-2 text-blue-700">
+                  {filteredSubmissions.filter(sub => sub.status === 'SUBMITTED' || sub.status === 'PENDING').length}
+                </span>
               </div>
             </div>
-          ) : (
-            <div className="space-y-6">
-              {Object.entries(groupedSubmissions()).map(([templateId, templateGroup]) => (
-                <div key={templateId} className="border border-gray-200 rounded-lg overflow-hidden">
-                  {/* Template Header */}
-                  <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4">
-                    <h3 className="text-lg font-bold">{templateGroup.template.templateName}</h3>
-                    <p className="text-blue-100 text-sm">{templateGroup.template.description}</p>
-                  </div>
+          </div>
 
-                  {/* Phases */}
-                  <div className="divide-y divide-gray-200">
-                    {Object.entries(templateGroup.phases).map(([phaseId, phaseGroup]) => (
-                      <div key={phaseId} className="p-4">
-                        {/* Phase Header */}
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <TrendingUp className="w-4 h-4 text-blue-600" />
+          {/* Phases */}
+          <div className="space-y-4">
+            {getStructuredData().phases.length === 0 ? (
+              <div className="text-center py-8">
+                <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Phases Found</h3>
+                <p className="text-gray-600">This template doesn't have any phases configured.</p>
+              </div>
+            ) : (
+              getStructuredData().phases.map(phase => {
+                const phaseTasks = getStructuredData().tasks.filter(task => task.phaseId === phase.id);
+                const isExpanded = expandedPhases.includes(phase.id);
+                const phaseSubmissions = phaseTasks.reduce((acc, task) => acc + getTaskSubmissions(task.id).length, 0);
+                
+                return (
+                  <div key={phase.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                    {/* Phase Header */}
+                    <div 
+                      className="bg-gradient-to-r from-blue-500 to-teal-600 text-white p-4 cursor-pointer hover:from-blue-600 hover:to-teal-700 transition-all"
+                      onClick={() => togglePhaseExpansion(phase.id)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                            <TrendingUp className="w-4 h-4" />
                           </div>
                           <div>
-                            <h4 className="font-semibold text-gray-900">{phaseGroup.phase.phaseName}</h4>
-                            <p className="text-sm text-gray-600">{phaseGroup.phase.description}</p>
+                            <h3 className="text-lg font-semibold">{phase.name}</h3>
+                            <p className="text-blue-100 text-sm">{phase.description}</p>
                           </div>
                         </div>
-
-                        {/* Tasks with Submissions */}
-                        <div className="space-y-4 ml-11">
-                          {Object.entries(phaseGroup.tasks).map(([taskId, taskGroup]) => (
-                            <div key={taskId} className="border border-gray-100 rounded-lg p-4 bg-gray-50">
-                              {/* Task Header */}
-                              <div className="flex items-center gap-2 mb-3">
-                                <FileText className="w-4 h-4 text-gray-500" />
-                                <h5 className="font-medium text-gray-900">{taskGroup.task.taskName}</h5>
-                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
-                                  {taskGroup.submissions.length} submission{taskGroup.submissions.length !== 1 ? 's' : ''}
-                                </span>
-                              </div>
-                              
-                              {taskGroup.task.description && (
-                                <p className="text-sm text-gray-600 mb-3">{taskGroup.task.description}</p>
-                              )}
-
-                              {/* Submissions for this task */}
-                              <div className="space-y-3">
-                                {taskGroup.submissions.map(submission => {
-                                  const fileUrl = getFileUrl(submission);
-                                  return (
-                                    <div key={submission.id} className="bg-white border border-gray-200 rounded-lg p-4">
-                                      {/* Submission Header */}
-                                      <div className="flex items-center justify-between mb-3">
-                                        <div className="flex items-center gap-3">
-                                          <User className="w-4 h-4 text-gray-500" />
-                                          <span className="text-sm font-medium text-gray-700">
-                                            Startup ID: {submission.startupId || submission.userId || 'Unknown'}
-                                          </span>
-                                          <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(submission.status)}`}>
-                                            {getStatusText(submission.status)}
-                                          </span>
-                                        </div>
-                                        <div className="text-xs text-gray-500">
-                                          {submission.submissionDate ? new Date(submission.submissionDate).toLocaleDateString() : 'Unknown date'}
-                                        </div>
-                                      </div>
-
-                                      {/* Submission Description */}
-                                      {submission.description && (
-                                        <div className="mb-3">
-                                          <p className="text-sm text-gray-700">
-                                            <span className="font-medium">Description:</span> {submission.description}
-                                          </p>
-                                        </div>
-                                      )}
-
-                                      {/* File Download */}
-                                      {fileUrl && (
-                                        <div className="mb-3">
-                                          <a
-                                            href={fileUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm"
-                                          >
-                                            <Download className="w-4 h-4" />
-                                            Download Submitted File
-                                          </a>
-                                        </div>
-                                      )}
-
-                                      {/* Mentor Feedback */}
-                                      {submission.mentorFeedback && (
-                                        <div className="mb-3 p-3 bg-blue-50 rounded-lg">
-                                          <div className="flex items-center gap-2 mb-1">
-                                            <MessageCircle className="w-4 h-4 text-blue-600" />
-                                            <span className="text-sm font-medium text-blue-900">Your Feedback:</span>
-                                          </div>
-                                          <p className="text-sm text-blue-800">{submission.mentorFeedback}</p>
-                                          {submission.score && (
-                                            <div className="flex items-center gap-2 mt-2">
-                                              <Star className="w-4 h-4 text-yellow-500" />
-                                              <span className="text-sm font-medium text-blue-900">Score: {submission.score}/10</span>
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-
-                                      {/* Quick Action Buttons */}
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        <button
-                                          onClick={() => handleQuickStatusUpdate(submission.id, 'APPROVED')}
-                                          disabled={loading || submission.status === 'APPROVED'}
-                                          className="px-3 py-1 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
-                                        >
-                                          <ThumbsUp className="w-3 h-3 inline mr-1" />
-                                          Approve
-                                        </button>
-                                        <button
-                                          onClick={() => handleQuickStatusUpdate(submission.id, 'NEEDS_REVISION')}
-                                          disabled={loading || submission.status === 'NEEDS_REVISION'}
-                                          className="px-3 py-1 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
-                                        >
-                                          <Edit className="w-3 h-3 inline mr-1" />
-                                          Revision
-                                        </button>
-                                        <button
-                                          onClick={() => handleQuickStatusUpdate(submission.id, 'REJECTED')}
-                                          disabled={loading || submission.status === 'REJECTED'}
-                                          className="px-3 py-1 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
-                                        >
-                                          <ThumbsDown className="w-3 h-3 inline mr-1" />
-                                          Reject
-                                        </button>
-                                        <button
-                                          onClick={() => handleReviewSubmission(submission)}
-                                          className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-sm font-medium transition-colors"
-                                        >
-                                          <Eye className="w-3 h-3 inline mr-1" />
-                                          Review
-                                        </button>
-                                        <button
-                                          onClick={() => handleDeleteSubmission(submission.id)}
-                                          disabled={loading}
-                                          className="px-3 py-1 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
-                                          title="Delete submission (Mentor only)"
-                                        >
-                                          <X className="w-3 h-3 inline mr-1" />
-                                          Delete
-                                        </button>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          ))}
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm bg-white/20 px-2 py-1 rounded-full">
+                            {phaseSubmissions} submission{phaseSubmissions !== 1 ? 's' : ''}
+                          </span>
+                          {isExpanded ? (
+                            <ChevronDown className="w-5 h-5" />
+                          ) : (
+                            <ChevronRight className="w-5 h-5" />
+                          )}
                         </div>
                       </div>
-                    ))}
+                    </div>
+
+                    {/* Phase Tasks */}
+                    {isExpanded && (
+                      <div className="p-4 space-y-4">
+                        {phaseTasks.length === 0 ? (
+                          <p className="text-gray-500 text-center py-4">No tasks in this phase</p>
+                        ) : (
+                          phaseTasks.map(task => {
+                            const taskSubmissions = getTaskSubmissions(task.id);
+                            
+                            return (
+                              <div key={task.id} className="border border-gray-100 rounded-lg p-4 bg-gray-50">
+                                {/* Task Header */}
+                                <div className="flex items-center justify-between mb-3">
+                                  <div className="flex items-center gap-2">
+                                    <FileText className="w-4 h-4 text-gray-500" />
+                                    <h4 className="font-medium text-gray-900">{task.name}</h4>
+                                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                                      {taskSubmissions.length} submission{taskSubmissions.length !== 1 ? 's' : ''}
+                                    </span>
+                                  </div>
+                                </div>
+                                
+                                {task.description && (
+                                  <p className="text-sm text-gray-600 mb-3">{task.description}</p>
+                                )}
+
+                                {/* Task Submissions */}
+                                {taskSubmissions.length === 0 ? (
+                                  <p className="text-gray-500 text-sm">No submissions for this task</p>
+                                ) : (
+                                  <div className="space-y-3">
+                                    {taskSubmissions.map(submission => {
+                                      const fileUrl = getFileUrl(submission);
+                                      
+                                      return (
+                                        <div key={submission.id} className="bg-white border border-gray-200 rounded-lg p-4">
+                                          {/* Submission Header */}
+                                          <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center gap-3">
+                                              <User className="w-4 h-4 text-gray-500" />
+                                              <span className="text-sm font-medium text-gray-700">
+                                                Startup ID: {submission.startupId || submission.userId || 'Unknown'}
+                                              </span>
+                                              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(submission.status)}`}>
+                                                {getStatusText(submission.status)}
+                                              </span>
+                                            </div>
+                                            <div className="text-xs text-gray-500">
+                                              {submission.submissionDate ? new Date(submission.submissionDate).toLocaleDateString() : 'Unknown date'}
+                                            </div>
+                                          </div>
+
+                                          {/* Submission Description */}
+                                          {submission.description && (
+                                            <div className="mb-3">
+                                              <p className="text-sm text-gray-700">
+                                                <span className="font-medium">Description:</span> {submission.description}
+                                              </p>
+                                            </div>
+                                          )}
+
+                                          {/* File Download */}
+                                          {fileUrl && (
+                                            <div className="mb-3">
+                                              <a
+                                                href={fileUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm"
+                                              >
+                                                <Download className="w-4 h-4" />
+                                                Download Submitted File
+                                              </a>
+                                            </div>
+                                          )}
+
+                                          {/* Mentor Feedback Display */}
+                                          {submission.mentorFeedback && (
+                                            <div className="mb-3 p-3 bg-blue-50 rounded-lg">
+                                              <div className="flex items-center gap-2 mb-1">
+                                                <MessageCircle className="w-4 h-4 text-blue-600" />
+                                                <span className="text-sm font-medium text-blue-900">Your Feedback:</span>
+                                              </div>
+                                              <p className="text-sm text-blue-800">{submission.mentorFeedback}</p>
+                                              {submission.score && (
+                                                <div className="flex items-center gap-2 mt-2">
+                                                  <Star className="w-4 h-4 text-yellow-500" />
+                                                  <span className="text-sm font-medium text-blue-900">Score: {submission.score}/10</span>
+                                                </div>
+                                              )}
+                                            </div>
+                                          )}
+
+                                          {/* Action Buttons */}
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <button
+                                              onClick={() => handleQuickStatusUpdate(submission.id, 'APPROVED')}
+                                              disabled={loading || submission.status === 'APPROVED'}
+                                              className="px-3 py-1 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
+                                            >
+                                              <ThumbsUp className="w-3 h-3 inline mr-1" />
+                                              Approve
+                                            </button>
+                                            <button
+                                              onClick={() => handleQuickStatusUpdate(submission.id, 'NEEDS_REVISION')}
+                                              disabled={loading || submission.status === 'NEEDS_REVISION'}
+                                              className="px-3 py-1 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
+                                            >
+                                              <Edit className="w-3 h-3 inline mr-1" />
+                                              Revision
+                                            </button>
+                                            <button
+                                              onClick={() => handleQuickStatusUpdate(submission.id, 'REJECTED')}
+                                              disabled={loading || submission.status === 'REJECTED'}
+                                              className="px-3 py-1 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
+                                            >
+                                              <ThumbsDown className="w-3 h-3 inline mr-1" />
+                                              Reject
+                                            </button>
+                                            <button
+                                              onClick={() => handleFeedbackModal(submission)}
+                                              className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-sm font-medium transition-colors"
+                                            >
+                                              <MessageCircle className="w-3 h-3 inline mr-1" />
+                                              Feedback
+                                            </button>
+                                            <button
+                                              onClick={() => handleDeleteSubmission(submission.id)}
+                                              disabled={loading}
+                                              className="px-3 py-1 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
+                                            >
+                                              <X className="w-3 h-3 inline mr-1" />
+                                              Delete
+                                            </button>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                );
+              })
+            )}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* No Template Selected */}
+      {!selectedTemplate && getAvailableTemplates().length === 0 && (
+        <div className="text-center py-12">
+          <div className="bg-gray-50 rounded-lg p-8">
+            <TrendingUp size={48} className="mx-auto text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Submissions to Review</h3>
+            <p className="text-gray-600 mb-4">
+              No startup submissions are available for review at this time.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Review Modal */}
       {selectedSubmission && (
@@ -792,6 +975,128 @@ export default function MentorProgressReview({ mentorId, token }) {
                     <Send className="w-4 h-4" />
                   )}
                   Submit Review
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Feedback Modal */}
+      {showFeedbackModal && feedbackSubmission && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900">Provide Feedback</h3>
+                <button
+                  onClick={() => setShowFeedbackModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Task Info */}
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-1">
+                  {getTaskById(feedbackSubmission.taskId)?.name}
+                </h4>
+                <p className="text-gray-600 text-sm">
+                  Startup ID: {feedbackSubmission.startupId || feedbackSubmission.userId || 'Unknown'}
+                </p>
+                <p className="text-gray-600 text-sm">
+                  Submitted: {feedbackSubmission.submissionDate ? new Date(feedbackSubmission.submissionDate).toLocaleDateString() : 'Unknown date'}
+                </p>
+              </div>
+
+              {/* File Download */}
+              {getFileUrl(feedbackSubmission) && (
+                <div className="mb-6 p-4 border border-gray-200 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileText className="w-5 h-5 text-gray-500" />
+                    <span className="font-medium">Submitted File</span>
+                  </div>
+                  <a
+                    href={getFileUrl(feedbackSubmission)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download and Review
+                  </a>
+                </div>
+              )}
+
+              {/* Status Selection */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Status
+                </label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="PENDING">Pending</option>
+                  <option value="UNDER_REVIEW">Under Review</option>
+                  <option value="APPROVED">Approved</option>
+                  <option value="NEEDS_REVISION">Needs Revision</option>
+                  <option value="REJECTED">Rejected</option>
+                </select>
+              </div>
+
+              {/* Score */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Score (1-10)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={score}
+                  onChange={(e) => setScore(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter score (1-10)"
+                />
+              </div>
+
+              {/* Feedback */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Feedback
+                </label>
+                <textarea
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.target.value)}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Provide detailed feedback..."
+                />
+              </div>
+
+              {/* Submit Button */}
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowFeedbackModal(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSubmitFeedback}
+                  disabled={loading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                >
+                  {loading ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                  Submit Feedback
                 </button>
               </div>
             </div>
