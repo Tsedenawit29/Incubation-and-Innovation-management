@@ -3,10 +3,13 @@ package com.iims.iims.meeting.service;
 import com.iims.iims.meeting.dto.MeetingRequestDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
+import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import java.util.ArrayList;
 import java.util.*;
+import java.time.Instant;
 
+@Service
 @RequiredArgsConstructor
 public class GoogleCalendarService {
 
@@ -69,5 +72,32 @@ public class GoogleCalendarService {
             }
         }
         return null;
+    }
+
+    /**
+     * Get events from Google Calendar for a given time range
+     */
+    public Map<String, Object> getEvents(String accessToken, Instant startTime, Instant endTime) {
+        String url = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
+        
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        // Build query parameters
+        String queryParams = String.format("?timeMin=%s&timeMax=%s&singleEvents=true&orderBy=startTime",
+                startTime.toString(),
+                endTime.toString());
+
+        String fullUrl = url + queryParams;
+        
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+        ResponseEntity<Map> response = restTemplate.exchange(fullUrl, HttpMethod.GET, entity, Map.class);
+
+        if (!response.getStatusCode().is2xxSuccessful()) {
+            throw new RuntimeException("Failed to fetch Google Calendar events: " + response.getStatusCode());
+        }
+
+        return response.getBody();
     }
 }

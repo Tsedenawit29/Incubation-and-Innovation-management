@@ -6,7 +6,7 @@ import com.iims.iims.meeting.entity.Meeting;
 import com.iims.iims.meeting.repository.GoogleOAuthTokenRepository;
 import com.iims.iims.meeting.repository.MeetingRepository;
 import com.iims.iims.meeting.service.GoogleCalendarService;
-import com.iims.iims.meeting.util.TokenEncryptor;
+// import com.iims.iims.meeting.util.TokenEncryptor; // Temporarily disabled
 import com.iims.iims.user.entity.User;
 import com.iims.iims.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +26,7 @@ public class MeetingService {
     private final GoogleOAuthTokenRepository tokenRepo;
     private final GoogleCalendarService calendarService;
     private final GoogleOAuthService oauthService; // for refreshing tokens
-    private final TokenEncryptor encryptor;
+    // private final TokenEncryptor encryptor; // Temporarily disabled
 
     @Transactional
     public Meeting createMeeting(UUID organizerId, MeetingRequestDto dto) {
@@ -98,5 +98,31 @@ public class MeetingService {
                 .map(email -> userRepo.findByEmail(email).orElse(null))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Get meetings organized by a specific user
+     */
+    public List<Meeting> getMeetingsByOrganizer(UUID organizerId) {
+        User organizer = userRepo.findById(organizerId)
+                .orElseThrow(() -> new RuntimeException("Organizer not found"));
+        return meetingRepo.findByOrganizer(organizer);
+    }
+
+    /**
+     * Delete a meeting (only by organizer)
+     */
+    @Transactional
+    public void deleteMeeting(UUID meetingId, UUID userId) {
+        Meeting meeting = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new RuntimeException("Meeting not found"));
+        
+        if (!meeting.getOrganizer().getId().equals(userId)) {
+            throw new RuntimeException("Only the organizer can delete this meeting");
+        }
+
+        // TODO: Delete from Google Calendar if needed
+        // For now, just delete from local database
+        meetingRepo.delete(meeting);
     }
 }

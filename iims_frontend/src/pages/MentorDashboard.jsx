@@ -11,6 +11,7 @@ import {
   getPhases, 
   getTasks 
 } from '../api/progresstracking';
+import CalendarManagement from './CalendarManagement';
 
 // Import Lucide React icons
 import {
@@ -620,6 +621,7 @@ export default function MentorDashboard() {
     { name: 'My Profile', icon: User, page: 'myProfile' },
     { name: 'Assigned Startups', icon: Users, page: 'assignedStartups' },
     { name: 'Progress Tracking', icon: CheckCircle2, page: 'progressTracking' },
+    { name: 'Calendar', icon: Calendar, page: 'calendar' },
     { name: 'Resources', icon: BookOpen, page: 'resources' },
     { name: 'Notifications', icon: BellRing, page: 'notifications' },
   ];
@@ -1284,6 +1286,12 @@ export default function MentorDashboard() {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {currentPage === 'calendar' && (
+            <div className="animate-fade-in">
+              <CalendarManagement />
             </div>
           )}
 

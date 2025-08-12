@@ -25,12 +25,10 @@ public class GoogleOAuthToken {
     @Column(name = "tenant_id")
     private UUID tenantId;
 
-    @Lob
-    @Column(name = "access_token", length = 4000)
+    @Column(name = "access_token", columnDefinition = "TEXT")
     private String accessToken;
 
-    @Lob
-    @Column(name = "refresh_token", length = 4000)
+    @Column(name = "refresh_token", columnDefinition = "TEXT")
     private String refreshToken; // MUST be encrypted at rest
 
     @Column(name = "scope")

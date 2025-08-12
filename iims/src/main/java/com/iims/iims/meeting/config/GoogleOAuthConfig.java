@@ -6,10 +6,10 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class GoogleOAuthConfig {
 
-    @Value("${google.client-id}")
+    @Value("${google.client.id}")
     private String clientId;
 
-    @Value("${google.client-secret}")
+    @Value("${google.client.secret}")
     private String clientSecret;
 
     @Value("${google.redirect-uri}")

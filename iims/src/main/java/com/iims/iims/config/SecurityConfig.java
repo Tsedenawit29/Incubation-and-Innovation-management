@@ -78,6 +78,8 @@ public class SecurityConfig {
                         
                         // Profile endpoints
                         .requestMatchers("/api/profile/startup/**").hasAnyRole("STARTUP", "TENANT_ADMIN", "SUPER_ADMIN")
+                        .requestMatchers("/api/google/callback").permitAll()
+                        .requestMatchers("/api/google/auth-url").permitAll()
                         .requestMatchers("/api/google/**").permitAll()
                         .requestMatchers("/api/meetings/**").permitAll()
                         // All other requests require authentication
