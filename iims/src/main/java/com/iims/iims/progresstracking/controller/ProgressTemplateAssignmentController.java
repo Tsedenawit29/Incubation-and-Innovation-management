@@ -2,6 +2,7 @@ package com.iims.iims.progresstracking.controller;
 
 import com.iims.iims.progresstracking.dto.ProgressTemplateAssignmentRequestDTO;
 import com.iims.iims.progresstracking.dto.ProgressTemplateAssignmentResponseDTO;
+import com.iims.iims.progresstracking.dto.ProgressTemplateResponseDTO;
 import com.iims.iims.progresstracking.entity.ProgressTemplateAssignment;
 import com.iims.iims.progresstracking.entity.ProgressTemplate;
 import com.iims.iims.user.entity.User;
@@ -60,6 +61,32 @@ public class ProgressTemplateAssignmentController {
         return ResponseEntity.ok(dtos);
     }
 
+    @GetMapping("/assigned-templates/{assignedToType}/{assignedToId}")
+    public ResponseEntity<List<ProgressTemplateResponseDTO>> getAssignedTemplatesWithDetails(
+            @PathVariable String assignedToType,
+            @PathVariable UUID assignedToId) {
+        List<ProgressTemplateAssignment> assignments = assignmentService.getAssignmentsByAssignedTo(assignedToId, assignedToType);
+        List<ProgressTemplateResponseDTO> templateDtos = assignments.stream()
+                .map(assignment -> assignment.getTemplate())
+                .filter(template -> template != null)
+                .map(this::toTemplateDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(templateDtos);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<ProgressTemplateAssignmentResponseDTO>> getAllAssignments() {
+        List<ProgressTemplateAssignment> assignments = assignmentService.getAllAssignments();
+        List<ProgressTemplateAssignmentResponseDTO> dtos = assignments.stream().map(this::toDTO).collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
+    }
+
+    @DeleteMapping("/{assignmentId}")
+    public ResponseEntity<Void> deleteAssignment(@PathVariable UUID assignmentId) {
+        assignmentService.deleteAssignment(assignmentId);
+        return ResponseEntity.ok().build();
+    }
+
     private ProgressTemplateAssignmentResponseDTO toDTO(ProgressTemplateAssignment entity) {
         ProgressTemplateAssignmentResponseDTO dto = new ProgressTemplateAssignmentResponseDTO();
         dto.setId(entity.getId());
@@ -72,6 +99,18 @@ public class ProgressTemplateAssignmentController {
             dto.setAssignedById(entity.getAssignedBy().getId());
         }
         dto.setAssignedAt(entity.getAssignedAt());
+        return dto;
+    }
+
+    private ProgressTemplateResponseDTO toTemplateDTO(ProgressTemplate entity) {
+        ProgressTemplateResponseDTO dto = new ProgressTemplateResponseDTO();
+        dto.setId(entity.getId());
+        dto.setName(entity.getName());
+        dto.setDescription(entity.getDescription());
+        if (entity.getTenant() != null) {
+            dto.setTenantId(entity.getTenant().getId());
+        }
+        dto.setCreatedAt(entity.getCreatedAt());
         return dto;
     }
 } 
