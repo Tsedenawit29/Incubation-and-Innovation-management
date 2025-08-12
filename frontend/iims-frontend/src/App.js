@@ -27,7 +27,6 @@ const App = () => {
           <Route path="/application" element={<Application />} />
           <Route path="/documentation" element={<Documentation />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-          {/* Add more routes as needed */}
         </Routes>
       </main>
       <Footer />
