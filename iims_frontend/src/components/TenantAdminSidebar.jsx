@@ -27,7 +27,7 @@ export default function TenantAdminSidebar({ user, onLogout }) {
       description: 'Overview and analytics'
     },
     {
-      path: '/tenant-admin/dashboard',
+      path: '/tenant-admin/user-management',
       icon: <FaUsers />,
       label: 'User Management',
       description: 'Manage users and roles'
@@ -67,6 +67,12 @@ export default function TenantAdminSidebar({ user, onLogout }) {
       icon: <FaFileAlt />,
       label: 'Applications',
       description: 'Review submitted applications'
+    },
+    {
+      path: '/tenant-admin/chats',
+      icon: <FaUsers />,
+      label: 'Chats',
+      description: 'Manage and monitor chat conversations'
     }
   ];
 

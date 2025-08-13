@@ -26,4 +26,5 @@ public class ApplicationResponseDto {
     private ApplicationStatus status;
     private LocalDateTime submittedAt;
     private List<ApplicationFieldResponseDto> fieldResponses;
+    private List<ApplicationDocumentDto> documents;
 }

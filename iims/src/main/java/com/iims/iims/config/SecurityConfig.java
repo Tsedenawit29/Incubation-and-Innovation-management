@@ -44,6 +44,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**", "/ping").permitAll()
                         .requestMatchers("/api/tenant/apply").permitAll()
                         .requestMatchers("/api/users/request-admin").permitAll()
+                        // Allow SockJS/WebSocket handshake and info endpoints
+                        .requestMatchers("/ws/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Allow CORS preflight
                         .requestMatchers("/api/v1/applications/submit").permitAll()
                         .requestMatchers("/error").permitAll()
