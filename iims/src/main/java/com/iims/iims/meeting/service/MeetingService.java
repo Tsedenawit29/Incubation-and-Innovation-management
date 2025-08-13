@@ -12,7 +12,7 @@ import com.iims.iims.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import java.time.ZoneOffset;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -32,14 +32,29 @@ public class MeetingService {
     public Meeting createMeeting(UUID organizerId, MeetingRequestDto dto) {
         User organizer = userRepo.findById(organizerId).orElseThrow(() -> new RuntimeException("Organizer not found"));
 
+        // Resolve attendees and collect all emails for Google Calendar
+        List<User> attendees = resolveAttendees(dto.getAttendeeIds(), dto.getAttendeeEmails());
+        List<String> allAttendeeEmails = new ArrayList<>();
+        
+        // Add system user emails
+        attendees.forEach(user -> allAttendeeEmails.add(user.getEmail()));
+        
+        // Add guest emails
+        if (dto.getAttendeeEmails() != null) {
+            allAttendeeEmails.addAll(dto.getAttendeeEmails());
+        }
+// Convert LocalDateTime (which frontend already sent as UTC) directly to Instant
+Instant startTimeInstant = dto.getStartTime().toInstant(ZoneOffset.UTC);
+Instant endTimeInstant = dto.getEndTime().toInstant(ZoneOffset.UTC);
+
         // Save a basic meeting record first (optional) or perform after creating event
         Meeting meeting = Meeting.builder()
                 .title(dto.getTitle())
                 .description(dto.getDescription())
-                .startTime(dto.getStartTime())
-                .endTime(dto.getEndTime())
+                .startTime(startTimeInstant)
+                .endTime(endTimeInstant)
                 .organizer(organizer)
-                .attendees(resolveAttendees(dto.getAttendeeEmails()))
+                .attendees(attendees)
                 .build();
 
         // Try user-level token
@@ -54,7 +69,7 @@ public class MeetingService {
                 if (userToken.getExpiryTime() == null || userToken.getExpiryTime().isBefore(Instant.now().plusSeconds(60))) {
                     oauthService.refreshAccessToken(userToken);
                 }
-                eventResponse = calendarService.createEvent(userToken.getAccessToken(), dto);
+                eventResponse = calendarService.createEvent(userToken.getAccessToken(), dto, allAttendeeEmails);
                 ownerTag = "user:" + organizer.getId();
             } catch (Exception e) {
                 // log and fallback
@@ -70,7 +85,7 @@ public class MeetingService {
                 if (tenantTokenOpt.isPresent()) {
                     GoogleOAuthToken t = tenantTokenOpt.get();
                     oauthService.refreshAccessToken(t);
-                    eventResponse = calendarService.createEvent(t.getAccessToken(), dto);
+                    eventResponse = calendarService.createEvent(t.getAccessToken(), dto, allAttendeeEmails);
                     ownerTag = "tenant:" + tenantId;
                 }
             }
@@ -91,13 +106,25 @@ public class MeetingService {
         return meetingRepo.save(meeting);
     }
 
-    private List<User> resolveAttendees(List<String> emails) {
-        if (emails == null || emails.isEmpty()) return Collections.emptyList();
-        // Map emails to users; if not found, ignore or create placeholder
-        return emails.stream()
-                .map(email -> userRepo.findByEmail(email).orElse(null))
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+    private List<User> resolveAttendees(List<UUID> attendeeIds, List<String> attendeeEmails) {
+        List<User> attendees = new ArrayList<>();
+        
+        // Add users by ID (system users)
+        if (attendeeIds != null && !attendeeIds.isEmpty()) {
+            List<User> systemUsers = userRepo.findAllById(attendeeIds);
+            attendees.addAll(systemUsers);
+        }
+        
+        // Add users by email (for guest emails that might match existing users)
+        if (attendeeEmails != null && !attendeeEmails.isEmpty()) {
+            List<User> emailUsers = attendeeEmails.stream()
+                    .map(email -> userRepo.findByEmail(email).orElse(null))
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+            attendees.addAll(emailUsers);
+        }
+        
+        return attendees;
     }
 
     /**
