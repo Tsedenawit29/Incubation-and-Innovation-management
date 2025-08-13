@@ -56,9 +56,8 @@ export const getGoogleCalendarEvents = async () => {
   } catch (error) {
     throw error;
   }
-}; 
 
-
+};
 
 
 // Get all system users for attendee selection

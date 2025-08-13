@@ -15,4 +15,19 @@ instance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Response interceptor to handle token expiration
+instance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      // Token expired or invalid
+      localStorage.removeItem('springBootAuthToken');
+      localStorage.removeItem('user');
+      // Redirect to login page
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default instance; 

@@ -10,7 +10,7 @@ import { getMentorsForStartup } from '../api/mentorAssignment';
 import { getAssignedTemplatesForStartup, getPhases, getTasks, uploadSubmissionFile, createSubmission } from '../api/progresstracking';
 import StartupProgressTracking from '../components/StartupProgressTracking';
 import ChatOverview from '../components/ChatOverview';
-
+import CalendarManagement from './CalendarManagement';
 // Import Lucide React icons
 import {
   Globe,
@@ -750,6 +750,7 @@ export default function StartupDashboard() {
     { name: 'My Profile', icon: User, page: 'myProfile' },
     { name: 'Incubation Progress', icon: CheckCircle2, page: 'incubationProgress' },
     { name: 'My Mentor', icon: GraduationCap, page: 'myMentor' },
+    { name: 'Calendar', icon: Calendar, page: 'calendar' },
     { name: 'Opportunities', icon: Briefcase, page: 'opportunities' },
     { name: 'Notifications', icon: BellRing, page: 'notifications' },
     { name: 'Chats', icon: MessageSquare, page: 'chats' }
@@ -1757,7 +1758,6 @@ export default function StartupDashboard() {
               )}
             </div>
           )}
-
           {currentPage === 'teamMembers' && (
             <div className="animate-fade-in">
               <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center">
@@ -1766,6 +1766,9 @@ export default function StartupDashboard() {
               {user && token && (
                 <ChatOverview token={token} currentUser={user} />
               )}
+          {currentPage === 'calendar' && (
+            <div className="animate-fade-in">
+              <CalendarManagement />
             </div>
           )}
 

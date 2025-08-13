@@ -21,6 +21,8 @@ import AlumniDashboard from './pages/AlumniDashboard';
 import LandingPageManagement from './pages/LandingPageManagement';
 import PublicLandingPage from './pages/PublicLandingPage';
 import StartupManagement from './pages/StartupManagement';
+import CalendarManagement from './pages/CalendarManagement';
+import GoogleOAuthSuccess from './pages/GoogleOAuthSuccess';
 import ApplicationFormsPage from './pages/ApplicationFormsPage';
 import CreateApplicationFormPage from './pages/CreateApplicationFormPage';
 import ApplicationFormDetail from './pages/ApplicationFormDetail';
@@ -112,6 +114,14 @@ function App() {
               }
             />
             <Route
+              path="/tenant-admin/calendar"
+              element={
+                <ProtectedRoute role="TENANT_ADMIN">
+                  <CalendarManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/tenant-admin/startup-management"
               element={
                 <ProtectedRoute role="TENANT_ADMIN">
@@ -168,6 +178,8 @@ function App() {
             <Route path="/register-admin/:tenantId" element={<AdminRegistrationForm />} />
             {/* Public Landing Page */}
             <Route path="/public-landing/:tenantId" element={<PublicLandingPage />} />
+            {/* Google OAuth Success Page */}
+            <Route path="/google-oauth-success" element={<GoogleOAuthSuccess />} />
             {/* Root route - redirect authenticated users to their dashboard */}
             <Route path="/" element={
               <PublicRoute>

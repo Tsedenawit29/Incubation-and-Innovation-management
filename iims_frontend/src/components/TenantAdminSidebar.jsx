@@ -12,7 +12,8 @@ import {
   FaClipboardList,
   FaBell,
   FaWpforms,
-  FaFileAlt
+  FaFileAlt,
+  FaCalendarAlt
 } from 'react-icons/fa';
 
 export default function TenantAdminSidebar({ user, onLogout }) {
@@ -42,6 +43,12 @@ export default function TenantAdminSidebar({ user, onLogout }) {
       icon: <FaPalette />,
       label: 'Landing Page',
       description: 'Customize your landing page'
+    },
+    {
+      path: '/tenant-admin/calendar',
+      icon: <FaCalendarAlt />,
+      label: 'Calendar & Meetings',
+      description: 'Schedule and manage meetings'
     },
     {
       path: '/tenant-admin/startup-management',
