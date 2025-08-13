@@ -1,6 +1,6 @@
 // src/components/ChatPage.jsx
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { 
   ArrowLeft, 
@@ -15,6 +15,8 @@ const ChatPage = ({ chatRoom, chatRoomId, token, currentUser, onBack, onDelete }
     const [newMessage, setNewMessage] = useState('');
     const { messages, sendMessage } = useWebSocket(chatRoomId, token);
     const [historyLoaded, setHistoryLoaded] = useState(false);
+    const [visibleCount, setVisibleCount] = useState(30);
+    const messagesRef = useRef(null);
 
     useEffect(() => {
         const loadHistory = async () => {
@@ -42,6 +44,30 @@ const ChatPage = ({ chatRoom, chatRoomId, token, currentUser, onBack, onDelete }
 
     const [localHistory, setLocalHistory] = useState([]);
 
+    // Combine history and live messages
+    const allMessages = [...localHistory, ...messages];
+    const startIndex = Math.max(0, allMessages.length - visibleCount);
+    const visibleMessages = allMessages.slice(startIndex);
+
+    // Auto-scroll to bottom on new messages if user is near bottom
+    useEffect(() => {
+        const container = messagesRef.current;
+        if (!container) return;
+        const threshold = 120; // px from bottom
+        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+        if (isNearBottom) {
+            container.scrollTop = container.scrollHeight;
+        }
+    }, [visibleMessages.length, chatRoomId]);
+
+    // Load older chunk when scrolled to top
+    const handleScroll = (e) => {
+        const container = e.currentTarget;
+        if (container.scrollTop < 50 && visibleCount < allMessages.length) {
+            setVisibleCount((c) => Math.min(c + 30, allMessages.length));
+        }
+    };
+
     const handleSendMessage = () => {
         if (newMessage.trim()) {
             // optimistic update so it appears instantly
@@ -68,7 +94,7 @@ const ChatPage = ({ chatRoom, chatRoomId, token, currentUser, onBack, onDelete }
     };
 
     return (
-        <div className="h-full flex flex-col bg-white rounded-lg border border-gray-200">
+        <div className="h-[75vh] flex flex-col bg-white rounded-lg border border-gray-200">
             {/* Chat Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
                 <div className="flex items-center gap-3">
@@ -104,9 +130,9 @@ const ChatPage = ({ chatRoom, chatRoomId, token, currentUser, onBack, onDelete }
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-                {historyLoaded && (localHistory.length > 0 || messages.length > 0) ? (
-                    [...localHistory, ...messages].map((msg, index) => {
+            <div ref={messagesRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+                {historyLoaded && (visibleMessages.length > 0) ? (
+                    visibleMessages.map((msg, index) => {
                         const isOwn = msg?.sender?.id && currentUser?.id && msg.sender.id === currentUser.id;
                         const displayName = msg?.sender?.fullName || msg?.sender?.email || 'Unknown User';
                         const timeText = msg?.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -127,6 +153,9 @@ const ChatPage = ({ chatRoom, chatRoomId, token, currentUser, onBack, onDelete }
                         <div className="text-gray-400 mb-2">No messages yet</div>
                         <p className="text-sm text-gray-500">Start the conversation by sending a message!</p>
                     </div>
+                )}
+                {visibleCount < allMessages.length && (
+                    <div className="text-center text-xs text-gray-500 py-2">Scroll up to load older messages</div>
                 )}
             </div>
 
