@@ -1812,9 +1812,7 @@ export default function StartupDashboard() {
                 <CheckCircle2 size={28} className="mr-3 text-brand-primary" /> Incubation Progress
               </h3>
 
-              {console.log('🎯 StartupDashboard: Rendering incubationProgress page')}
-              {console.log('👤 StartupDashboard: userId for progress tracking:', user?.id)}
-              {console.log('🔑 StartupDashboard: token exists:', !!token)}
+              {/* Debug logs moved to useEffect to prevent constant re-rendering */}
 
               {/* Progress Tracking Component */}
               <StartupProgressTracking 
