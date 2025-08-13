@@ -8,6 +8,7 @@ import Application from './apps/PortfolioApp/pages/Application';
 import Documentation from './apps/PortfolioApp/pages/Documentation';
 import PrivacyPolicy from './apps/PortfolioApp/pages/PrivacyPolicy';                                                                                                                                                                                                                                                                                                                                                                                                                                    
 
+
 const App = () => {
   return (
     <>

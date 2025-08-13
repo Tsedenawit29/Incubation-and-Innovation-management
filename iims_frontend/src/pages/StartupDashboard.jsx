@@ -9,6 +9,7 @@ import {
 import { getMentorsForStartup } from '../api/mentorAssignment';
 import { getAssignedTemplatesForStartup, getPhases, getTasks, uploadSubmissionFile, createSubmission } from '../api/progresstracking';
 import StartupProgressTracking from '../components/StartupProgressTracking';
+import CalendarManagement from './CalendarManagement';
 
 // Import Lucide React icons
 import {
@@ -748,6 +749,7 @@ export default function StartupDashboard() {
     { name: 'My Profile', icon: User, page: 'myProfile' },
     { name: 'Incubation Progress', icon: CheckCircle2, page: 'incubationProgress' },
     { name: 'My Mentor', icon: GraduationCap, page: 'myMentor' },
+    { name: 'Calendar', icon: Calendar, page: 'calendar' },
     { name: 'Opportunities', icon: Briefcase, page: 'opportunities' },
     { name: 'Notifications', icon: BellRing, page: 'notifications' },
   ];
@@ -1752,6 +1754,12 @@ export default function StartupDashboard() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {currentPage === 'calendar' && (
+            <div className="animate-fade-in">
+              <CalendarManagement />
             </div>
           )}
 

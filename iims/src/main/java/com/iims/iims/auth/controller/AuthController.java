@@ -12,6 +12,10 @@ import com.iims.iims.auth.dto.AuthRequest;
 import com.iims.iims.auth.dto.RegisterRequest;
 import com.iims.iims.auth.service.AuthService;
 import com.iims.iims.user.repository.UserRepository;
+import com.iims.iims.auth.dto.AuthResponse;
+import com.iims.iims.auth.dto.RefreshTokenRequest;
+import com.iims.iims.auth.service.RefreshTokenService;
+import com.iims.iims.user.entity.User;
 
 import lombok.RequiredArgsConstructor;
 
@@ -63,4 +67,9 @@ public class AuthController {
     public ResponseEntity<?> ping() {
         return ResponseEntity.ok("Pong! Backend is accessible");
     }
+   @PostMapping("/refresh-token")
+public ResponseEntity<AuthResponse> refreshToken(@RequestBody RefreshTokenRequest request) {
+    var response = authService.refreshAccessToken(request.getRefreshToken());
+    return ResponseEntity.ok(response);
+}
 } 

@@ -8,7 +8,7 @@ const Navbar = () => (
   >
     <div className="flex items-center">
       <Link to="/">
-        <img src="/logo.jpeg" alt="IIMS Logo" className="h-16 w-16 rounded-full shadow cursor-pointer logo-hover-effect transition-transform duration-300" />
+        <img src="/logo.jpg" alt="IIMS Logo" className="h-16 w-16 rounded-full shadow cursor-pointer logo-hover-effect transition-transform duration-300" />
       </Link>
     </div>
     <div className="flex gap-10 items-center">

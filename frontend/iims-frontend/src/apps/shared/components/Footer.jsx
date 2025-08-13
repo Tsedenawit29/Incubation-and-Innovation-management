@@ -7,7 +7,7 @@ const Footer = () => (
     <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-10 items-start">
       {/* Logo and Brand Statement */}
       <div className="flex flex-col items-center md:items-start gap-4 col-span-1">
-        <img src="/logo.jpeg" alt="IIMS Logo" className="h-16 w-16 rounded-full shadow mb-2 border-2 border-[#299DFF]" />
+        <img src="/logo.jpg" alt="IIMS Logo" className="h-16 w-16 rounded-full shadow mb-2 border-2 border-[#299DFF]" />
         <span className="text-xl font-bold tracking-wide leading-tight text-[#299DFF]">Innovation Incubation<br />Management System</span>
         <p className="text-sm text-blue-100 max-w-xs text-center md:text-left">
           Empowering Ethiopian startups and innovators with world-class incubation, mentorship, and digital tools for global success.
@@ -23,6 +23,7 @@ const Footer = () => (
         <Link to="/contact" className="hover:text-[#299DFF] transition-colors">Contact</Link>
         <Link to="/privacy-policy" className="hover:text-[#299DFF] transition-colors">Privacy Policy</Link>  
         </div>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+
       {/* Contact Info */}
       <div className="flex flex-col gap-3 items-center md:items-start col-span-1">
         <span className="font-semibold text-blue-200 mb-2 text-lg">Contact</span>

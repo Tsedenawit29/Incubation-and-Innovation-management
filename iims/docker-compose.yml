@@ -26,4 +26,5 @@ services:
       JWT_EXPIRATION: 600000
 
 volumes:
-  pgdata: 
+  pgdata:
+    driver: local 
