@@ -5,6 +5,9 @@ import com.iims.iims.chat.entity.ChatRoom;
 import com.iims.iims.chat.service.ChatService;
 import com.iims.iims.user.entity.User;
 import com.iims.iims.user.repository.UserRepository;
+import com.iims.iims.chat.dto.ChatNotificationDto;
+import com.iims.iims.chat.dto.ChatMessageDto;
+import com.iims.iims.mentorassignment.dto.UserSummaryDTO;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -56,7 +59,30 @@ public class ChatController {
 
             // Persist and broadcast
             ChatMessage saved = chatService.saveMessage(chatMessage);
-            messagingTemplate.convertAndSend("/topic/chat/" + chatRoomId, saved);
+
+            // Build lightweight DTO for WebSocket broadcast
+            ChatMessageDto dto = new ChatMessageDto();
+            dto.setId(saved.getId());
+            dto.setContent(saved.getContent());
+            dto.setTimestamp(saved.getTimestamp());
+            if (saved.getSender() != null) {
+                UserSummaryDTO u = new UserSummaryDTO();
+                u.setId(saved.getSender().getId());
+                u.setFullName(saved.getSender().getFullName());
+                u.setEmail(saved.getSender().getEmail());
+                dto.setSender(u);
+            }
+            // Broadcast to chat room subscribers
+            messagingTemplate.convertAndSend("/topic/chat/" + chatRoomId, dto);
+
+            // Broadcast a lightweight room-level notification for left list counters
+            ChatNotificationDto notif = new ChatNotificationDto();
+            notif.setChatRoomId(chatRoomId);
+            notif.setChatName(chatRoom.getChatName());
+            notif.setSenderName(sender != null ? (sender.getFullName() != null ? sender.getFullName() : sender.getEmail()) : "");
+            notif.setContentPreview(saved.getContent());
+            notif.setTimestamp(saved.getTimestamp());
+            messagingTemplate.convertAndSend("/topic/chat-notify/" + chatRoom.getTenantId(), notif);
         });
     }
 }

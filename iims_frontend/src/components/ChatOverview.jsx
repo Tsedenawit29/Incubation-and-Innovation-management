@@ -26,6 +26,7 @@ const ChatOverview = ({ token, currentUser }) => {
         chatType: 'INDIVIDUAL',
         participants: []
     });
+    const [selectedParticipants, setSelectedParticipants] = useState([]);
     const [contacts, setContacts] = useState([]);
     const [userSearch, setUserSearch] = useState('');
     const [searchResults, setSearchResults] = useState([]);
@@ -102,7 +103,8 @@ const ChatOverview = ({ token, currentUser }) => {
             setError('');
 
             if (newChatData.chatType === 'GROUP') {
-                if (!newChatData.chatName.trim() || newChatData.participants.length < 2) {
+                const participants = selectedParticipants.length ? selectedParticipants : newChatData.participants;
+                if (!newChatData.chatName.trim() || participants.length < 2) {
                     setError('Group chat requires a name and at least 2 participants');
                     return;
                 }
@@ -110,13 +112,14 @@ const ChatOverview = ({ token, currentUser }) => {
                     chatName: newChatData.chatName,
                     chatType: 'GROUP',
                     tenantId: currentUser?.tenantId,
-                    userIds: newChatData.participants
+                    userIds: participants
                 }, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 setChatRooms(prev => [response.data, ...prev]);
                 setShowNewChatModal(false);
                 setNewChatData({ chatName: '', chatType: 'INDIVIDUAL', participants: [] });
+                setSelectedParticipants([]);
                 return;
             }
 
@@ -212,6 +215,7 @@ const ChatOverview = ({ token, currentUser }) => {
                 </div>
                 <div className="col-span-8">
                     <ChatPage
+                        chatRoom={selectedChatRoom}
                         chatRoomId={selectedChatRoom.id}
                         token={token}
                         currentUser={currentUser}
@@ -394,10 +398,27 @@ const ChatOverview = ({ token, currentUser }) => {
                                 {userSearch && searchResults.length > 0 && (
                                     <div className="mt-2 max-h-40 overflow-y-auto border rounded">
                                         {searchResults.map(u => (
-                                            <button key={u.id} onClick={() => setUserSearch(u.email)} className="w-full text-left px-3 py-2 hover:bg-gray-50">
-                                                <div className="text-sm font-medium">{u.fullName || u.email}</div>
-                                                <div className="text-xs text-gray-500">{u.email}</div>
-                                            </button>
+                                            <div key={u.id} className="flex items-center justify-between px-3 py-2 hover:bg-gray-50">
+                                                <div>
+                                                    <div className="text-sm font-medium">{u.fullName || u.email}</div>
+                                                    <div className="text-xs text-gray-500">{u.email}</div>
+                                                </div>
+                                                {newChatData.chatType === 'GROUP' ? (
+                                                    <button
+                                                        className="text-xs px-2 py-1 border rounded"
+                                                        onClick={() => setSelectedParticipants(prev => prev.includes(u.id) ? prev : [...prev, u.id])}
+                                                    >
+                                                        Add
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        className="text-xs px-2 py-1 border rounded"
+                                                        onClick={() => setUserSearch(u.email)}
+                                                    >
+                                                        Select
+                                                    </button>
+                                                )}
+                                            </div>
                                         ))}
                                     </div>
                                 )}
@@ -428,6 +449,22 @@ const ChatOverview = ({ token, currentUser }) => {
                                     <option value="GROUP">Group Chat</option>
                                 </select>
                             </div>
+
+                            {newChatData.chatType === 'GROUP' && selectedParticipants.length > 0 && (
+                                <div className="text-xs text-gray-600">
+                                    Selected: {selectedParticipants.length}
+                                    <div className="mt-2 flex flex-wrap gap-1">
+                                        {selectedParticipants.map(id => {
+                                            const u = searchResults.find(s => s.id === id);
+                                            return (
+                                                <span key={id} className="px-2 py-1 bg-gray-100 rounded-full">
+                                                    {(u?.fullName || u?.email || id).toString()}
+                                                </span>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
 
                             {error && (
                                 <div className="text-red-600 text-sm">{error}</div>

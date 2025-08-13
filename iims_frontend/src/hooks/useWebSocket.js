@@ -7,7 +7,8 @@ import { Client } from '@stomp/stompjs';
 /**
  * Custom hook to manage the WebSocket connection and chat state.
  */
-export const useWebSocket = (chatRoomId, token) => {
+export const useWebSocket = (chatRoomId, token, options = {}) => {
+    const { tenantId, onRoomNotification } = options;
     const [messages, setMessages] = useState([]);
     const [stompClient, setStompClient] = useState(null);
 
@@ -24,11 +25,26 @@ export const useWebSocket = (chatRoomId, token) => {
             onConnect: () => {
                 console.log('Connected to WebSocket');
 
-                // Subscribe to the chat room topic
+                // Subscribe to the chat room topic (use JSON payload from backend)
                 client.subscribe(`/topic/chat/${chatRoomId}`, message => {
-                    const receivedMessage = JSON.parse(message.body);
-                    setMessages(prev => [...prev, receivedMessage]);
+                    try {
+                        const receivedMessage = JSON.parse(message.body);
+                        setMessages(prev => [...prev, receivedMessage]);
+                    } catch (e) {
+                        // Fallback if payload isn't JSON; still display text
+                        setMessages(prev => [...prev, { content: message.body }]);
+                    }
                 });
+
+                // Subscribe to tenant-level notifications to update unread counters
+                if (tenantId && onRoomNotification) {
+                    client.subscribe(`/topic/chat-notify/${tenantId}`, frame => {
+                        try {
+                            const notif = JSON.parse(frame.body);
+                            onRoomNotification(notif);
+                        } catch (e) {}
+                    });
+                }
             },
             onStompError: frame => {
                 console.error('Broker reported error:', frame.headers['message']);
@@ -50,7 +66,7 @@ export const useWebSocket = (chatRoomId, token) => {
                 console.log('Disconnected from WebSocket');
             }
         };
-    }, [chatRoomId, token]);
+    }, [chatRoomId, token, tenantId, onRoomNotification]);
 
     const sendMessage = (messageContent) => {
         if (stompClient && stompClient.connected && messageContent.trim()) {

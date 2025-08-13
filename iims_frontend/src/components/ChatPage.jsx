@@ -11,7 +11,7 @@ import {
 /**
  * Component to display a single chat room and handle message sending.
  */
-const ChatPage = ({ chatRoomId, token, currentUser, onBack, onDelete }) => {
+const ChatPage = ({ chatRoom, chatRoomId, token, currentUser, onBack, onDelete }) => {
     const [newMessage, setNewMessage] = useState('');
     const { messages, sendMessage } = useWebSocket(chatRoomId, token);
     const [historyLoaded, setHistoryLoaded] = useState(false);
@@ -81,8 +81,8 @@ const ChatPage = ({ chatRoomId, token, currentUser, onBack, onDelete }) => {
                         </button>
                     )}
                     <div>
-                        <h2 className="text-lg font-semibold text-gray-900">Chat Room: {chatRoomId}</h2>
-                        <p className="text-sm text-gray-600">Active now</p>
+                        <h2 className="text-lg font-semibold text-gray-900">{chatRoom?.chatName || 'Conversation'}</h2>
+                        <p className="text-sm text-gray-600">{chatRoom?.users ? Array.from(chatRoom.users).map(u => u.fullName || u.email).join(', ') : 'Active now'}</p>
                     </div>
                 </div>
                 {onDelete && (
