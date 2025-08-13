@@ -30,6 +30,7 @@ public class ApplicationService {
     private final com.iims.iims.notification.EmailService emailService;
     private final com.iims.iims.profile.repository.StartupProfileRepository startupProfileRepository;
     private final com.iims.iims.profile.repository.MentorProfileRepository mentorProfileRepository;
+    private final com.iims.iims.application_from.service.ApplicationDocumentService documentService;
 
     @Autowired
     public ApplicationService(
@@ -40,7 +41,8 @@ public class ApplicationService {
             com.iims.iims.user.service.UserService userService,
             com.iims.iims.notification.EmailService emailService,
             com.iims.iims.profile.repository.StartupProfileRepository startupProfileRepository,
-            com.iims.iims.profile.repository.MentorProfileRepository mentorProfileRepository){
+            com.iims.iims.profile.repository.MentorProfileRepository mentorProfileRepository,
+            com.iims.iims.application_from.service.ApplicationDocumentService documentService){
         this.applicationRepository = applicationRepository;
         this.applicationFormRepository = applicationFormRepository;
         this.tenantRepository = tenantRepository;
@@ -49,6 +51,7 @@ public class ApplicationService {
         this.emailService = emailService;
         this.startupProfileRepository = startupProfileRepository;
         this.mentorProfileRepository = mentorProfileRepository;
+        this.documentService = documentService;
     }
 
     /**
@@ -109,6 +112,14 @@ public class ApplicationService {
 
         application.setResponses(responses);
         Application savedApplication = applicationRepository.save(application);
+
+        // Handle document uploads if any
+        if (submitRequest.getDocuments() != null && !submitRequest.getDocuments().isEmpty()) {
+            submitRequest.getDocuments().forEach(docRequest -> {
+                documentService.uploadDocument(savedApplication.getId(), docRequest);
+            });
+        }
+
         return convertToDto(savedApplication);
     }
     /**
@@ -152,7 +163,6 @@ public class ApplicationService {
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
-
     /**
      * Retrieves all applications belonging to a specific tenant.
      *
@@ -247,6 +257,28 @@ public class ApplicationService {
                 ))
                 .collect(Collectors.toList());
 
+        // Get documents for this application
+        List<com.iims.iims.application_from.dto.ApplicationDocumentDto> documentDtos = null;
+        if (application.getDocuments() != null && !application.getDocuments().isEmpty()) {
+            documentDtos = application.getDocuments().stream()
+                    .filter(doc -> doc.getIsActive())
+                    .map(doc -> com.iims.iims.application_from.dto.ApplicationDocumentDto.builder()
+                            .id(doc.getId())
+                            .applicationId(doc.getApplication().getId())
+                            .fileName(doc.getFileName())
+                            .originalFileName(doc.getOriginalFileName())
+                            .filePath(doc.getFilePath())
+                            .fileSize(doc.getFileSize())
+                            .contentType(doc.getContentType())
+                            .documentType(doc.getDocumentType())
+                            .description(doc.getDescription())
+                            .uploadedAt(doc.getUploadedAt())
+                            .isActive(doc.getIsActive())
+                            .downloadUrl("/api/v1/applications/documents/" + doc.getId() + "/download")
+                            .build())
+                    .collect(Collectors.toList());
+        }
+
         return new ApplicationResponseDto(
                 application.getId(),
                 application.getForm().getId(),
@@ -257,7 +289,8 @@ public class ApplicationService {
                 application.getApplicantType(),
                 application.getStatus(),
                 application.getSubmittedAt(),
-                fieldResponseDtos
+                fieldResponseDtos,
+                documentDtos
         );
     }
 }

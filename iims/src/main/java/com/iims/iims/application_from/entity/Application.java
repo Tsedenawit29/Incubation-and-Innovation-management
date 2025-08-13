@@ -55,6 +55,10 @@ public class Application {
     @OneToMany(mappedBy = "application", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<ApplicationResponse> responses;
 
+    // New relationship for documents
+    @OneToMany(mappedBy = "application", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<ApplicationDocument> documents;
+
     public UUID getId() {
         return id;
     }
@@ -133,5 +137,13 @@ public class Application {
 
     public void setResponses(List<ApplicationResponse> responses) {
         this.responses = responses;
+    }
+
+    public List<ApplicationDocument> getDocuments() {
+        return documents;
+    }
+
+    public void setDocuments(List<ApplicationDocument> documents) {
+        this.documents = documents;
     }
 }
