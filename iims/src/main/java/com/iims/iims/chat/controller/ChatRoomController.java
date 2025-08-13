@@ -1,10 +1,13 @@
 package com.iims.iims.chat.controller;
 
 import com.iims.iims.chat.dto.ChatRoomDto;
+import com.iims.iims.chat.dto.ChatMessageDto;
 import com.iims.iims.chat.dto.CreateChatRoomRequest;
 import com.iims.iims.chat.entity.ChatRoom;
 import com.iims.iims.chat.service.ChatService;
 import com.iims.iims.mentorassignment.dto.UserSummaryDTO;
+import com.iims.iims.mentorassignment.repository.StartupMentorAssignmentRepository;
+import com.iims.iims.user.entity.Role;
 import com.iims.iims.user.entity.User;
 import com.iims.iims.user.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
@@ -23,10 +26,12 @@ public class ChatRoomController {
 
     private final ChatService chatService;
     private final UserRepository userRepository;
+    private final StartupMentorAssignmentRepository startupMentorAssignmentRepository;
 
-    public ChatRoomController(ChatService chatService, UserRepository userRepository) {
+    public ChatRoomController(ChatService chatService, UserRepository userRepository, StartupMentorAssignmentRepository startupMentorAssignmentRepository) {
         this.chatService = chatService;
         this.userRepository = userRepository;
+        this.startupMentorAssignmentRepository = startupMentorAssignmentRepository;
     }
 
     /**
@@ -126,6 +131,92 @@ public class ChatRoomController {
     }
 
     /**
+     * Create or get individual chat room with a user in the same tenant by their email
+     */
+    @PostMapping("/individual/by-email")
+    public ResponseEntity<ChatRoomDto> createIndividualChatRoomByEmail(@RequestParam String email) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        User currentUser = userRepository.findByEmail(auth.getName())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (currentUser.getEmail().equalsIgnoreCase(email)) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        User other = userRepository.findByEmail(email)
+            .orElseThrow(() -> new RuntimeException("Target user not found"));
+
+        if (other.getTenantId() == null || currentUser.getTenantId() == null || !other.getTenantId().equals(currentUser.getTenantId())) {
+            return ResponseEntity.status(403).build();
+        }
+
+        ChatRoom chatRoom = chatService.getOrCreateIndividualChatRoom(currentUser.getId(), other.getId(), currentUser.getTenantId());
+        return ResponseEntity.ok(convertToDto(chatRoom));
+    }
+
+    /**
+     * Get quick contacts for the current user: assigned counterpart(s) and tenant admins
+     */
+    @GetMapping("/contacts")
+    public ResponseEntity<List<UserSummaryDTO>> getContacts() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        User currentUser = userRepository.findByEmail(auth.getName())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Assigned counterparts based on role
+        List<User> assigned;
+        if (currentUser.getRole() == Role.STARTUP) {
+            assigned = startupMentorAssignmentRepository.findByStartupId(currentUser.getId())
+                .stream()
+                .map(a -> a.getMentor())
+                .collect(Collectors.toList());
+        } else if (currentUser.getRole() == Role.MENTOR) {
+            assigned = startupMentorAssignmentRepository.findByMentorId(currentUser.getId())
+                .stream()
+                .map(a -> a.getStartup())
+                .collect(Collectors.toList());
+        } else {
+            assigned = List.of();
+        }
+
+        // Tenant admins
+        List<User> tenantAdmins = userRepository.findByTenantIdAndRole(currentUser.getTenantId(), Role.TENANT_ADMIN);
+
+        // Combine and distinct by id, excluding current user
+        List<UserSummaryDTO> result = java.util.stream.Stream.concat(assigned.stream(), tenantAdmins.stream())
+            .filter(u -> !u.getId().equals(currentUser.getId()))
+            .collect(java.util.stream.Collectors.collectingAndThen(
+                java.util.stream.Collectors.toMap(User::getId, u -> u, (a, b) -> a, java.util.LinkedHashMap::new),
+                map -> map.values().stream().map(this::toUserSummary).collect(java.util.stream.Collectors.toList())
+            ));
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Search users in the same tenant by email or name (contains, case-insensitive)
+     */
+    @GetMapping("/tenant-users")
+    public ResponseEntity<List<UserSummaryDTO>> searchTenantUsers(@RequestParam(name = "q", required = false) String query) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        User currentUser = userRepository.findByEmail(auth.getName())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<User> users = userRepository.findByTenantId(currentUser.getTenantId());
+        String q = query == null ? "" : query.trim().toLowerCase();
+        List<UserSummaryDTO> result = users.stream()
+            .filter(u -> !u.getId().equals(currentUser.getId()))
+            .filter(u -> q.isEmpty() ||
+                (u.getEmail() != null && u.getEmail().toLowerCase().contains(q)) ||
+                (u.getFullName() != null && u.getFullName().toLowerCase().contains(q)))
+            .limit(20)
+            .map(this::toUserSummary)
+            .collect(Collectors.toList());
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
      * Get chat room by ID
      */
     @GetMapping("/{chatRoomId}")
@@ -134,6 +225,29 @@ public class ChatRoomController {
             .orElseThrow(() -> new RuntimeException("Chat room not found"));
 
         return ResponseEntity.ok(convertToDto(chatRoom));
+    }
+
+    /**
+     * Get chat history for a room (ordered by timestamp)
+     */
+    @GetMapping("/{chatRoomId}/messages")
+    public ResponseEntity<List<ChatMessageDto>> getChatMessages(@PathVariable UUID chatRoomId) {
+        var messages = chatService.getChatHistory(chatRoomId);
+        List<ChatMessageDto> dtos = messages.stream().map(m -> {
+            ChatMessageDto dto = new ChatMessageDto();
+            dto.setId(m.getId());
+            dto.setContent(m.getContent());
+            dto.setTimestamp(m.getTimestamp());
+            if (m.getSender() != null) {
+                UserSummaryDTO u = new UserSummaryDTO();
+                u.setId(m.getSender().getId());
+                u.setFullName(m.getSender().getFullName());
+                u.setEmail(m.getSender().getEmail());
+                dto.setSender(u);
+            }
+            return dto;
+        }).collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
     }
 
     /**
@@ -187,6 +301,14 @@ public class ChatRoomController {
         dto.setLastMessage("");
         dto.setLastMessageTime(null);
 
+        return dto;
+    }
+
+    private UserSummaryDTO toUserSummary(User user) {
+        UserSummaryDTO dto = new UserSummaryDTO();
+        dto.setId(user.getId());
+        dto.setFullName(user.getFullName());
+        dto.setEmail(user.getEmail());
         return dto;
     }
 }

@@ -1,7 +1,10 @@
 package com.iims.iims.chat.controller;
 
 import com.iims.iims.chat.entity.ChatMessage;
+import com.iims.iims.chat.entity.ChatRoom;
 import com.iims.iims.chat.service.ChatService;
+import com.iims.iims.user.entity.User;
+import com.iims.iims.user.repository.UserRepository;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -20,6 +23,7 @@ public class ChatController {
 
     private final SimpMessagingTemplate messagingTemplate;
     private final ChatService chatService;
+    private final UserRepository userRepository;
 
     /**
      * Constructs the ChatController with the necessary dependencies.
@@ -27,9 +31,10 @@ public class ChatController {
      * @param messagingTemplate The template for sending messages to clients.
      * @param chatService The service for handling chat business logic.
      */
-    public ChatController(SimpMessagingTemplate messagingTemplate, ChatService chatService) {
+    public ChatController(SimpMessagingTemplate messagingTemplate, ChatService chatService, UserRepository userRepository) {
         this.messagingTemplate = messagingTemplate;
         this.chatService = chatService;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -41,16 +46,17 @@ public class ChatController {
      */
     @MessageMapping("/chat.sendMessage/{chatRoomId}")
     public void sendGroupMessage(@DestinationVariable UUID chatRoomId, @Payload ChatMessage chatMessage, Principal principal) {
-        // Set the sender from the authenticated user
-        // chatMessage.setSender(userService.findByUsername(principal.getName()));
+        // Resolve sender and chat room
+        User sender = userRepository.findByEmail(principal.getName()).orElse(null);
+        chatService.getChatRoomById(chatRoomId).ifPresent(chatRoom -> {
+            chatMessage.setChatRoom(chatRoom);
+            if (sender != null) {
+                chatMessage.setSender(sender);
+            }
 
-        // Set the chat room from the path variable
-        // chatMessage.setChatRoom(chatRoomService.findById(chatRoomId));
-
-        // Save the message to the database using the service
-        chatService.saveMessage(chatMessage);
-
-        // Broadcast the message to all clients subscribed to this chat room
-        messagingTemplate.convertAndSend("/topic/chat/" + chatRoomId, chatMessage);
+            // Persist and broadcast
+            ChatMessage saved = chatService.saveMessage(chatMessage);
+            messagingTemplate.convertAndSend("/topic/chat/" + chatRoomId, saved);
+        });
     }
 }

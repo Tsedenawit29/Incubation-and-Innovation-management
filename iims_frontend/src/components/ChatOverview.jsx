@@ -9,7 +9,6 @@ import {
   Clock, 
   Search,
   Plus,
-  Filter,
   MoreVertical,
   X
 } from 'lucide-react';
@@ -27,6 +26,9 @@ const ChatOverview = ({ token, currentUser }) => {
         chatType: 'INDIVIDUAL',
         participants: []
     });
+    const [contacts, setContacts] = useState([]);
+    const [userSearch, setUserSearch] = useState('');
+    const [searchResults, setSearchResults] = useState([]);
     const [creatingChat, setCreatingChat] = useState(false);
 
     useEffect(() => {
@@ -81,47 +83,73 @@ const ChatOverview = ({ token, currentUser }) => {
         };
 
         fetchChatRooms();
+        // fetch quick contacts
+        (async () => {
+            try {
+                const res = await axios.get('http://localhost:8081/api/chat-rooms/contacts', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                setContacts(res.data || []);
+            } catch (e) {
+                setContacts([]);
+            }
+        })();
     }, [token]);
 
     const handleNewChat = async () => {
-        if (!newChatData.chatName.trim()) {
-            setError('Chat name is required');
-            return;
-        }
-
         try {
             setCreatingChat(true);
             setError('');
-            
-            // For now, create a mock chat room
-            const newChat = {
-                id: Date.now(),
-                chatName: newChatData.chatName,
-                participants: newChatData.participants,
-                lastMessage: '',
-                lastMessageTime: 'Just now',
-                unreadCount: 0,
-                type: newChatData.chatType.toLowerCase()
-            };
 
-            setChatRooms(prev => [newChat, ...prev]);
-            setShowNewChatModal(false);
-            setNewChatData({ chatName: '', chatType: 'INDIVIDUAL', participants: [] });
-            
-            // TODO: Replace with actual API call when backend is ready
-            // const response = await axios.post('http://localhost:8081/api/chat-rooms', {
-            //     chatName: newChatData.chatName,
-            //     chatType: newChatData.chatType,
-            //     tenantId: currentUser?.tenantId,
-            //     userIds: newChatData.participants
-            // }, {
-            //     headers: { 'Authorization': `Bearer ${token}` }
-            // });
-            
+            if (newChatData.chatType === 'GROUP') {
+                if (!newChatData.chatName.trim() || newChatData.participants.length < 2) {
+                    setError('Group chat requires a name and at least 2 participants');
+                    return;
+                }
+                const response = await axios.post('http://localhost:8081/api/chat-rooms', {
+                    chatName: newChatData.chatName,
+                    chatType: 'GROUP',
+                    tenantId: currentUser?.tenantId,
+                    userIds: newChatData.participants
+                }, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                setChatRooms(prev => [response.data, ...prev]);
+                setShowNewChatModal(false);
+                setNewChatData({ chatName: '', chatType: 'INDIVIDUAL', participants: [] });
+                return;
+            }
+
+            // Individual chat by email from search box
+            if (userSearch.trim()) {
+                const res = await axios.post(`http://localhost:8081/api/chat-rooms/individual/by-email?email=${encodeURIComponent(userSearch.trim())}`, {}, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                setChatRooms(prev => [res.data, ...prev.filter(r => r.id !== res.data.id)]);
+                setSelectedChatRoom(res.data);
+                setShowNewChatModal(false);
+                setUserSearch('');
+                setNewChatData({ chatName: '', chatType: 'INDIVIDUAL', participants: [] });
+                return;
+            }
+
+            setError('Enter an email to start an individual chat');
         } catch (error) {
-            setError('Failed to create chat room');
+            setError('Failed to create chat');
         } finally {
             setCreatingChat(false);
+        }
+    };
+
+    const searchTenantUsers = async (q) => {
+        setUserSearch(q);
+        try {
+            const res = await axios.get(`http://localhost:8081/api/chat-rooms/tenant-users?q=${encodeURIComponent(q)}` , {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            setSearchResults(res.data || []);
+        } catch (e) {
+            setSearchResults([]);
         }
     };
 
@@ -130,17 +158,20 @@ const ChatOverview = ({ token, currentUser }) => {
     }
 
     const filteredChats = chatRooms.filter(room => {
-        const matchesSearch = room.chatName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            room.participants?.some(p => p.toLowerCase().includes(searchTerm.toLowerCase()));
-        const matchesFilter = filterType === 'all' || room.type === filterType;
+        const matchesSearch = (room.chatName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (room.users && Array.from(room.users).some(u =>
+                (u.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (u.email || '').toLowerCase().includes(searchTerm.toLowerCase())
+            ));
+        const type = (room.chatType || '').toLowerCase();
+        const matchesFilter = filterType === 'all' || type === filterType;
         return matchesSearch && matchesFilter;
     });
 
     const getChatTypeColor = (type) => {
         switch (type) {
-            case 'startup': return 'bg-blue-100 text-blue-700';
-            case 'mentor': return 'bg-green-100 text-green-700';
-            case 'admin': return 'bg-purple-100 text-purple-700';
+            case 'individual': return 'bg-blue-100 text-blue-700';
+            case 'group': return 'bg-purple-100 text-purple-700';
             default: return 'bg-gray-100 text-gray-700';
         }
     };
@@ -202,7 +233,7 @@ const ChatOverview = ({ token, currentUser }) => {
                     />
                 </div>
                 <div className="flex gap-2">
-                    {['all', 'startup', 'mentor', 'admin', 'general'].map((type) => (
+                    {['all', 'individual', 'group'].map((type) => (
                         <button
                             key={type}
                             onClick={() => setFilterType(type)}
@@ -234,8 +265,8 @@ const ChatOverview = ({ token, currentUser }) => {
                                             <h3 className="text-sm font-semibold text-gray-900 truncate">
                                                 {room.chatName || 'Unnamed Chat'}
                                             </h3>
-                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getChatTypeColor(room.type)}`}>
-                                                {room.type}
+                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getChatTypeColor((room.chatType||'').toLowerCase())}`}>
+                                                {(room.chatType||'').toLowerCase()}
                                             </span>
                                             {room.unreadCount > 0 && (
                                                 <span className="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
@@ -247,7 +278,7 @@ const ChatOverview = ({ token, currentUser }) => {
                                         <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
                                             <Users size={14} />
                                             <span className="truncate">
-                                                {room.participants?.join(', ') || 'No participants'}
+                                                {room.users ? Array.from(room.users).map(u => u.fullName || u.email).join(', ') : 'No participants'}
                                             </span>
                                         </div>
                                         
@@ -298,6 +329,26 @@ const ChatOverview = ({ token, currentUser }) => {
                         
                         <div className="space-y-4">
                             <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Start Individual Chat (search by email)</label>
+                                <input
+                                    type="email"
+                                    value={userSearch}
+                                    onChange={(e) => searchTenantUsers(e.target.value)}
+                                    placeholder="user@example.com"
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                />
+                                {userSearch && searchResults.length > 0 && (
+                                    <div className="mt-2 max-h-40 overflow-y-auto border rounded">
+                                        {searchResults.map(u => (
+                                            <button key={u.id} onClick={() => setUserSearch(u.email)} className="w-full text-left px-3 py-2 hover:bg-gray-50">
+                                                <div className="text-sm font-medium">{u.fullName || u.email}</div>
+                                                <div className="text-xs text-gray-500">{u.email}</div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Chat Name
                                 </label>
@@ -337,13 +388,38 @@ const ChatOverview = ({ token, currentUser }) => {
                                 </button>
                                 <button
                                     onClick={handleNewChat}
-                                    disabled={creatingChat || !newChatData.chatName.trim()}
+                                    disabled={creatingChat}
                                     className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
                                 >
                                     {creatingChat ? 'Creating...' : 'Create Chat'}
                                 </button>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+            {/* Quick contacts */}
+            {contacts.length > 0 && (
+                <div className="mt-6 bg-white rounded-lg border border-gray-200 p-4">
+                    <h4 className="text-sm font-semibold mb-3">Quick Contacts</h4>
+                    <div className="flex flex-wrap gap-2">
+                        {contacts.map(c => (
+                            <button
+                                key={c.id}
+                                onClick={async () => {
+                                    try {
+                                        const res = await axios.post(`http://localhost:8081/api/chat-rooms/individual/by-email?email=${encodeURIComponent(c.email)}`, {}, {
+                                            headers: { 'Authorization': `Bearer ${token}` }
+                                        });
+                                        setChatRooms(prev => [res.data, ...prev.filter(r => r.id !== res.data.id)]);
+                                        setSelectedChatRoom(res.data);
+                                    } catch (e) {}
+                                }}
+                                className="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200"
+                            >
+                                {(c.fullName || c.email)}
+                            </button>
+                        ))}
                     </div>
                 </div>
             )}

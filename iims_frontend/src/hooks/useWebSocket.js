@@ -56,6 +56,7 @@ export const useWebSocket = (chatRoomId, token) => {
         if (stompClient && stompClient.connected && messageContent.trim()) {
             stompClient.publish({
                 destination: `/app/chat.sendMessage/${chatRoomId}`,
+                headers: { 'content-type': 'application/json' },
                 body: JSON.stringify({ content: messageContent }),
             });
         } else {

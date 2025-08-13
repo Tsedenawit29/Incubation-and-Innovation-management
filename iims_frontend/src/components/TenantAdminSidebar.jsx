@@ -26,7 +26,7 @@ export default function TenantAdminSidebar({ user, onLogout }) {
       description: 'Overview and analytics'
     },
     {
-      path: '/tenant-admin/dashboard',
+      path: '/tenant-admin/user-management',
       icon: <FaUsers />,
       label: 'User Management',
       description: 'Manage users and roles'

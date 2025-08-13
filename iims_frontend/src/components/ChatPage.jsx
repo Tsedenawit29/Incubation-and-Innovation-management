@@ -1,6 +1,6 @@
 // src/components/ChatPage.jsx
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { 
   ArrowLeft, 
@@ -16,9 +16,36 @@ import {
 /**
  * Component to display a single chat room and handle message sending.
  */
-const ChatPage = ({ chatRoomId, token, onBack }) => {
+const ChatPage = ({ chatRoomId, token, currentUser, onBack }) => {
     const [newMessage, setNewMessage] = useState('');
-    const { messages, sendMessage } = useWebSocket(chatRoomId, token); // Using the custom hook
+    const { messages, sendMessage } = useWebSocket(chatRoomId, token);
+    const [historyLoaded, setHistoryLoaded] = useState(false);
+
+    useEffect(() => {
+        const loadHistory = async () => {
+            try {
+                const res = await fetch(`http://localhost:8081/api/chat-rooms/${chatRoomId}/messages`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    // Preload messages to the WebSocket list
+                    // We can't push into hook state directly; render merges using local pre-state
+                    // Instead, we render history above live messages
+                    setLocalHistory(Array.isArray(data) ? data : []);
+                } else {
+                    setLocalHistory([]);
+                }
+            } catch (e) {
+                setLocalHistory([]);
+            } finally {
+                setHistoryLoaded(true);
+            }
+        };
+        loadHistory();
+    }, [chatRoomId, token]);
+
+    const [localHistory, setLocalHistory] = useState([]);
 
     const handleSendMessage = () => {
         if (newMessage.trim()) {
@@ -65,26 +92,23 @@ const ChatPage = ({ chatRoomId, token, onBack }) => {
 
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-                {messages.length > 0 ? (
-                    messages.map((msg, index) => (
-                        <div key={index} className={`flex ${msg.sender?.username === 'currentUser' ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                                msg.sender?.username === 'currentUser' 
-                                    ? 'bg-blue-600 text-white' 
-                                    : 'bg-white text-gray-900 border border-gray-200'
-                            }`}>
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-xs font-medium opacity-75">
-                                        {msg.sender?.username || 'Unknown User'}
-                                    </span>
-                                    <span className="text-xs opacity-75">
-                                        {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </span>
+                {historyLoaded && (localHistory.length > 0 || messages.length > 0) ? (
+                    [...localHistory, ...messages].map((msg, index) => {
+                        const isOwn = msg?.sender?.id && currentUser?.id && msg.sender.id === currentUser.id;
+                        const displayName = msg?.sender?.fullName || msg?.sender?.email || 'Unknown User';
+                        const timeText = msg?.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        return (
+                            <div key={index} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                                <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${isOwn ? 'bg-blue-600 text-white' : 'bg-white text-gray-900 border border-gray-200'}`}>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-xs font-medium opacity-75">{displayName}</span>
+                                        <span className="text-xs opacity-75">{timeText}</span>
+                                    </div>
+                                    <p className="text-sm">{msg.content}</p>
                                 </div>
-                                <p className="text-sm">{msg.content}</p>
                             </div>
-                        </div>
-                    ))
+                        );
+                    })
                 ) : (
                     <div className="text-center py-8">
                         <div className="text-gray-400 mb-2">No messages yet</div>
