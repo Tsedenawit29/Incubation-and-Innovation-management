@@ -25,15 +25,30 @@ public class ApplicationService {
     private final ApplicationRepository applicationRepository;
     private final ApplicationFormRepository applicationFormRepository;
     private final TenantRepository tenantRepository;
+    private final com.iims.iims.user.repository.UserRepository userRepository;
+    private final com.iims.iims.user.service.UserService userService;
+    private final com.iims.iims.notification.EmailService emailService;
+    private final com.iims.iims.profile.repository.StartupProfileRepository startupProfileRepository;
+    private final com.iims.iims.profile.repository.MentorProfileRepository mentorProfileRepository;
 
     @Autowired
     public ApplicationService(
             ApplicationRepository applicationRepository,
             ApplicationFormRepository applicationFormRepository,
-            TenantRepository tenantRepository){
+            TenantRepository tenantRepository,
+            com.iims.iims.user.repository.UserRepository userRepository,
+            com.iims.iims.user.service.UserService userService,
+            com.iims.iims.notification.EmailService emailService,
+            com.iims.iims.profile.repository.StartupProfileRepository startupProfileRepository,
+            com.iims.iims.profile.repository.MentorProfileRepository mentorProfileRepository){
         this.applicationRepository = applicationRepository;
         this.applicationFormRepository = applicationFormRepository;
         this.tenantRepository = tenantRepository;
+        this.userRepository = userRepository;
+        this.userService = userService;
+        this.emailService = emailService;
+        this.startupProfileRepository = startupProfileRepository;
+        this.mentorProfileRepository = mentorProfileRepository;
     }
 
     /**
@@ -173,6 +188,45 @@ public class ApplicationService {
 
         application.setStatus(reviewDto.getNewStatus());
         Application updatedApplication = applicationRepository.save(application);
+
+        // On approval, create user and corresponding profile, then email credentials
+        if (reviewDto.getNewStatus() == ApplicationStatus.APPROVED) {
+            // Skip if a user already exists with this email
+            if (userRepository.findByEmail(application.getEmail()).isEmpty()) {
+                // Build and create user with random password via service to ensure encoding and emailing
+                com.iims.iims.user.dto.TenantUserCreationRequest req = new com.iims.iims.user.dto.TenantUserCreationRequest();
+                req.setEmail(application.getEmail());
+                req.setFullName(application.getFirst_name() + " " + application.getLast_name());
+                // Map applicant type to role
+                com.iims.iims.user.entity.Role role = application.getApplicantType() == ApplicantType.STARTUP
+                        ? com.iims.iims.user.entity.Role.STARTUP
+                        : application.getApplicantType() == ApplicantType.MENTOR
+                          ? com.iims.iims.user.entity.Role.MENTOR
+                          : com.iims.iims.user.entity.Role.ALUMNI;
+                req.setRole(role);
+                // Create user under this tenant using a synthetic tenant admin context
+                com.iims.iims.user.entity.User tenantAdminProxy = new com.iims.iims.user.entity.User();
+                tenantAdminProxy.setTenantId(tenant.getId());
+                com.iims.iims.user.entity.User created = userService.createTenantUser(req, tenantAdminProxy);
+
+                // Create domain profile using same user id
+                if (role == com.iims.iims.user.entity.Role.STARTUP) {
+                    com.iims.iims.profile.entity.StartupProfile sp = com.iims.iims.profile.entity.StartupProfile.builder()
+                            .user(created)
+                            .startupName(application.getFirst_name() + " " + application.getLast_name())
+                            .build();
+                    startupProfileRepository.save(sp);
+                } else if (role == com.iims.iims.user.entity.Role.MENTOR) {
+                    com.iims.iims.profile.entity.MentorProfile mp = com.iims.iims.profile.entity.MentorProfile.builder()
+                            .user(created)
+                            .firstName(application.getFirst_name())
+                            .lastName(application.getLast_name())
+                            .build();
+                    mentorProfileRepository.save(mp);
+                }
+            }
+        }
+
         return convertToDto(updatedApplication);
     }
 
