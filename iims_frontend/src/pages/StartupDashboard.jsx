@@ -1766,6 +1766,7 @@ export default function StartupDashboard() {
               {user && token && (
                 <ChatOverview token={token} currentUser={user} />
               )}
+              </div>)}
           {currentPage === 'calendar' && (
             <div className="animate-fade-in">
               <CalendarManagement />
@@ -1891,8 +1892,6 @@ export default function StartupDashboard() {
               <ChatOverview token={token} currentUser={user} />
             </div>
           )}
-
-
         </div>
       </div>
     </div>
