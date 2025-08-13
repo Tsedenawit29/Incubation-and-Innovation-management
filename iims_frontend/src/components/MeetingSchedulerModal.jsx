@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { createMeeting, getSystemUsers } from '../api/meetings';
 import { MagnifyingGlassIcon, XMarkIcon, UserIcon, PlusIcon } from '@heroicons/react/24/outline';
@@ -201,6 +202,7 @@ const MeetingSchedulerModal = ({ isOpen, onClose, onMeetingCreated }) => {
           </div>
 
           <div>
+
             <label className="block text-sm font-medium mb-2">Select Attendees</label>
             <div className="flex gap-2 mb-3">
               <select
@@ -284,6 +286,7 @@ const MeetingSchedulerModal = ({ isOpen, onClose, onMeetingCreated }) => {
             ))}
             <button
               type="button"
+
               onClick={addGuestEmailField}
               className="inline-flex items-center gap-1 px-3 py-1 text-sm bg-green-100 text-green-800 rounded hover:bg-green-200"
             >
@@ -302,9 +305,11 @@ const MeetingSchedulerModal = ({ isOpen, onClose, onMeetingCreated }) => {
             <button
               type="submit"
               disabled={loading}
+
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
             >
               {loading ? 'Scheduling...' : 'Schedule Meeting'}
+
             </button>
           </div>
         </form>

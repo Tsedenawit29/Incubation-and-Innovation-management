@@ -99,6 +99,12 @@ public class ProgressSubmissionController {
         dto.setId(entity.getId());
         if (entity.getTracking() != null) {
             dto.setTrackingId(entity.getTracking().getId());
+            // Get startup ID from the assignment relationship
+            if (entity.getTracking().getAssignment() != null) {
+                UUID startupId = entity.getTracking().getAssignment().getAssignedToId();
+                dto.setStartupId(startupId);
+                dto.setUserId(startupId); // Assuming startupId is the userId for filtering
+            }
         }
         if (entity.getTask() != null) {
             dto.setTaskId(entity.getTask().getId());
@@ -114,4 +120,4 @@ public class ProgressSubmissionController {
         dto.setVersion(entity.getVersion());
         return dto;
     }
-} 
+}

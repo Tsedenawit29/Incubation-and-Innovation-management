@@ -8,6 +8,8 @@ public class ProgressSubmissionResponseDTO {
     private UUID id;
     private UUID trackingId;
     private UUID taskId;
+    private UUID startupId; // Add startup ID for frontend filtering
+    private UUID userId;    // Add user ID for frontend filtering
     private String submissionFileUrl;
     private String feedback;
     private String mentorFeedback;
@@ -24,6 +26,10 @@ public class ProgressSubmissionResponseDTO {
     public void setTrackingId(UUID trackingId) { this.trackingId = trackingId; }
     public UUID getTaskId() { return taskId; }
     public void setTaskId(UUID taskId) { this.taskId = taskId; }
+    public UUID getStartupId() { return startupId; }
+    public void setStartupId(UUID startupId) { this.startupId = startupId; }
+    public UUID getUserId() { return userId; }
+    public void setUserId(UUID userId) { this.userId = userId; }
     public String getSubmissionFileUrl() { return submissionFileUrl; }
     public void setSubmissionFileUrl(String submissionFileUrl) { this.submissionFileUrl = submissionFileUrl; }
     public String getFeedback() { return feedback; }
