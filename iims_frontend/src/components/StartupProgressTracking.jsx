@@ -1391,6 +1391,7 @@ export default function StartupProgressTracking({ userId, token }) {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
