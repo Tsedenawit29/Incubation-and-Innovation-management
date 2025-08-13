@@ -153,10 +153,6 @@ const ChatOverview = ({ token, currentUser }) => {
         }
     };
 
-    if (selectedChatRoom) {
-        return <ChatPage chatRoomId={selectedChatRoom.id} token={token} onBack={() => setSelectedChatRoom(null)} />;
-    }
-
     const filteredChats = chatRooms.filter(room => {
         const matchesSearch = (room.chatName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             (room.users && Array.from(room.users).some(u =>
@@ -175,6 +171,64 @@ const ChatOverview = ({ token, currentUser }) => {
             default: return 'bg-gray-100 text-gray-700';
         }
     };
+
+    if (selectedChatRoom) {
+        return (
+            <div className="grid grid-cols-12 gap-4">
+                <div className="col-span-4">
+                    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                        <div className="p-3 border-b">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search chats or participants..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                />
+                            </div>
+                        </div>
+                        <div className="max-h-[70vh] overflow-y-auto divide-y">
+                            {filteredChats.map((room) => (
+                                <div
+                                    key={room.id}
+                                    onClick={() => setSelectedChatRoom(room)}
+                                    className={`p-3 cursor-pointer hover:bg-gray-50 ${selectedChatRoom.id === room.id ? 'bg-blue-50' : ''}`}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <div className={`px-2 py-0.5 rounded text-xs ${getChatTypeColor((room.chatType||'').toLowerCase())}`}>
+                                            {(room.chatType||'').toLowerCase()}
+                                        </div>
+                                        <div className="font-medium truncate">{room.chatName || 'Unnamed Chat'}</div>
+                                    </div>
+                                    <div className="text-xs text-gray-600 truncate">
+                                        {room.users ? Array.from(room.users).map(u => u.fullName || u.email).join(', ') : ''}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+                <div className="col-span-8">
+                    <ChatPage
+                        chatRoomId={selectedChatRoom.id}
+                        token={token}
+                        currentUser={currentUser}
+                        onBack={null}
+                        onDelete={(id) => {
+                            setChatRooms(prev => prev.filter(r => r.id !== id));
+                            setSelectedChatRoom(null);
+                        }}
+                    />
+                </div>
+            </div>
+        );
+    }
+
+    // filteredChats already defined above for both layouts
+
+    // getChatTypeColor defined above
 
     if (loading) {
         return (

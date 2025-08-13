@@ -4,19 +4,14 @@ import React, { useEffect, useState } from 'react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { 
   ArrowLeft, 
-  Send, 
-  MoreVertical,
-  Paperclip,
-  Smile,
-  Phone,
-  Video
+  Send
 } from 'lucide-react';
 
 
 /**
  * Component to display a single chat room and handle message sending.
  */
-const ChatPage = ({ chatRoomId, token, currentUser, onBack }) => {
+const ChatPage = ({ chatRoomId, token, currentUser, onBack, onDelete }) => {
     const [newMessage, setNewMessage] = useState('');
     const { messages, sendMessage } = useWebSocket(chatRoomId, token);
     const [historyLoaded, setHistoryLoaded] = useState(false);
@@ -49,6 +44,17 @@ const ChatPage = ({ chatRoomId, token, currentUser, onBack }) => {
 
     const handleSendMessage = () => {
         if (newMessage.trim()) {
+            // optimistic update so it appears instantly
+            const optimistic = {
+                content: newMessage,
+                timestamp: new Date().toISOString(),
+                sender: {
+                    id: currentUser?.id,
+                    fullName: currentUser?.fullName,
+                    email: currentUser?.email
+                }
+            };
+            setLocalHistory(prev => [...prev, optimistic]);
             sendMessage(newMessage);
             setNewMessage('');
         }
@@ -66,28 +72,35 @@ const ChatPage = ({ chatRoomId, token, currentUser, onBack }) => {
             {/* Chat Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
                 <div className="flex items-center gap-3">
-                    <button 
-                        onClick={onBack}
-                        className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
-                    >
-                        <ArrowLeft size={20} className="text-gray-600" />
-                    </button>
+                    {onBack && (
+                        <button 
+                            onClick={onBack}
+                            className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                        >
+                            <ArrowLeft size={20} className="text-gray-600" />
+                        </button>
+                    )}
                     <div>
                         <h2 className="text-lg font-semibold text-gray-900">Chat Room: {chatRoomId}</h2>
-                        <p className="text-sm text-gray-600">3 participants • Active now</p>
+                        <p className="text-sm text-gray-600">Active now</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <button className="p-2 hover:bg-gray-200 rounded-lg transition-colors">
-                        <Phone size={18} className="text-gray-600" />
+                {onDelete && (
+                    <button
+                        onClick={async () => {
+                            try {
+                                await fetch(`http://localhost:8081/api/chat-rooms/${chatRoomId}`, {
+                                    method: 'DELETE',
+                                    headers: { Authorization: `Bearer ${token}` }
+                                });
+                                onDelete(chatRoomId);
+                            } catch (e) {}
+                        }}
+                        className="px-3 py-1 text-sm text-red-600 border border-red-200 rounded hover:bg-red-50"
+                    >
+                        Delete chat
                     </button>
-                    <button className="p-2 hover:bg-gray-200 rounded-lg transition-colors">
-                        <Video size={18} className="text-gray-600" />
-                    </button>
-                    <button className="p-2 hover:bg-gray-200 rounded-lg transition-colors">
-                        <MoreVertical size={18} className="text-gray-600" />
-                    </button>
-                </div>
+                )}
             </div>
 
             {/* Messages Area */}
@@ -119,7 +132,7 @@ const ChatPage = ({ chatRoomId, token, currentUser, onBack }) => {
 
             {/* Message Input */}
             <div className="p-4 border-t border-gray-200 bg-white">
-                <div className="flex items-end gap-3">
+                    <div className="flex items-end gap-3">
                     <div className="flex-1 relative">
                         <textarea
                             value={newMessage}
@@ -130,14 +143,6 @@ const ChatPage = ({ chatRoomId, token, currentUser, onBack }) => {
                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                             style={{ minHeight: '44px', maxHeight: '120px' }}
                         />
-                        <div className="absolute right-3 bottom-3 flex items-center gap-2">
-                            <button className="p-1 hover:bg-gray-100 rounded transition-colors">
-                                <Paperclip size={16} className="text-gray-400" />
-                            </button>
-                            <button className="p-1 hover:bg-gray-100 rounded transition-colors">
-                                <Smile size={16} className="text-gray-400" />
-                            </button>
-                        </div>
                     </div>
                     <button 
                         onClick={handleSendMessage}
