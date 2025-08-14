@@ -32,39 +32,38 @@ const FileUpload = ({
     try {
       validateFile(file);
       
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const base64Content = e.target.result.split(',')[1]; // Remove data:application/pdf;base64, prefix
-        
-        const fileData = {
-          fileName: file.name,
-          originalFileName: file.name,
-          fileContent: base64Content,
-          fileSize: file.size,
-          contentType: file.type,
-          documentType: getDocumentType(file.name),
-          description: ''
-        };
-
-        const newFile = {
-          id: Date.now() + Math.random(),
-          file: fileData,
-          name: file.name,
-          size: file.size,
-          type: file.type
-        };
-
-        setFiles(prev => [...prev, newFile]);
-        onFileSelect(fileData);
+      // Instead of encoding as base64, pass the raw file directly
+      const fileData = {
+        fileName: file.name,
+        originalFileName: file.name,
+        file: file, // Pass the actual file object instead of base64 content
+        fileSize: file.size,
+        contentType: file.type,
+        documentType: getDocumentType(file.name),
+        description: ''
       };
-      
-      reader.readAsDataURL(file);
+
+      const newFile = {
+        id: Date.now() + Math.random(),
+        file: fileData,
+        name: file.name,
+        size: file.size,
+        type: file.type
+      };
+
+      setFiles(prev => [...prev, newFile]);
+      onFileSelect(fileData);
     } catch (error) {
       alert(error.message);
     }
   };
 
   const getDocumentType = (fileName) => {
+    // Check if the label contains 'pitchdeck' to override the default type detection
+    if (label.toLowerCase().includes('pitchdeck')) {
+      return 'PITCH_DECK';
+    }
+    
     const extension = fileName.split('.').pop().toLowerCase();
     
     if (['ppt', 'pptx'].includes(extension)) return 'PITCH_DECK';
