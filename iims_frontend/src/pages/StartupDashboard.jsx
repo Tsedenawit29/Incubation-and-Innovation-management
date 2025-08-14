@@ -10,8 +10,7 @@ import { getMentorsForStartup } from '../api/mentorAssignment';
 import { getAssignedTemplatesForStartup, getPhases, getTasks, uploadSubmissionFile, createSubmission } from '../api/progresstracking';
 import { getNewsPostsByTenant } from '../api/news';
 import StartupProgressTracking from '../components/StartupProgressTracking';
-import ChatOverview from '../components/ChatOverview';
-import CalendarManagement from './CalendarManagement';
+
 // Import Lucide React icons
 import {
   Globe,
@@ -58,8 +57,7 @@ import {
   FileText, // For documents
   File, // Generic file icon
   Filter, // For filter dropdown
-  CalendarDays, // For apply by date
-  MessageSquare // For chat functionality
+  CalendarDays // For apply by date
 } from 'lucide-react';
 
 // Animated Counter Component (kept for potential future use, though not used in current dashboard view)
@@ -805,10 +803,9 @@ export default function StartupDashboard() {
     { name: 'My Profile', icon: User, page: 'myProfile' },
     { name: 'Incubation Progress', icon: CheckCircle2, page: 'incubationProgress' },
     { name: 'My Mentor', icon: GraduationCap, page: 'myMentor' },
-    { name: 'Calendar', icon: Calendar, page: 'calendar' },
     { name: 'Opportunities', icon: Briefcase, page: 'opportunities' },
     { name: 'Notifications', icon: BellRing, page: 'notifications' },
-    { name: 'Chats', icon: MessageSquare, page: 'chats' }
+    { name: 'Chats', icon: Users, page: 'teamMembers' }
   ];
 
   // Main component rendering
@@ -817,18 +814,18 @@ export default function StartupDashboard() {
       {/* Background animated shapes */}
       <div className="absolute top-1/4 left-1/4 w-48 h-48 bg-brand-primary rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slow"></div>
       <div className="absolute bottom-1/3 right-1/4 w-64 h-64 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slower"></div> {/* Changed from purple-300 */}
+      <div className="absolute top-1/2 left-1/2 w-32 h-32 bg-teal-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float"></div> {/* Changed from pink-300 */}
+      <div className="absolute top-1/10 right-1/10 w-24 h-24 bg-teal-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slow delay-1000"></div>
       <div className="absolute bottom-1/5 left-1/5 w-40 h-40 bg-orange-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slower delay-2000"></div>
       <div className="absolute top-3/4 left-1/10 w-56 h-56 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float delay-500"></div>
 
       {/* Main Dashboard Container */}
-<div className="flex w-full min-h-screen bg-white"> 
-        {/* Custom CSS for animations and variables */}
+<div className="flex w-full h-screen bg-white overflow-hidden">        {/* Custom CSS for animations and variables */}
         <style>
           {`
             @tailwind base;
             @tailwind components;
             @tailwind utilities;
-{{ ... }}
 
             @keyframes float {
               0% { transform: translateY(0); }
@@ -915,8 +912,7 @@ export default function StartupDashboard() {
         </style>
 
         {/* Left Sidebar */}
-        <div className="w-64 bg-white p-6 flex flex-col justify-between border-r border-gray-100 shadow-inner sticky top-0 h-screen overflow-y-auto">
-
+        <div className="w-64 bg-white p-6 flex flex-col justify-between border-r border-gray-100 shadow-inner">
           <div>
             {/* Removed Logo and Brand Name (Pitch.io) */}
             {/* Removed Create New Pitch Button */}
@@ -954,8 +950,7 @@ export default function StartupDashboard() {
         </div>
 
         {/* Right Main Content Area */}
-<div className="flex-1 p-8 bg-gray-50 overflow-y-auto">
-          {/* Top Header Bar */}
+<div className="flex-1 p-8 bg-gray-50">          {/* Top Header Bar */}
           <header className="flex justify-between items-center mb-8 pb-4 border-b border-gray-200">
             <div className="text-gray-600 font-medium">
               {/* Display current date and time */}
@@ -1656,6 +1651,12 @@ export default function StartupDashboard() {
             </div>
           )}
 
+          {currentPage === 'incubationProgress' && (
+            <div className="animate-fade-in">
+              <StartupProgressTracking userId={user?.id} token={token} />
+            </div>
+          )}
+
           {currentPage === 'myMentor' && (
             <div className="animate-fade-in">
               <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center">
@@ -1811,20 +1812,6 @@ export default function StartupDashboard() {
                   </div>
                 </div>
               )}
-            </div>
-          )}
-          {currentPage === 'teamMembers' && (
-            <div className="animate-fade-in">
-              <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center">
-                <MessageSquare size={28} className="mr-3 text-brand-primary" /> Chats
-              </h3>
-              {user && token && (
-                <ChatOverview token={token} currentUser={user} />
-              )}
-              </div>)}
-          {currentPage === 'calendar' && (
-            <div className="animate-fade-in">
-              <CalendarManagement />
             </div>
           )}
 
@@ -2042,14 +2029,7 @@ export default function StartupDashboard() {
             </div>
           )}
 
-          {currentPage === 'chats' && (
-            <div className="animate-fade-in">
-              <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center">
-                <MessageSquare size={28} className="mr-3 text-brand-primary" /> Your Chats
-              </h3>
-              <ChatOverview token={token} currentUser={user} />
-            </div>
-          )}
+
         </div>
       </div>
     </div>

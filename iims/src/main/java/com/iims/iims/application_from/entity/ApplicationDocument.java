@@ -49,6 +49,9 @@ public class ApplicationDocument {
     @Column(name = "description")
     private String description;
 
+    @Column(name = "file_url")
+    private String fileUrl;
+
     @Column(name = "uploaded_at", nullable = false, updatable = false)
     private LocalDateTime uploadedAt = LocalDateTime.now();
 

@@ -98,14 +98,6 @@ export default function ApplicationFormsPage() {
                 >
                   <div className="flex justify-between items-start mb-2">
                     <div className="font-bold text-lg text-blue-700">{form.name}</div>
-                    <button
-                      className="text-red-500 hover:text-red-700 text-xl ml-2 opacity-80 group-hover:opacity-100"
-                      title="Delete"
-                      onClick={e => { e.stopPropagation(); handleDelete(form.id); }}
-                      disabled={actionLoading[form.id]}
-                    >
-                      🗑
-                    </button>
                   </div>
                   <div className="text-sm text-gray-500 mb-1">Created: {form.createdAt ? new Date(form.createdAt).toLocaleDateString() : "-"}</div>
                   <div className="flex items-center space-x-2 mt-2">

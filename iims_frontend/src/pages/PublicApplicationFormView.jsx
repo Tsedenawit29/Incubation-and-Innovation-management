@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { getApplicationFormById, submitApplication } from "../api/applicationForms";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
+import FileUpload from "../components/FileUpload";
 
 export default function PublicApplicationFormView() {
   const { id: formId } = useParams();
@@ -65,6 +66,51 @@ export default function PublicApplicationFormView() {
     }));
   };
 
+  // State for document uploads
+  const [documents, setDocuments] = useState([]);
+
+  const handleFileSelect = (fileData) => {
+    // Store the file object and metadata
+    setDocuments(prev => [...prev, {
+      file: fileData.file, // Raw file object
+      name: fileData.name,
+      type: fileData.type,
+      size: fileData.size,
+      documentType: fileData.documentType || 'SUPPORTING_DOCUMENT'
+    }]);
+    
+    // Find the pitchdeck field and update its response
+    if (fileData.documentType === 'PITCH_DECK') {
+      const pitchdeckFieldIndex = form.fields.findIndex(field => 
+        field.id === '8af86607-c87a-4940-852d-c86b6fca7c82' || 
+        field.label.toLowerCase().includes('pitchdeck')
+      );
+      
+      if (pitchdeckFieldIndex !== -1) {
+        handleResponseChange(pitchdeckFieldIndex, 'File uploaded: ' + fileData.name);
+      }
+    }
+  };
+
+  const handleFileRemove = (fileData) => {
+    // Remove file by matching name and size
+    setDocuments(prev => prev.filter(doc => 
+      doc.name !== fileData.name || doc.size !== fileData.size
+    ));
+    
+    // Clear the response for the pitchdeck field if it was removed
+    if (fileData.documentType === 'PITCH_DECK') {
+      const pitchdeckFieldIndex = form.fields.findIndex(field => 
+        field.id === '8af86607-c87a-4940-852d-c86b6fca7c82' || 
+        field.label.toLowerCase().includes('pitchdeck')
+      );
+      
+      if (pitchdeckFieldIndex !== -1) {
+        handleResponseChange(pitchdeckFieldIndex, '');
+      }
+    }
+  };
+
   const handleApplySubmit = async (e) => {
     e.preventDefault();
     setApplyLoading(true);
@@ -80,12 +126,14 @@ export default function PublicApplicationFormView() {
         fieldResponses: responses.map((r) => ({
           fieldId: r.fieldId,
           response: r.response
-        }))
+        })),
+        documents: documents // Include documents in the submission
       });
       setApplySuccess("Application submitted successfully! You can close this window.");
       // Reset form, ensuring applicantType is reset to the form's type, not a default
       setApplicant({ email: "", firstName: "", lastName: "", applicantType: form.type });
       setResponses(form.fields.map(f => ({ fieldId: f.id, response: "" })));
+      setDocuments([]); // Clear documents after submission
     } catch (err) {
       setApplyError(err.message || "Failed to submit application");
     } finally {
@@ -93,13 +141,17 @@ export default function PublicApplicationFormView() {
     }
   };
 
-
-  if (loading) return <LoadingSpinner />;
-  if (error) return <ErrorMessage message={error} />;
-  if (!form) return <div className="p-10 text-center text-gray-700">Application form not found or is inactive.</div>;
-
+  // Component rendering
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center py-10 px-4 font-inter"> {/* Match ApplicationFormDetail background */}
+    <>
+      {loading ? (
+        <LoadingSpinner />
+      ) : error ? (
+        <ErrorMessage message={error} />
+      ) : !form ? (
+        <div className="p-10 text-center text-gray-700">Application form not found or is inactive.</div>
+      ) : (
+        <div className="min-h-screen bg-gray-50 flex flex-col items-center py-10 px-4 font-inter"> {/* Match ApplicationFormDetail background */}
       <div className="w-full max-w-4xl bg-white rounded-lg shadow-xl p-8 border-t-8 border-blue-600"> {/* Match ApplicationFormDetail container */}
         <h1 className="text-4xl font-extrabold text-blue-800 mb-2 text-center tracking-tight"> {/* Match ApplicationFormDetail title */}
           {form.name}
@@ -265,13 +317,42 @@ export default function PublicApplicationFormView() {
                       );
                     case "FILE":
                       return (
-                        <div className="relative border border-gray-300 rounded-md px-4 py-2 bg-gray-50">
-                          <input
-                            type="file"
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            title="Upload a file"
-                          />
-                          <span className="block text-gray-700">Choose File</span>
+                        <div>
+                          {field.label.toLowerCase().includes('pitchdeck') || field.id === '8af86607-c87a-4940-852d-c86b6fca7c82' ? (
+                            <>
+                              <FileUpload
+                                onFileSelect={handleFileSelect}
+                                onFileRemove={handleFileRemove}
+                                label={field.label}
+                                description={field.description || "Upload your pitch deck"}
+                                acceptedTypes={['.pdf', '.doc', '.docx', '.ppt', '.pptx']}
+                                maxFileSize={20 * 1024 * 1024} // 20MB
+                                maxFiles={1}
+                              />
+                              {currentResponse && (
+                                <div className="mt-2 text-sm text-green-600">
+                                  {currentResponse}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <FileUpload
+                                onFileSelect={handleFileSelect}
+                                onFileRemove={handleFileRemove}
+                                label={field.label}
+                                description={field.description || "Upload supporting document"}
+                                acceptedTypes={['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png']}
+                                maxFileSize={20 * 1024 * 1024} // 20MB
+                                maxFiles={1}
+                              />
+                              {currentResponse && (
+                                <div className="mt-2 text-sm text-green-600">
+                                  {currentResponse}
+                                </div>
+                              )}
+                            </>
+                          )}
                         </div>
                       );
                     default:
@@ -293,6 +374,8 @@ export default function PublicApplicationFormView() {
           </div>
         </form>
       </div>
-    </div>
+        </div>
+      )}
+    </>
   );
 }

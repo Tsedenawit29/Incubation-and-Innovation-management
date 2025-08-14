@@ -5,6 +5,8 @@ import {
   getAllApplicationForms,
   updateApplicationStatus,
 } from "../api/applicationForms";
+import { getApplicationDocuments, deleteDocument } from "../api/applications";
+import DocumentList from "../components/DocumentList";
 
 export default function ApplicationsPage() {
   const { user, token } = useAuth();
@@ -14,6 +16,9 @@ export default function ApplicationsPage() {
   const [error, setError] = useState("");
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [selectedFormId, setSelectedFormId] = useState(null);
+  const [documents, setDocuments] = useState([]);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  const [documentsError, setDocumentsError] = useState("");
 
   // --- New State for Custom Pop-ups ---
   const [showConfirmPopup, setShowConfirmPopup] = useState(false);
@@ -51,6 +56,40 @@ export default function ApplicationsPage() {
   const filteredApplications = selectedFormId
     ? applications.filter((app) => app.formId === selectedFormId)
     : [];
+    
+  // Load documents when an application is selected
+  useEffect(() => {
+    if (selectedApplication?.id) {
+      loadDocuments(selectedApplication.id);
+    } else {
+      setDocuments([]);
+    }
+  }, [selectedApplication]);
+  
+  // Function to load documents for an application
+  const loadDocuments = async (applicationId) => {
+    try {
+      setDocumentsLoading(true);
+      setDocumentsError("");
+      const docs = await getApplicationDocuments(applicationId);
+      setDocuments(docs);
+    } catch (error) {
+      setDocumentsError("Failed to load documents");
+      console.error("Error loading documents:", error);
+    } finally {
+      setDocumentsLoading(false);
+    }
+  };
+  
+  // Function to handle document deletion
+  const handleDeleteDocument = async (documentId) => {
+    try {
+      await deleteDocument(documentId);
+      setDocuments(documents.filter(doc => doc.id !== documentId));
+    } catch (error) {
+      console.error("Error deleting document:", error);
+    }
+  };
 
   // --- Handlers for Custom Pop-ups and Status Update Logic ---
 
@@ -287,64 +326,81 @@ export default function ApplicationsPage() {
       {/* --- Modal for application details (Enhanced UI) --- */}
       {selectedApplication && (
         <div className="fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-2xl relative border border-gray-200 animate-fade-in-down">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl relative border border-gray-200 animate-fade-in-down flex flex-col max-h-[90vh]">
             {/* Close Button */}
-            <button
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-3xl font-light leading-none"
-              onClick={() => setSelectedApplication(null)}
-            >
-              &times;
-            </button>
+            <div className="sticky top-0 bg-white p-6 pb-2 z-10 border-b">
+              <button
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-3xl font-light leading-none"
+                onClick={() => setSelectedApplication(null)}
+              >
+                &times;
+              </button>
 
-            <h2 className="text-3xl font-extrabold text-blue-800 mb-6 border-b pb-4">
-              Application Details
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-gray-700">
-              <div className="flex flex-col">
-                <span className="font-semibold text-gray-600 text-sm mb-0.5">Applicant Name:</span>
-                <span className="text-lg">
-                  {selectedApplication.firstName || "-"} {selectedApplication.lastName || "-"}
-                </span>
-              </div>
-              <div className="flex flex-col">
-                <span className="font-semibold text-gray-600 text-sm mb-0.5">Email:</span>
-                <span className="text-lg">{selectedApplication.email}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="font-semibold text-gray-600 text-sm mb-0.5">Applicant Type:</span>
-                <span className="text-lg">{selectedApplication.applicantType}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="font-semibold text-gray-600 text-sm mb-0.5">Applied For Form:</span>
-                <span className="text-lg">{getFormName(selectedApplication.formId)}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="font-semibold text-gray-600 text-sm mb-0.5">Submitted On:</span>
-                <span className="text-lg">
-                  {selectedApplication.submittedAt
-                    ? new Date(selectedApplication.submittedAt).toLocaleString()
-                    : "-"}
-                </span>
-              </div>
-              <div className="flex flex-col">
-                <span className="font-semibold text-gray-600 text-sm mb-0.5">Current Status:</span>
-                <span
-                  className={`text-lg font-bold px-3 py-1 rounded-full inline-block ${
-                    selectedApplication.status === "APPROVED"
-                      ? "bg-green-100 text-green-700"
-                      : selectedApplication.status === "REJECTED"
-                      ? "bg-red-100 text-red-700"
-                      : "bg-orange-100 text-orange-700"
-                  }`}
-                >
-                  {selectedApplication.status}
-                </span>
-              </div>
+              <h2 className="text-3xl font-extrabold text-blue-800 mb-4">
+                Application Details
+              </h2>
             </div>
 
-            <div className="mt-6 border-t pt-6">
-              <h3 className="text-xl font-bold text-blue-700 mb-3">Applicant Responses:</h3>
+            {/* Scrollable content area */}
+            <div className="flex-1 overflow-y-auto p-6 pt-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-gray-700">
+                <div className="flex flex-col">
+                  <span className="font-semibold text-gray-600 text-sm mb-0.5">Applicant Name:</span>
+                  <span className="text-lg">
+                    {selectedApplication.firstName || "-"} {selectedApplication.lastName || "-"}
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-semibold text-gray-600 text-sm mb-0.5">Email:</span>
+                  <span className="text-lg">{selectedApplication.email}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-semibold text-gray-600 text-sm mb-0.5">Applicant Type:</span>
+                  <span className="text-lg">{selectedApplication.applicantType}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-semibold text-gray-600 text-sm mb-0.5">Applied For Form:</span>
+                  <div className="flex items-center">
+                    <span className="text-lg mr-2">{getFormName(selectedApplication.formId)}</span>
+                    <a 
+                      href={`/apply/${selectedApplication.formId}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 text-sm underline flex items-center"
+                    >
+                      <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                      Show Form
+                    </a>
+                  </div>
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-semibold text-gray-600 text-sm mb-0.5">Submitted On:</span>
+                  <span className="text-lg">
+                    {selectedApplication.submittedAt
+                      ? new Date(selectedApplication.submittedAt).toLocaleString()
+                      : "-"}
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-semibold text-gray-600 text-sm mb-0.5">Current Status:</span>
+                  <span
+                    className={`text-lg font-bold px-3 py-1 rounded-full inline-block ${
+                      selectedApplication.status === "APPROVED"
+                        ? "bg-green-100 text-green-700"
+                        : selectedApplication.status === "REJECTED"
+                        ? "bg-red-100 text-red-700"
+                        : "bg-orange-100 text-orange-700"
+                    }`}
+                  >
+                    {selectedApplication.status}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-6 border-t pt-6">
+                <h3 className="text-xl font-bold text-blue-700 mb-3">Applicant Responses:</h3>
               <ul className="space-y-3">
                 {selectedApplication.fieldResponses &&
                 selectedApplication.fieldResponses.length > 0 ? (
@@ -361,9 +417,29 @@ export default function ApplicationsPage() {
                 )}
               </ul>
             </div>
+            
+            {/* Supporting Documents Section */}
+            <div className="mt-6 border-t pt-6">
+              <h3 className="text-xl font-bold text-blue-700 mb-3">Supporting Documents</h3>
+              {documentsLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="mt-2 text-sm text-gray-500">Loading documents...</p>
+                </div>
+              ) : documentsError ? (
+                <div className="text-red-500 text-center py-4">{documentsError}</div>
+              ) : (
+                <DocumentList
+                  documents={documents}
+                  onDelete={handleDeleteDocument}
+                  showDelete={selectedApplication.status !== "APPROVED"}
+                />
+              )}
+            </div>
+            </div>
 
-            {/* Action buttons inside the modal with rounded corners */}
-            <div className="flex justify-end space-x-3 mt-8 pt-4 border-t border-gray-100">
+            {/* Action buttons inside the modal with rounded corners - fixed at bottom */}
+            <div className="sticky bottom-0 bg-white p-4 border-t border-gray-100 flex justify-end space-x-3">
               <button
                 onClick={() =>
                   initiateStatusChange(selectedApplication.id, "APPROVED")
