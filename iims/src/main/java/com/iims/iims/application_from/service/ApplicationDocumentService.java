@@ -34,38 +34,47 @@ public class ApplicationDocumentService {
     private final ApplicationDocumentRepository documentRepository;
     private final ApplicationRepository applicationRepository;
 
-    @Value("${app.upload.dir:uploads/applications}")
+    @Value("${app.upload.dir:uploads}")
     private String uploadDir;
 
     @Transactional
     public ApplicationDocumentDto uploadDocument(UUID applicationId, ApplicationDocumentRequest request) {
+        // DEPRECATED: This method uses Base64 encoding which causes file corruption
+        // Use uploadMultipartFile() method instead for proper file storage
+        throw new UnsupportedOperationException("Base64 file upload is deprecated. Use uploadMultipartFile() method instead.");
+    }
+
+    /**
+     * Upload actual MultipartFile (like progress tracking system)
+     */
+    @Transactional
+    public ApplicationDocumentDto uploadMultipartFile(UUID applicationId, org.springframework.web.multipart.MultipartFile file, String documentType, String description) {
         Application application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new EntityNotFoundException("Application not found with ID: " + applicationId));
 
         try {
-            // Create upload directory if it doesn't exist
-            Path uploadPath = Paths.get(uploadDir, applicationId.toString());
-            Files.createDirectories(uploadPath);
+            // Create upload directory for applicants if it doesn't exist
+            String uploadDirPath = "uploads/applicants/";
+            Files.createDirectories(Paths.get(uploadDirPath));
 
-            // Generate unique filename
-            String fileExtension = StringUtils.getFilenameExtension(request.getOriginalFileName());
-            String uniqueFileName = UUID.randomUUID().toString() + "." + fileExtension;
-            Path filePath = uploadPath.resolve(uniqueFileName);
+            // Generate unique filename like progress tracking system
+            String filename = applicationId + "-" + System.currentTimeMillis() + "-" + file.getOriginalFilename();
+            Path filePath = Paths.get(uploadDirPath, filename);
 
-            // Decode and save file
-            byte[] fileContent = Base64.getDecoder().decode(request.getFileContent());
-            Files.write(filePath, fileContent);
+            // Store actual file bytes (like progress tracking system)
+            Files.write(filePath, file.getBytes());
 
             // Create document entity
             ApplicationDocument document = ApplicationDocument.builder()
                     .application(application)
-                    .fileName(uniqueFileName)
-                    .originalFileName(request.getOriginalFileName())
+                    .fileName(filename)
+                    .originalFileName(file.getOriginalFilename())
                     .filePath(filePath.toString())
-                    .fileSize(request.getFileSize())
-                    .contentType(request.getContentType())
-                    .documentType(request.getDocumentType())
-                    .description(request.getDescription())
+                    .fileUrl("http://localhost:8081/api/v1/files/applicants/" + filename)
+                    .fileSize(file.getSize())
+                    .contentType(file.getContentType())
+                    .documentType(documentType)
+                    .description(description)
                     .uploadedAt(LocalDateTime.now())
                     .isActive(true)
                     .build();
@@ -74,9 +83,58 @@ public class ApplicationDocumentService {
 
             return convertToDto(savedDocument);
         } catch (IOException e) {
-            log.error("Error saving file for application {}: {}", applicationId, e.getMessage());
+            log.error("Error saving multipart file for application {}: {}", applicationId, e.getMessage());
             throw new RuntimeException("Failed to save file: " + e.getMessage());
         }
+    }
+
+    /**
+     * Saves document metadata when file is already stored.
+     * Used when actual file is stored separately and we only need to save metadata with file URL.
+     *
+     * @param applicationId The application ID
+     * @param fileName The stored filename
+     * @param originalFileName The original filename
+     * @param filePath The file path
+     * @param fileUrl The file URL
+     * @param fileSize The file size
+     * @param contentType The content type
+     * @param documentType The document type
+     * @param description The description
+     * @return ApplicationDocumentDto
+     */
+    @Transactional
+    public ApplicationDocumentDto saveDocumentMetadata(
+            UUID applicationId, 
+            String fileName, 
+            String originalFileName,
+            String filePath,
+            String fileUrl,
+            Long fileSize,
+            String contentType,
+            String documentType,
+            String description) {
+        
+        Application application = applicationRepository.findById(applicationId)
+                .orElseThrow(() -> new EntityNotFoundException("Application not found with ID: " + applicationId));
+
+        // Create document entity with metadata only
+        ApplicationDocument document = ApplicationDocument.builder()
+                .application(application)
+                .fileName(fileName)
+                .originalFileName(originalFileName)
+                .filePath(filePath)
+                .fileUrl(fileUrl) // Store the file URL
+                .fileSize(fileSize)
+                .contentType(contentType)
+                .documentType(documentType)
+                .description(description)
+                .uploadedAt(LocalDateTime.now())
+                .isActive(true)
+                .build();
+
+        ApplicationDocument savedDocument = documentRepository.save(document);
+        return convertToDto(savedDocument);
     }
 
     @Transactional(readOnly = true)
@@ -140,7 +198,7 @@ public class ApplicationDocumentService {
                 .description(document.getDescription())
                 .uploadedAt(document.getUploadedAt())
                 .isActive(document.getIsActive())
-                .downloadUrl("/api/v1/applications/documents/" + document.getId() + "/download")
+                .downloadUrl("http://localhost:8081/api/v1/files/applicants/" + document.getFileName())
                 .build();
     }
 }

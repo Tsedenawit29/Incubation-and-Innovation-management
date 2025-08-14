@@ -52,6 +52,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/public/application-forms/*").permitAll()// Allow CORS preflight
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
+                        .requestMatchers("/api/v1/files/**").permitAll() // Allow file serving
                         
                         // Tenant-related endpoints
                         .requestMatchers(HttpMethod.GET, "/api/tenants/**").permitAll()
