@@ -11,6 +11,7 @@ import {
   getPhases, 
   getTasks 
 } from '../api/progresstracking';
+import { getNewsPostsByTenant } from '../api/news';
 
 import CalendarManagement from './CalendarManagement';
 
@@ -227,6 +228,12 @@ export default function MentorDashboard() {
   const [progressLoading, setProgressLoading] = useState(false);
   const [progressError, setProgressError] = useState('');
 
+  // --- NEWS/RESOURCES STATES ---
+  const [mentorResources, setMentorResources] = useState([]);
+  const [resourcesLoading, setResourcesLoading] = useState(false);
+  const [selectedResourceCategory, setSelectedResourceCategory] = useState('all');
+  // --- END NEWS STATES ---
+
   // Mock data for dashboard
   const mockNotifications = [
     { id: 1, type: "system", icon: <Info size={16} />, message: "New startup assigned to you: TechInnovators", time: "2 hours ago" },
@@ -267,6 +274,51 @@ export default function MentorDashboard() {
       setAssignedStartups([]);
     } finally {
       setStartupsLoading(false);
+    }
+  };
+
+  // Fetch mentor resources from news - using same pattern as NewsManagement
+  const fetchMentorResources = async () => {
+    // Use user.tenantId first as it's more reliable, fallback to profile.tenantId
+    const tenantId = user?.tenantId || profile?.tenantId;
+    if (!tenantId || !token) {
+      console.log('fetchMentorResources: Missing tenantId or token', { 
+        profileTenantId: profile?.tenantId, 
+        userTenantId: user?.tenantId, 
+        hasToken: !!token,
+        finalTenantId: tenantId 
+      });
+      return;
+    }
+    
+    setResourcesLoading(true);
+    try {
+      console.log('fetchMentorResources: Using tenantId:', tenantId);
+      const posts = await getNewsPostsByTenant(token, tenantId);
+      console.log('fetchMentorResources: Fetched posts:', posts);
+      
+      // Filter for mentor-relevant categories
+      const mentorCategories = [
+        'MENTOR_RESOURCES',
+        'UPCOMING_EVENTS',
+        'SUCCESS_STORIES',
+        'MARKET_INSIGHTS',
+        'GENERAL_ANNOUNCEMENT',
+        'INCUBATION_PROGRAM_NEWS',
+        'ALUMNI_HIGHLIGHTS'
+      ];
+      
+      const filteredPosts = posts.filter(post => 
+        mentorCategories.includes(post.category)
+      );
+      
+      console.log('fetchMentorResources: Filtered posts for mentors:', filteredPosts);
+      setMentorResources(filteredPosts);
+    } catch (err) {
+      console.error('fetchMentorResources: Error:', err);
+      setMentorResources([]);
+    } finally {
+      setResourcesLoading(false);
     }
   };
 
@@ -391,6 +443,9 @@ export default function MentorDashboard() {
         
         // Fetch progress templates
         await fetchTemplates();
+        
+        // Fetch mentor resources
+        await fetchMentorResources();
       } catch (err) {
         console.error("MentorDashboard: Error fetching profile:", err);
         const errorMessage = err.message ? err.message.toLowerCase() : '';
@@ -1187,86 +1242,158 @@ export default function MentorDashboard() {
                 <BookOpen size={28} className="mr-3 text-brand-primary" /> Mentor Resources
               </h3>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Resource Cards */}
-                <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
-                  <div className="flex items-center mb-4">
-                    <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mr-4">
-                      <BookOpen size={24} />
-                    </div>
-                    <h4 className="text-lg font-bold text-brand-dark">Mentorship Guide</h4>
+              {/* Category Filter Dropdown */}
+              <div className="mb-6 flex justify-end">
+                <div className="relative inline-block text-left">
+                  <select 
+                    value={selectedResourceCategory}
+                    onChange={(e) => setSelectedResourceCategory(e.target.value)}
+                    className="block appearance-none w-full bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg shadow-sm leading-tight focus:outline-none focus:bg-white focus:border-brand-primary transition duration-200 text-sm"
+                  >
+                    <option value="all">All Mentor Categories</option>
+                    <option value="MENTOR_RESOURCES">Mentor Resources</option>
+                    <option value="UPCOMING_EVENTS">Upcoming Events</option>
+                    <option value="SUCCESS_STORIES">Success Stories</option>
+                    <option value="MARKET_INSIGHTS">Market Insights</option>
+                    <option value="GENERAL_ANNOUNCEMENT">General Announcements</option>
+                    <option value="INCUBATION_PROGRAM_NEWS">Incubation Program News</option>
+                    <option value="ALUMNI_HIGHLIGHTS">Alumni Highlights</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                    <ChevronDown size={16} />
                   </div>
-                  <p className="text-sm text-gray-700 mb-4">Comprehensive guide to effective startup mentorship techniques and best practices.</p>
-                  <a href="#" className="text-brand-primary hover:underline font-medium text-sm flex items-center">
-                    View Guide <ExternalLink size={14} className="ml-1" />
-                  </a>
-                </div>
-
-                <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
-                  <div className="flex items-center mb-4">
-                    <div className="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center mr-4">
-                      <ClipboardList size={24} />
-                    </div>
-                    <h4 className="text-lg font-bold text-brand-dark">Evaluation Templates</h4>
-                  </div>
-                  <p className="text-sm text-gray-700 mb-4">Downloadable templates for evaluating startup progress and providing structured feedback.</p>
-                  <a href="#" className="text-brand-primary hover:underline font-medium text-sm flex items-center">
-                    Download Templates <ExternalLink size={14} className="ml-1" />
-                  </a>
-                </div>
-
-                <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
-                  <div className="flex items-center mb-4">
-                    <div className="w-12 h-12 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center mr-4">
-                      <MessageSquare size={24} />
-                    </div>
-                    <h4 className="text-lg font-bold text-brand-dark">Communication Tips</h4>
-                  </div>
-                  <p className="text-sm text-gray-700 mb-4">Best practices for effective communication with startup founders and teams.</p>
-                  <a href="#" className="text-brand-primary hover:underline font-medium text-sm flex items-center">
-                    Read Tips <ExternalLink size={14} className="ml-1" />
-                  </a>
-                </div>
-
-                <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
-                  <div className="flex items-center mb-4">
-                    <div className="w-12 h-12 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center mr-4">
-                      <TrendingUp size={24} />
-                    </div>
-                    <h4 className="text-lg font-bold text-brand-dark">Growth Metrics</h4>
-                  </div>
-                  <p className="text-sm text-gray-700 mb-4">Key metrics to track startup growth and how to interpret them.</p>
-                  <a href="#" className="text-brand-primary hover:underline font-medium text-sm flex items-center">
-                    View Metrics <ExternalLink size={14} className="ml-1" />
-                  </a>
-                </div>
-
-                <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
-                  <div className="flex items-center mb-4">
-                    <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mr-4">
-                      <Bookmark size={24} />
-                    </div>
-                    <h4 className="text-lg font-bold text-brand-dark">Legal Considerations</h4>
-                  </div>
-                  <p className="text-sm text-gray-700 mb-4">Important legal aspects to consider when mentoring startups.</p>
-                  <a href="#" className="text-brand-primary hover:underline font-medium text-sm flex items-center">
-                    Read Guide <ExternalLink size={14} className="ml-1" />
-                  </a>
-                </div>
-
-                <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
-                  <div className="flex items-center mb-4">
-                    <div className="w-12 h-12 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center mr-4">
-                      <Users size={24} />
-                    </div>
-                    <h4 className="text-lg font-bold text-brand-dark">Community Forum</h4>
-                  </div>
-                  <p className="text-sm text-gray-700 mb-4">Connect with other mentors to share experiences and advice.</p>
-                  <a href="#" className="text-brand-primary hover:underline font-medium text-sm flex items-center">
-                    Join Forum <ExternalLink size={14} className="ml-1" />
-                  </a>
                 </div>
               </div>
+
+              {/* Loading State */}
+              {resourcesLoading && (
+                <div className="flex justify-center items-center py-12">
+                  <Loader2 className="animate-spin text-brand-primary" size={32} />
+                  <span className="ml-3 text-gray-600">Loading mentor resources...</span>
+                </div>
+              )}
+
+              {/* Mentor Resources List */}
+              {!resourcesLoading && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {mentorResources
+                    .filter(resource => selectedResourceCategory === 'all' || resource.category === selectedResourceCategory)
+                    .map(resource => {
+                      const getCategoryIcon = (category) => {
+                        switch(category) {
+                          case 'MENTOR_RESOURCES': return <BookOpen size={20} className="mr-2 text-blue-600" />;
+                          case 'UPCOMING_EVENTS': return <Calendar size={20} className="mr-2 text-green-600" />;
+                          case 'SUCCESS_STORIES': return <Award size={20} className="mr-2 text-yellow-600" />;
+                          case 'MARKET_INSIGHTS': return <TrendingUp size={20} className="mr-2 text-indigo-600" />;
+                          case 'INCUBATION_PROGRAM_NEWS': return <GraduationCap size={20} className="mr-2 text-brand-primary" />;
+                          case 'ALUMNI_HIGHLIGHTS': return <Star size={20} className="mr-2 text-purple-600" />;
+                          default: return <Info size={20} className="mr-2 text-gray-600" />;
+                        }
+                      };
+
+                      const formatCategory = (category) => {
+                        return category.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+                      };
+
+                      const formatDate = (dateString) => {
+                        return new Date(dateString).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        });
+                      };
+
+                      return (
+                        <div key={resource.id} className="bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 overflow-hidden">
+                          {/* Full-width image header */}
+                          {resource.imageUrl && (
+                            <div className="relative h-48 w-full">
+                              <img 
+                                src={resource.imageUrl} 
+                                alt={resource.title}
+                                className="w-full h-full object-cover"
+                              />
+
+                            </div>
+                          )}
+                          
+                          <div className="p-6">
+                            {/* Title with category icon */}
+                            <div className="flex items-start mb-3">
+                              <h4 className="text-xl font-bold text-brand-dark flex items-center flex-1">
+                                {getCategoryIcon(resource.category)}
+                                {resource.title}
+                              </h4>
+                            </div>
+                            
+
+                            
+                            {/* Content */}
+                            <p className="text-gray-700 mb-4 line-clamp-3 leading-relaxed">{resource.content}</p>
+                            
+                            {/* Meta information */}
+                            <div className="flex items-center justify-between text-sm mb-4 text-gray-600">
+                              <div className="flex items-center">
+                                <CalendarDays size={14} className="mr-2" /> 
+                                {resource.publishedAt ? formatDate(resource.publishedAt) : 'No date'}
+                              </div>
+                              {resource.authorName && (
+                                <span className="text-xs">By {resource.authorName}</span>
+                              )}
+                            </div>
+                            
+                            {/* Action buttons and attachments */}
+                            <div className="flex flex-col gap-3">
+                              {/* Reference file and link buttons */}
+                              <div className="flex flex-wrap gap-2">
+                                {resource.referenceFileUrl && (
+                                  <a 
+                                    href={resource.referenceFileUrl.startsWith('http') ? resource.referenceFileUrl : `http://localhost:8081${resource.referenceFileUrl}`}
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition duration-200"
+                                  >
+                                    <FileText size={16} className="mr-2" />
+                                    Download Resource
+                                  </a>
+                                )}
+                                {(resource.linkUrl || resource.link) && (
+                                  <a 
+                                    href={resource.linkUrl || resource.link}
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center px-4 py-2 bg-brand-primary text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition duration-200"
+                                  >
+                                    <ExternalLink size={16} className="mr-2" />
+                                    Learn More
+                                  </a>
+                                )}
+                              </div>
+                              
+                              {/* Default read more if no links */}
+                              {!resource.linkUrl && !resource.link && !resource.referenceFileUrl && (
+                                <button className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-600 text-sm font-medium rounded-lg cursor-default">
+                                  <Info size={16} className="mr-2" />
+                                  Read More
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  }
+                </div>
+              )}
+
+              {/* Empty State */}
+              {!resourcesLoading && mentorResources.filter(resource => selectedResourceCategory === 'all' || resource.category === selectedResourceCategory).length === 0 && (
+                <div className="text-center py-12">
+                  <BookOpen size={48} className="mx-auto text-gray-400 mb-4" />
+                  <h4 className="text-lg font-semibold text-gray-600 mb-2">No Mentor Resources Available</h4>
+                  <p className="text-gray-500">Check back later for new mentor resources, events, and insights.</p>
+                </div>
+              )}
             </div>
           )}
 
