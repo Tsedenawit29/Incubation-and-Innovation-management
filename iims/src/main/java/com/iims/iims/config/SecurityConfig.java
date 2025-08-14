@@ -46,10 +46,13 @@ public class SecurityConfig {
                         .requestMatchers("/api/users/request-admin").permitAll()
                         // Allow SockJS/WebSocket handshake and info endpoints
                         .requestMatchers("/ws/**").permitAll()
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Allow CORS preflight
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // Applications
                         .requestMatchers("/api/v1/applications/submit").permitAll()
+                        .requestMatchers("/api/v1/public/application-forms/*").permitAll()// Allow CORS preflight
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
+                        .requestMatchers("/api/v1/files/**").permitAll() // Allow file serving
                         
                         // Tenant-related endpoints
                         .requestMatchers(HttpMethod.GET, "/api/tenants/**").permitAll()
@@ -72,8 +75,6 @@ public class SecurityConfig {
                         .requestMatchers("/api/progresstracking/submissions/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/progresstracking/submission-files/upload").hasAnyRole("TENANT_ADMIN", "STARTUP", "MENTOR")
                         .requestMatchers("/api/progresstracking/**").authenticated()
-                        .requestMatchers("/api/v1/applications/submit").permitAll()
-                        .requestMatchers("/api/v1/public/application-forms/*").permitAll()
                         
                         // User management endpoints
                         .requestMatchers("/api/users/pending-admins", "/api/users/admin-requests", "/api/users/approve-admin/**", "/api/users/reject-admin/**").hasRole("SUPER_ADMIN")

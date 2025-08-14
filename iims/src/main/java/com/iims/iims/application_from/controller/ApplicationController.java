@@ -40,6 +40,59 @@ public class ApplicationController {
     }
 
     /**
+     * Endpoint for applicants to submit a new application with file uploads.
+     * This endpoint handles multipart/form-data requests.
+     *
+     * @param applicationData The application data as JSON string.
+     * @param request The HTTP request to extract all file parameters dynamically.
+     * @return ResponseEntity with the created ApplicationResponseDto and HTTP status 201.
+     */
+    @PostMapping(value = "/applications/submit", consumes = "multipart/form-data")
+    public ResponseEntity<ApplicationResponseDto> submitApplicationWithFiles(
+            @RequestParam("applicationData") String applicationData,
+            jakarta.servlet.http.HttpServletRequest request) {
+        
+        try {
+            // Parse the JSON application data
+            com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            SubmitApplicationRequest submitRequest = objectMapper.readValue(applicationData, SubmitApplicationRequest.class);
+            
+            // Extract files from the multipart request
+            java.util.List<org.springframework.web.multipart.MultipartFile> files = new java.util.ArrayList<>();
+            java.util.List<String> documentTypes = new java.util.ArrayList<>();
+            
+            if (request instanceof org.springframework.web.multipart.MultipartHttpServletRequest) {
+                org.springframework.web.multipart.MultipartHttpServletRequest multipartRequest = 
+                    (org.springframework.web.multipart.MultipartHttpServletRequest) request;
+                
+                // Extract files with pattern document_X
+                for (int i = 0; i < 10; i++) { // Support up to 10 files
+                    String fileParam = "document_" + i;
+                    String docTypeParam = "document_" + i + "_documentType";
+                    
+                    org.springframework.web.multipart.MultipartFile file = multipartRequest.getFile(fileParam);
+                    if (file != null && !file.isEmpty()) {
+                        files.add(file);
+                        documentTypes.add(multipartRequest.getParameter(docTypeParam));
+                    }
+                }
+            }
+            
+            ApplicationResponseDto createdApplication;
+            if (!files.isEmpty()) {
+                // Use the new method that handles actual file storage
+                createdApplication = applicationService.submitApplicationWithFiles(submitRequest, files, documentTypes);
+            } else {
+                // No files, use regular submission
+                createdApplication = applicationService.submitApplication(submitRequest);
+            }
+            return new ResponseEntity<>(createdApplication, HttpStatus.CREATED);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to process application submission: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * Retrieves a specific submitted application by its ID for a given tenant.
      * This endpoint is for tenants to view applications submitted to their forms.
      *

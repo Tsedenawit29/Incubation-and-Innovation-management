@@ -4,12 +4,28 @@ const API_URL = "http://localhost:8081/api";
 export async function applyForTenant(tenantData) {
   console.log("Applying for tenant:", tenantData);
   
+  // Create FormData to handle file uploads
+  const formData = new FormData();
+  
+  // Add all non-document fields to formData
+  const { documents, ...otherData } = tenantData;
+  
+  // Add basic tenant data as JSON
+  formData.append('tenantData', JSON.stringify(otherData));
+  
+  // Add each document to formData
+  if (documents && documents.length > 0) {
+    documents.forEach((doc, index) => {
+      formData.append(`document_${index}`, doc.file);
+      formData.append(`document_${index}_name`, doc.name);
+      formData.append(`document_${index}_type`, doc.type);
+    });
+  }
+  
   const res = await fetch(`${API_URL}/tenant/apply`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(tenantData),
+    // Don't set Content-Type header - browser will set it with boundary for FormData
+    body: formData,
   });
   
   console.log("Tenant application response status:", res.status);
@@ -149,4 +165,4 @@ export async function activateTenant(token, tenantId) {
   }
   
   return res.json();
-} 
+}

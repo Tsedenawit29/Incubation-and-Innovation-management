@@ -176,6 +176,7 @@ function App() {
             <Route path="/apply-tenant" element={<TenantApplicationForm />} />
             <Route path="/register-admin" element={<AdminRegistrationForm />} />
             <Route path="/register-admin/:tenantId" element={<AdminRegistrationForm />} />
+            <Route path="/apply/:id" element={<PublicApplicationFormView />} />
             {/* Public Landing Page */}
             <Route path="/public-landing/:tenantId" element={<PublicLandingPage />} />
             {/* Google OAuth Success Page */}
@@ -301,8 +302,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            {/* Public Application Form View */}
-            <Route path="/public/application-forms/:id" element={<PublicApplicationFormView />} />
             {/* Catch all route - must be last */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

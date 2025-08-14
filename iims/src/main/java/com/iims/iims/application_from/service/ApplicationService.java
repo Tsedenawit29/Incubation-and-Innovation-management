@@ -113,15 +113,59 @@ public class ApplicationService {
         application.setResponses(responses);
         Application savedApplication = applicationRepository.save(application);
 
-        // Handle document uploads if any
-        if (submitRequest.getDocuments() != null && !submitRequest.getDocuments().isEmpty()) {
-            submitRequest.getDocuments().forEach(docRequest -> {
-                documentService.uploadDocument(savedApplication.getId(), docRequest);
-            });
-        }
+        // Note: Document uploads are now handled separately via submitApplicationWithFiles method
+        // This method no longer processes Base64 encoded documents to avoid encoding issues
 
         return convertToDto(savedApplication);
     }
+
+    /**
+     * Submits a new application with MultipartFile uploads.
+     * Stores actual files in uploads/applicants directory and saves file URLs in database.
+     *
+     * @param submitRequest The SubmitApplicationRequest DTO containing application details.
+     * @param files The MultipartFile objects to be stored.
+     * @return The created ApplicationResponseDto.
+     */
+    @Transactional
+    public ApplicationResponseDto submitApplicationWithFiles(
+            SubmitApplicationRequest submitRequest,
+            java.util.List<org.springframework.web.multipart.MultipartFile> files,
+            java.util.List<String> documentTypes) {
+        
+        // First, create the application using the existing method (without documents)
+        ApplicationResponseDto applicationDto = submitApplication(submitRequest);
+        
+        // If there are files to process, handle them
+        if (files != null && !files.isEmpty()) {
+            Application application = applicationRepository.findById(applicationDto.getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Application not found with ID: " + applicationDto.getId()));
+            
+            for (int i = 0; i < files.size(); i++) {
+                org.springframework.web.multipart.MultipartFile file = files.get(i);
+                if (file != null && !file.isEmpty()) {
+                    try {
+                        // Use the new uploadMultipartFile method (like progress tracking system)
+                        String documentType = documentTypes != null && i < documentTypes.size() ? documentTypes.get(i) : "SUPPORTING_DOCUMENT";
+                        documentService.uploadMultipartFile(
+                            application.getId(),
+                            file,
+                            documentType,
+                            "Uploaded via application form"
+                        );
+                        
+                    } catch (Exception e) {
+                        throw new RuntimeException("Failed to store file: " + file.getOriginalFilename(), e);
+                    }
+                }
+            }
+        }
+        
+        return applicationDto;
+    }
+
+
+
     /**
      * Retrieves a specific application by its ID and tenant ID.
      *
@@ -274,7 +318,7 @@ public class ApplicationService {
                             .description(doc.getDescription())
                             .uploadedAt(doc.getUploadedAt())
                             .isActive(doc.getIsActive())
-                            .downloadUrl("/api/v1/applications/documents/" + doc.getId() + "/download")
+                            .downloadUrl("http://localhost:8081/api/v1/files/applicants/" + doc.getFileName())
                             .build())
                     .collect(Collectors.toList());
         }

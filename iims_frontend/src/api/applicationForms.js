@@ -101,17 +101,38 @@ export async function getApplicationFormById(token, tenantId, formId) {
 
 // Submit an application to a form
 export async function submitApplication(applicationData) {
+  // Create FormData to handle file uploads
+  const formData = new FormData();
+  
+  // Extract documents from application data
+  const { documents, ...otherData } = applicationData;
+  
+  // Add basic application data as JSON
+  formData.append('applicationData', JSON.stringify(otherData));
+  
+  // Add each document to formData
+  if (documents && documents.length > 0) {
+    documents.forEach((doc, index) => {
+      formData.append(`document_${index}`, doc.file);
+      formData.append(`document_${index}_name`, doc.name);
+      formData.append(`document_${index}_type`, doc.type);
+      if (doc.documentType) {
+        formData.append(`document_${index}_documentType`, doc.documentType);
+      }
+    });
+  }
+  
   const res = await fetch(`${API_URL}/applications/submit`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(applicationData)
+    // Don't set Content-Type header - browser will set it with boundary for FormData
+    body: formData
   });
+  
   if (!res.ok) {
     const errorText = await res.text();
     throw new Error(`Failed to submit application: ${errorText}`);
   }
+  
   return res.json();
 }
 

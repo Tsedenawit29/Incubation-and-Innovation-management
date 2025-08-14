@@ -48,7 +48,29 @@ export const updateApplicationStatus = async (tenantId, reviewData) => {
 // Document management
 export const uploadDocument = async (applicationId, documentData) => {
   try {
-    const response = await axios.post(`/api/v1/applications/${applicationId}/documents`, documentData);
+    // Create a FormData object to send the file
+    const formData = new FormData();
+    
+    // Add the actual file to the FormData
+    formData.append('file', documentData.file);
+    
+    // Add other metadata fields
+    formData.append('fileName', documentData.fileName);
+    formData.append('originalFileName', documentData.originalFileName);
+    formData.append('documentType', documentData.documentType);
+    formData.append('description', documentData.description || '');
+    
+    // Use FormData in the request
+    const response = await axios.post(
+      `/api/v1/applications/${applicationId}/documents`, 
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      }
+    );
+    
     return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Failed to upload document');

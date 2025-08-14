@@ -210,18 +210,36 @@ export default function ApplicationFormDetail() {
   };
 
   // Handler for copying the public link to the clipboard
- const handleCopyLink = () => {
-  const publicFormUrl = `${window.location.origin}/apply/${form.id}`;
-  const tempTextArea = document.createElement('textarea');
-  tempTextArea.value = publicFormUrl;
-  document.body.appendChild(tempTextArea);
-  tempTextArea.select();
-  tempTextArea.setSelectionRange(0, 99999);
-  document.execCommand('copy');
-  document.body.removeChild(tempTextArea);
-  setCopied(true);
-  setTimeout(() => setCopied(false), 2000);
-};
+  const handleCopyLink = async () => {
+    const publicFormUrl = `${window.location.origin}/apply/${form.id}`;
+    
+    try {
+      // Try modern Clipboard API first
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(publicFormUrl);
+      } else {
+        // Fallback to the old method for older browsers
+        const tempTextArea = document.createElement('textarea');
+        tempTextArea.value = publicFormUrl;
+        tempTextArea.style.position = 'fixed';
+        tempTextArea.style.left = '-999999px';
+        tempTextArea.style.top = '-999999px';
+        document.body.appendChild(tempTextArea);
+        tempTextArea.focus();
+        tempTextArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempTextArea);
+      }
+      
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+      // Show error feedback to user
+      setError('Failed to copy link to clipboard. Please copy manually.');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
   
   // Handler for cloning the form
   const handleCloneForm = async () => {

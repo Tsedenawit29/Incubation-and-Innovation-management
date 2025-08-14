@@ -55,11 +55,20 @@ export default function TenantApplicationForm() {
   };
 
   const handleFileSelect = (fileData) => {
-    setDocuments(prev => [...prev, fileData]);
+    // Store the file object and metadata
+    setDocuments(prev => [...prev, {
+      file: fileData.file, // Raw file object
+      name: fileData.name,
+      type: fileData.type,
+      size: fileData.size
+    }]);
   };
 
   const handleFileRemove = (fileData) => {
-    setDocuments(prev => prev.filter(doc => doc !== fileData));
+    // Remove file by matching name and size
+    setDocuments(prev => prev.filter(doc => 
+      doc.name !== fileData.name || doc.size !== fileData.size
+    ));
   };
 
   return (
@@ -219,4 +228,4 @@ export default function TenantApplicationForm() {
       </div>
     </div>
   );
-} 
+}

@@ -193,10 +193,6 @@ export default function CreateApplicationFormPage() {
       setError("All options must be filled for select/radio/checkbox fields");
       return;
     }
-    if (!selectedCohortId || !selectedIndustryId) {
-      setError("Please select a cohort and an industry.");
-      return;
-    }
     if (!user?.tenantId || !token) {
         setError('Authentication data is missing. Cannot submit form.');
         return;
