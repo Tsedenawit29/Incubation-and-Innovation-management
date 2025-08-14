@@ -9,8 +9,11 @@ import {
 import { getMentorsForStartup } from '../api/mentorAssignment';
 import { getAssignedTemplatesForStartup, getPhases, getTasks, uploadSubmissionFile, createSubmission } from '../api/progresstracking';
 import { getNewsPostsByTenant } from '../api/news';
+import { getNotifications, getUnreadNotificationCount, markNotificationAsRead } from '../api/notifications';
 import StartupProgressTracking from '../components/StartupProgressTracking';
 import CalendarManagement from './CalendarManagement';
+import { MessageCircle } from 'lucide-react';
+
 
 // Import Lucide React icons
 import {
@@ -238,11 +241,10 @@ export default function StartupDashboard() {
   console.log('StartupDashboard: Mentors loading:', mentorsLoading);
   console.log('StartupDashboard: Current mentor:', currentMentor);
 
-  const mockNotifications = [
-    { id: 1, type: "system", icon: <Info size={16} />, message: "Your Q2 progress report is due next week.", time: "2 hours ago" },
-    { id: 2, type: "mentor", icon: <GraduationCap size={16} />, message: "Dr. Chen left feedback on your MVP pitch deck.", time: "Yesterday" },
-    { id: 3, type: "admin", icon: <Building size={16} />, message: "New grant opportunity: 'Innovate Fund 2025' is open!", time: "3 days ago" },
-  ];
+  // Real notifications state
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
 
   const mockUpcomingTask = {
     title: "Submit Q2 Progress Report",
@@ -337,6 +339,70 @@ export default function StartupDashboard() {
       setNewsOpportunities([]);
     } finally {
       setNewsLoading(false);
+    }
+  };
+
+  // Notification functions
+  const fetchNotifications = async () => {
+    if (!token) {
+      console.log('fetchNotifications: Missing token');
+      return;
+    }
+
+    setNotificationsLoading(true);
+    try {
+      const notificationData = await getNotifications();
+      const processedNotifications = notificationData.map(notif => ({
+        ...notif,
+        icon: getNotificationIcon(notif.type),
+        time: notif.relativeTime
+      }));
+      setNotifications(processedNotifications);
+      
+      // Also fetch unread count
+      const count = await getUnreadNotificationCount();
+      setUnreadCount(count);
+    } catch (err) {
+      console.error('fetchNotifications: Error:', err);
+      setNotifications([]);
+      setUnreadCount(0);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  };
+
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case 'meeting':
+        return <Calendar size={16} />;
+      case 'feedback':
+        return <MessageCircle size={16} />;
+      case 'news':
+        return <Info size={16} />;
+      case 'system':
+        return <Bell size={16} />;
+      default:
+        return <Info size={16} />;
+    }
+  };
+
+  const handleNotificationClick = async (notification) => {
+    try {
+      await markNotificationAsRead(notification.id);
+      // Navigate to the appropriate page based on actionUrl
+      if (notification.actionUrl) {
+        if (notification.actionUrl === '/calendar') {
+          setCurrentPage('calendar');
+        } else if (notification.actionUrl === '/progress') {
+          setCurrentPage('progress');
+        } else if (notification.actionUrl === '/dashboard') {
+          setCurrentPage('dashboard');
+        }
+      }
+      // Refresh notifications after marking as read
+      await fetchNotifications();
+    } catch (err) {
+      console.error('Error handling notification click:', err);
     }
   };
 
@@ -467,6 +533,9 @@ export default function StartupDashboard() {
         
         // Fetch news opportunities after profile is loaded
         await fetchNewsOpportunities();
+        
+        // Fetch notifications after profile is loaded
+        await fetchNotifications();
       } catch (err) {
         console.error("StartupDashboard: Error fetching profile:", err);
         // Check if the error indicates profile not found or forbidden (due to backend mapping)
@@ -1093,17 +1162,32 @@ export default function StartupDashboard() {
                   <h3 className="text-xl font-bold text-brand-dark mb-5 flex items-center">
                     <BellRing size={24} className="mr-3 text-orange-600" /> Recent Notifications
                   </h3>
-                  <ul className="space-y-4">
-                    {mockNotifications.slice(0, 3).map(notif => (
-                      <li key={notif.id} className="flex items-start">
-                        <div className="flex-shrink-0 mt-1 mr-3 text-gray-500">{notif.icon}</div>
-                        <div>
-                          <p className="text-sm text-gray-700 font-medium mb-1">{notif.message}</p>
-                          <p className="text-xs text-gray-500">{notif.time}</p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
+                  {notificationsLoading ? (
+                    <div className="flex justify-center py-4">
+                      <div className="animate-spin h-6 w-6 border-b-2 border-orange-600 rounded-full"></div>
+                    </div>
+                  ) : (
+                    <ul className="space-y-4">
+                      {notifications.slice(0, 3).map(notif => (
+                        <li key={notif.id} className="flex items-start cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors" onClick={() => handleNotificationClick(notif)}>
+                          <div className="flex-shrink-0 mt-1 mr-3 text-gray-500">{notif.icon}</div>
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-700 font-medium mb-1">{notif.message}</p>
+                            <p className="text-xs text-gray-500">{notif.time}</p>
+                            {notif.priority === 'HIGH' && (
+                              <span className="inline-block mt-1 px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full">High Priority</span>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                      {notifications.length === 0 && (
+                        <li className="text-center py-4 text-gray-500">
+                          <Bell size={24} className="mx-auto mb-2 text-gray-300" />
+                          No notifications yet
+                        </li>
+                      )}
+                    </ul>
+                  )}
                   <button
                     onClick={() => setCurrentPage('notifications')}
                     className="mt-6 px-5 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-full shadow-sm hover:bg-gray-200 transition duration-200"
@@ -2014,23 +2098,62 @@ export default function StartupDashboard() {
               </div>
 
               {/* Notifications List (Timeline Style) */}
-              <div className="relative pl-8 border-l-2 border-gray-200 space-y-8">
-                {mockNotifications.map((notif, index) => (
-                  <div key={notif.id} className="relative">
-                    <div className="absolute -left-3.5 -top-1 w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 shadow-sm">
-                      {notif.icon}
-                    </div>
-                    <div className="ml-4 p-5 bg-white rounded-2xl shadow-lg border border-gray-100">
-                      <p className="text-sm text-gray-700 font-medium mb-1">{notif.message}</p>
-                      <p className="text-xs text-gray-500">{notif.time}</p>
-                      <div className="flex justify-end mt-3 space-x-2">
-                        <button className="text-xs text-blue-500 hover:underline">Mark as Read</button>
-                        <button className="text-xs text-red-500 hover:underline">Delete</button>
+              {notificationsLoading ? (
+                <div className="flex justify-center py-12">
+                  <div className="animate-spin h-8 w-8 border-b-2 border-brand-primary rounded-full"></div>
+                </div>
+              ) : (
+                <div className="relative pl-8 border-l-2 border-gray-200 space-y-8">
+                  {notifications.map((notif, index) => (
+                    <div key={notif.id} className="relative">
+                      <div className={`absolute -left-3.5 -top-1 w-7 h-7 rounded-full flex items-center justify-center text-white shadow-sm ${
+                        notif.priority === 'HIGH' ? 'bg-red-500' : 
+                        notif.priority === 'MEDIUM' ? 'bg-yellow-500' : 'bg-blue-500'
+                      }`}>
+                        {notif.icon}
+                      </div>
+                      <div className="ml-4 p-5 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-shadow cursor-pointer" onClick={() => handleNotificationClick(notif)}>
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="text-sm font-semibold text-gray-800">{notif.title}</h4>
+                          {notif.priority === 'HIGH' && (
+                            <span className="px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full">High Priority</span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-700 mb-2">{notif.message}</p>
+                        <div className="flex justify-between items-center">
+                          <p className="text-xs text-gray-500">{notif.time}</p>
+                          <div className="flex space-x-2">
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleNotificationClick(notif);
+                              }}
+                              className="text-xs text-blue-500 hover:underline"
+                            >
+                              Mark as Read
+                            </button>
+                            <span className={`px-2 py-1 text-xs rounded-full ${
+                              notif.type === 'meeting' ? 'bg-purple-100 text-purple-800' :
+                              notif.type === 'feedback' ? 'bg-green-100 text-green-800' :
+                              notif.type === 'news' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {notif.type}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                  {notifications.length === 0 && (
+                    <div className="text-center py-12">
+                      <Bell size={48} className="mx-auto mb-4 text-gray-300" />
+                      <h3 className="text-lg font-medium text-gray-500 mb-2">No notifications</h3>
+                      <p className="text-gray-400">You're all caught up!</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
