@@ -3,6 +3,9 @@ import { FaRocket, FaMoneyBillWave, FaChalkboardTeacher, FaChartLine, FaLightbul
 import Testimonials from '../components/Testimonials';
 import { motion } from "framer-motion";
 import { Link } from 'react-router-dom';
+import Navbar from '../components/iimsNavbar';
+import HeroSection from '../components/HeroSection';
+import Footer from '../components/iims_Footer';  
 
 const metrics = [
   { icon: <FaRocket size={28} />, label: 'Startups Incubated', value: 24 },
@@ -24,6 +27,9 @@ const features = [
 
 const Home = () => {
   return (
+    <>
+    
+    <HeroSection />
     <div className="relative px-4 py-8 max-w-6xl mx-auto">
       {/* Artistic floating shapes */}
       <div className="pointer-events-none select-none">
@@ -66,7 +72,7 @@ const Home = () => {
           {/* Central Image */}
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center">
             <img
-              src="/logo.jpeg" // Replace with your actual image path
+              src="/logo.jpg" // Replace with your actual image path
               alt="Team Leader"
               className="w-32 h-32 rounded-full object-cover border-4 border-[#299DFF] shadow-2xl mb-2 animate-float"
               style={{ background: 'white' }}
@@ -246,21 +252,32 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Call to Action Section */}
-      <section className="w-full flex flex-col items-center justify-center py-16">
-        <div className="bg-gradient-to-r from-[#299DFF] to-[#0A2D5C] rounded-2xl shadow-lg px-8 py-12 flex flex-col items-center max-w-2xl w-full">
-          <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4 text-center drop-shadow">Ready to take your innovation to the next level?</h2>
-          <p className="text-lg text-blue-100 mb-8 text-center">Apply now to join our incubation program and turn your ideas into reality!</p>
-          <Link
-                  to="/apply-tenant"
-                  className="w-full bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white font-semibold py-4 px-6 rounded-xl text-center block transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
-                >
-                  Apply for Tenant Registration
-                </Link>
-        </div>
-      </section>
+     {/* Call to Action Section */}
+<section className="w-full flex justify-center py-20 bg-gray-50">
+  <div className="relative bg-gradient-to-r from-[#299DFF] to-[#0A2D5C] rounded-3xl shadow-2xl px-10 py-16 w-full max-w-5xl text-center overflow-hidden">
+    
+    {/* Decorative floating shapes */}
+    <div className="absolute top-0 left-0 w-40 h-40 bg-white/10 rounded-full -translate-x-1/2 -translate-y-1/2 animate-pulse"></div>
+    <div className="absolute bottom-0 right-0 w-56 h-56 bg-white/10 rounded-full translate-x-1/2 translate-y-1/2 animate-pulse"></div>
+
+    <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-6 drop-shadow-lg">
+      Empower Your Innovation Centers with IIMS
+    </h2>
+    <p className="text-lg md:text-xl text-blue-100 mb-10 max-w-3xl mx-auto drop-shadow">
+      Automate all your incubation and innovation processes with a unified, easy-to-use platform. Join the growing network of centers transforming ideas into impact.
+    </p>
+
+    <Link
+      to="/apply-tenant"
+      className="inline-block w-full sm:w-auto bg-white text-[#0A2D5C] font-semibold py-4 px-8 rounded-2xl text-lg transition-all duration-300 transform hover:scale-105 hover:bg-blue-50 shadow-lg hover:shadow-xl"
+    >
+      Apply for Tenant Registration
+    </Link>
+  </div>
+</section>
+
     </div>
-  );
+    </>);
 }
 
 export default Home;
