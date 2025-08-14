@@ -149,21 +149,26 @@ function App() {
             />
 
             {/* Tenant Admin Chat Management */}
-            <Route
-              path="/tenant-admin/chats"
-              element={
-                <ProtectedRoute role="TENANT_ADMIN">
-                  <TenantAdminChatPage />
+           {/* Tenant Admin Chat Management */}
+<Route
+  path="/tenant-admin/chats"
+  element={
+    <ProtectedRoute role="TENANT_ADMIN">
+      <TenantAdminChatPage />
+    </ProtectedRoute>
+  }
+/>
 
-            <Route
-              path="/tenant-admin/news"
-              element={
-                <ProtectedRoute role="TENANT_ADMIN">
-                  <NewsManagement />
+{/* Tenant Admin News Management */}
+<Route
+  path="/tenant-admin/news"
+  element={
+    <ProtectedRoute role="TENANT_ADMIN">
+      <NewsManagement />
+    </ProtectedRoute>
+  }
+/>
 
-                </ProtectedRoute>
-              }
-            />
             {/* Super Admin Routes */}
             <Route 
               path="/tenant-management" 

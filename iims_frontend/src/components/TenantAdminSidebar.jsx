@@ -75,7 +75,8 @@ export default function TenantAdminSidebar({ user, onLogout }) {
       icon: <FaUsers />,
       label: 'Chats',
       description: 'Manage and monitor chat conversations'
-
+    },
+    {
       path: '/tenant-admin/news',
       icon: <FaNewspaper />,
       label: 'News & Updates',
