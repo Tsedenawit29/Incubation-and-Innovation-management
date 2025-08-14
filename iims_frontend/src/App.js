@@ -29,6 +29,8 @@ import CreateApplicationFormPage from './pages/CreateApplicationFormPage';
 import ApplicationFormDetail from './pages/ApplicationFormDetail';
 import ApplicationsPage from './pages/ApplicationsPage';
 import PublicApplicationFormView from './pages/PublicApplicationFormView';
+import TenantAdminChatPage from './pages/TenantAdminChatPage';
+import SuperAdminChatPage from './pages/SuperAdminChatPage';
 import './App.css';
 import Home from './pages/Home';
 import Documentation from './pages/Documentation';
@@ -145,11 +147,19 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/tenant-admin/news"
               element={
                 <ProtectedRoute role="TENANT_ADMIN">
-                  <NewsManagement />
+
+            {/* Tenant Admin Chat Management */}
+            <Route
+              path="/tenant-admin/chats"
+              element={
+                <ProtectedRoute role="TENANT_ADMIN">
+                  <TenantAdminChatPage />
+
                 </ProtectedRoute>
               }
             />
@@ -167,6 +177,15 @@ function App() {
               element={
                 <ProtectedRoute role="SUPER_ADMIN">
                   <AdminRequestManagementPage />
+                </ProtectedRoute>
+              } 
+            />
+            {/* Super Admin Chat Management */}
+            <Route 
+              path="/super-admin/chats" 
+              element={
+                <ProtectedRoute role="SUPER_ADMIN">
+                  <SuperAdminChatPage />
                 </ProtectedRoute>
               } 
             />
