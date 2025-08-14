@@ -13,7 +13,8 @@ import {
   FaBell,
   FaWpforms,
   FaFileAlt,
-  FaCalendarAlt
+  FaCalendarAlt,
+  FaNewspaper
 } from 'react-icons/fa';
 
 export default function TenantAdminSidebar({ user, onLogout }) {
@@ -67,6 +68,12 @@ export default function TenantAdminSidebar({ user, onLogout }) {
       icon: <FaFileAlt />,
       label: 'Applications',
       description: 'Review submitted applications'
+    },
+    {
+      path: '/tenant-admin/news',
+      icon: <FaNewspaper />,
+      label: 'News & Updates',
+      description: 'Manage news posts and announcements'
     }
   ];
 
@@ -114,9 +121,9 @@ export default function TenantAdminSidebar({ user, onLogout }) {
       {/* Navigation */}
       <nav className="p-4">
         <div className="space-y-2">
-          {menuItems.map((item) => (
+          {menuItems.map((item, index) => (
             <Link
-              key={item.path}
+              key={`menu-${index}-${item.path}`}
               to={item.path}
               className={`group flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 ${
                 isActive(item.path)

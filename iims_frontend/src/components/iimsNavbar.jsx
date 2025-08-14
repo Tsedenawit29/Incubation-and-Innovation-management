@@ -20,7 +20,7 @@ const Navbar = () => (
         Home
       </Link>
       <Link
-        to="/application"
+        to="/apply-tenant"
         className="text-xl font-semibold text-brand-dark nav-link"
         style={{ color: 'var(--brand-dark)', transition: 'color 0.2s' }}
       >
