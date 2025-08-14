@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getLandingPage, saveLandingPage, uploadLandingPageImage } from '../api/landingPage';
-import { getNewsPostsByTenant, createNewsPost } from '../api/news';
 import { useAuth } from '../hooks/useAuth';
-import { FaRocket, FaInfoCircle, FaEnvelope, FaFolderOpen, FaCogs, FaUserPlus, FaUserTie, FaQuoteLeft, FaUsers, FaQuestionCircle, FaImages, FaNewspaper, FaHome, FaPlus, FaSearch, FaEdit, FaCheck, FaTimes } from 'react-icons/fa';
+import { FaRocket, FaInfoCircle, FaEnvelope, FaFolderOpen, FaCogs, FaUserPlus, FaUserTie, FaQuoteLeft, FaUsers, FaQuestionCircle, FaImages, FaNewspaper, FaHome } from 'react-icons/fa';
 import SocialLinksEditor from '../components/SocialLinksEditor';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/css';
@@ -149,463 +148,6 @@ const defaultSectionContent = {
   GALLERY: { layout: 'grid', images: [''] },
   CUSTOM: { html: '' },
 };
-
-// NewsEditor component for integrated news management
-function NewsEditor({ section, onChange, tenantId }) {
-  const { token } = useAuth();
-  const content = section.contentJson ? JSON.parse(section.contentJson) : defaultSectionContent[section.type] || {};
-  const [existingNews, setExistingNews] = useState([]);
-  const [loadingNews, setLoadingNews] = useState(false);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedNewsIds, setSelectedNewsIds] = useState(new Set());
-  const [createFormData, setCreateFormData] = useState({
-    title: '',
-    content: '',
-    category: 'GENERAL_ANNOUNCEMENT',
-    authorName: '',
-    linkUrl: '',
-    imageFile: null,
-    referenceFile: null
-  });
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState('');
-
-  // News categories for dropdown
-  const newsCategories = [
-    { value: 'INCUBATION_PROGRAM_NEWS', label: 'Incubation Program News' },
-    { value: 'FUNDING_OPPORTUNITIES', label: 'Funding Opportunities' },
-    { value: 'STARTUP_SHOWCASE', label: 'Startup Showcase' },
-    { value: 'UPCOMING_EVENTS', label: 'Upcoming Events' },
-    { value: 'SUCCESS_STORIES', label: 'Success Stories' },
-    { value: 'MENTOR_RESOURCES', label: 'Mentor Resources' },
-    { value: 'INVESTOR_PITCH_SUMMARIES', label: 'Investor Pitch Summaries' },
-    { value: 'MARKET_INSIGHTS', label: 'Market Insights' },
-    { value: 'GENERAL_ANNOUNCEMENT', label: 'General Announcement' },
-    { value: 'ALUMNI_HIGHLIGHTS', label: 'Alumni Highlights' }
-  ];
-
-  // Load existing news posts
-  useEffect(() => {
-    if (tenantId && token) {
-      loadExistingNews();
-    }
-  }, [tenantId, token]);
-
-  // Initialize selected news from content
-  useEffect(() => {
-    if (content.selectedNewsIds) {
-      setSelectedNewsIds(new Set(content.selectedNewsIds));
-    }
-  }, [content.selectedNewsIds]);
-
-  const loadExistingNews = async () => {
-    setLoadingNews(true);
-    try {
-      const news = await getNewsPostsByTenant(token, tenantId);
-      setExistingNews(news || []);
-      console.log('📰 Loaded existing news:', news?.length || 0, 'posts');
-    } catch (error) {
-      console.error('❌ Failed to load existing news:', error);
-    } finally {
-      setLoadingNews(false);
-    }
-  };
-
-  // Filter news based on search term
-  const filteredNews = existingNews.filter(news => 
-    news.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    news.content.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Handle news selection
-  const handleNewsSelection = (newsId, isSelected) => {
-    const newSelectedIds = new Set(selectedNewsIds);
-    if (isSelected) {
-      newSelectedIds.add(newsId);
-    } else {
-      newSelectedIds.delete(newsId);
-    }
-    setSelectedNewsIds(newSelectedIds);
-    
-    // Update content with selected news
-    const selectedNews = existingNews.filter(news => newSelectedIds.has(news.id));
-    const newsItems = selectedNews.map(news => ({
-      id: news.id,
-      title: news.title,
-      content: news.content,
-      date: news.publishedAt ? news.publishedAt.split('T')[0] : new Date().toISOString().split('T')[0],
-      image: news.imageUrl,
-      link: news.linkUrl,
-      isFromSystem: true
-    }));
-    
-    onChange({ 
-      ...section, 
-      contentJson: JSON.stringify({ 
-        ...content, 
-        news: newsItems,
-        selectedNewsIds: Array.from(newSelectedIds)
-      }) 
-    });
-  };
-
-  // Handle create new news post
-  const handleCreateNews = async () => {
-    if (!createFormData.title || !createFormData.content || !createFormData.authorName) {
-      setCreateError('Please fill in all required fields (Title, Content, Author Name)');
-      return;
-    }
-
-    if (!createFormData.imageFile) {
-      setCreateError('Please select an image file');
-      return;
-    }
-
-    setCreating(true);
-    setCreateError('');
-    
-    try {
-      const formData = new FormData();
-      formData.append('title', createFormData.title);
-      formData.append('content', createFormData.content);
-      formData.append('category', createFormData.category);
-      formData.append('authorName', createFormData.authorName);
-      if (createFormData.linkUrl) {
-        formData.append('linkUrl', createFormData.linkUrl);
-      }
-      formData.append('imageFile', createFormData.imageFile);
-      if (createFormData.referenceFile) {
-        formData.append('referenceFile', createFormData.referenceFile);
-      }
-
-      const newPost = await createNewsPost(token, formData);
-      console.log('✅ Created new news post:', newPost);
-      
-      // Refresh the news list
-      await loadExistingNews();
-      
-      // Auto-select the new post
-      const newSelectedIds = new Set([...selectedNewsIds, newPost.id]);
-      setSelectedNewsIds(newSelectedIds);
-      
-      // Add to content
-      const newNewsItem = {
-        id: newPost.id,
-        title: newPost.title,
-        content: newPost.content,
-        date: newPost.publishedAt ? newPost.publishedAt.split('T')[0] : new Date().toISOString().split('T')[0],
-        image: newPost.imageUrl,
-        link: newPost.linkUrl,
-        isFromSystem: true
-      };
-      
-      const updatedNews = [...(content.news || []), newNewsItem];
-      onChange({ 
-        ...section, 
-        contentJson: JSON.stringify({ 
-          ...content, 
-          news: updatedNews,
-          selectedNewsIds: Array.from(newSelectedIds)
-        }) 
-      });
-      
-      // Reset form
-      setCreateFormData({
-        title: '',
-        content: '',
-        category: 'GENERAL_ANNOUNCEMENT',
-        authorName: '',
-        linkUrl: '',
-        imageFile: null,
-        referenceFile: null
-      });
-      setShowCreateForm(false);
-      
-    } catch (error) {
-      console.error('❌ Failed to create news post:', error);
-      setCreateError(`Failed to create news post: ${error.message}`);
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* Section Title */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Section Title</label>
-        <input 
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-          value={content.title || ''} 
-          onChange={e => onChange({ ...section, contentJson: JSON.stringify({ ...content, title: e.target.value }) })}
-          placeholder="Latest News & Updates"
-        />
-      </div>
-
-      {/* Section Description */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Section Description</label>
-        <textarea 
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-          rows="3"
-          value={content.description || ''} 
-          onChange={e => onChange({ ...section, contentJson: JSON.stringify({ ...content, description: e.target.value }) })}
-          placeholder="Stay updated with our latest news, announcements, and opportunities"
-        />
-      </div>
-
-      {/* News Management */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <label className="block text-sm font-medium text-gray-700">News Content</label>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowCreateForm(!showCreateForm)}
-              className="bg-green-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-600 transition-colors flex items-center gap-2"
-            >
-              <FaPlus className="w-4 h-4" />
-              Create New Post
-            </button>
-            <button
-              onClick={loadExistingNews}
-              disabled={loadingNews}
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors flex items-center gap-2 disabled:opacity-50"
-            >
-              <FaSearch className="w-4 h-4" />
-              {loadingNews ? 'Loading...' : 'Refresh'}
-            </button>
-          </div>
-        </div>
-
-        {/* Create New Post Form */}
-        {showCreateForm && (
-          <div className="bg-green-50 rounded-lg p-6 border border-green-200 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-lg font-semibold text-green-800">Create New News Post</h4>
-              <button
-                onClick={() => setShowCreateForm(false)}
-                className="text-green-600 hover:text-green-800"
-              >
-                <FaTimes className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Title *</label>
-                <input
-                  type="text"
-                  value={createFormData.title}
-                  onChange={e => setCreateFormData({...createFormData, title: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  placeholder="Enter news title"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Author Name *</label>
-                <input
-                  type="text"
-                  value={createFormData.authorName}
-                  onChange={e => setCreateFormData({...createFormData, authorName: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  placeholder="Enter author name"
-                />
-              </div>
-            </div>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Content *</label>
-              <textarea
-                value={createFormData.content}
-                onChange={e => setCreateFormData({...createFormData, content: e.target.value})}
-                rows="4"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                placeholder="Enter news content"
-              />
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                <select
-                  value={createFormData.category}
-                  onChange={e => setCreateFormData({...createFormData, category: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                >
-                  {newsCategories.map(cat => (
-                    <option key={cat.value} value={cat.value}>{cat.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Link URL (Optional)</label>
-                <input
-                  type="url"
-                  value={createFormData.linkUrl}
-                  onChange={e => setCreateFormData({...createFormData, linkUrl: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  placeholder="https://example.com"
-                />
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Image *</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={e => setCreateFormData({...createFormData, imageFile: e.target.files[0]})}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Reference File (Optional)</label>
-                <input
-                  type="file"
-                  onChange={e => setCreateFormData({...createFormData, referenceFile: e.target.files[0]})}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
-                />
-              </div>
-            </div>
-            
-            {createError && (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                {createError}
-              </div>
-            )}
-            
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowCreateForm(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                disabled={creating}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateNews}
-                disabled={creating}
-                className="bg-green-500 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-600 transition-colors flex items-center gap-2 disabled:opacity-50"
-              >
-                {creating ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <FaCheck className="w-4 h-4" />
-                    Create Post
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Search existing news */}
-        <div className="mb-4">
-          <div className="relative">
-            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search existing news posts..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-        </div>
-
-        {/* Existing news selection */}
-        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-          <h4 className="font-medium text-gray-800 mb-3">
-            Select from Existing News ({selectedNewsIds.size} selected)
-          </h4>
-          
-          {loadingNews ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-              <p className="text-gray-600">Loading news posts...</p>
-            </div>
-          ) : filteredNews.length === 0 ? (
-            <div className="text-center py-8">
-              <FaNewspaper className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-              <p className="text-gray-600">
-                {searchTerm ? 'No news posts match your search.' : 'No news posts found. Create your first post!'}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {filteredNews.map(news => (
-                <div key={news.id} className="bg-white rounded-lg p-4 border border-gray-200 hover:border-blue-300 transition-colors">
-                  <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      checked={selectedNewsIds.has(news.id)}
-                      onChange={e => handleNewsSelection(news.id, e.target.checked)}
-                      className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h5 className="font-medium text-gray-900 truncate">{news.title}</h5>
-                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                          {newsCategories.find(cat => cat.value === news.category)?.label || news.category}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 line-clamp-2 mb-2">{news.content}</p>
-                      <div className="flex items-center gap-4 text-xs text-gray-500">
-                        <span>By {news.authorName}</span>
-                        <span>{new Date(news.publishedAt).toLocaleDateString()}</span>
-                        {news.linkUrl && (
-                          <a href={news.linkUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-                            View Link
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                    {news.imageUrl && (
-                      <div className="w-16 h-16 rounded-lg border border-gray-200 overflow-hidden flex-shrink-0">
-                        <img src={news.imageUrl} alt={news.title} className="w-full h-full object-cover" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Selected news summary */}
-        {selectedNewsIds.size > 0 && (
-          <div className="bg-blue-50 rounded-lg p-4 border border-blue-200 mt-4">
-            <h4 className="font-medium text-blue-800 mb-2">
-              Selected News Posts ({selectedNewsIds.size})
-            </h4>
-            <div className="space-y-2">
-              {existingNews
-                .filter(news => selectedNewsIds.has(news.id))
-                .map(news => (
-                  <div key={news.id} className="flex items-center justify-between bg-white rounded p-2">
-                    <span className="text-sm font-medium text-gray-900">{news.title}</span>
-                    <button
-                      onClick={() => handleNewsSelection(news.id, false)}
-                      className="text-red-500 hover:text-red-700"
-                      title="Remove from selection"
-                    >
-                      <FaTimes className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 function SectionEditor({ section, onChange, tenantId }) {
   const { token } = useAuth();
@@ -794,132 +336,58 @@ function SectionEditor({ section, onChange, tenantId }) {
         {/* CTAs */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-3">Call-to-Action Buttons</label>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {content.ctas && content.ctas.map((cta, idx) => (
-              <div key={idx} className="bg-gradient-to-r from-gray-50 to-blue-50 border border-gray-200 rounded-xl p-4 shadow-sm">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Button Text</label>
-                    <input 
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" 
-                      value={cta.label || ''} 
-                      onChange={e => {
-                        const ctas = [...content.ctas];
-                        ctas[idx].label = e.target.value;
-                        onChange({ ...section, contentJson: JSON.stringify({ ...content, ctas }) });
-                      }}
-                      placeholder="e.g., Apply as Startup"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Button Type</label>
-                    <select 
-                      value={cta.type || 'startup'} 
-                      onChange={e => {
-                        const ctas = [...content.ctas];
-                        ctas[idx].type = e.target.value;
-                        onChange({ ...section, contentJson: JSON.stringify({ ...content, ctas }) });
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    >
-                      <option value="startup">🚀 Startup Application</option>
-                      <option value="mentor">👨‍🏫 Mentor Application</option>
-                      <option value="custom">⚙️ Custom Action</option>
-                    </select>
-                  </div>
-                </div>
-                
-                <div className="mb-3">
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Redirect URL</label>
+              <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex-1">
                   <input 
-                    type="url"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" 
-                    value={cta.url || ''} 
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                    value={cta.label || ''} 
                     onChange={e => {
                       const ctas = [...content.ctas];
-                      ctas[idx].url = e.target.value;
+                      ctas[idx].label = e.target.value;
                       onChange({ ...section, contentJson: JSON.stringify({ ...content, ctas }) });
                     }}
-                    placeholder="https://your-domain.com/signup"
+                    placeholder="Button text..."
                   />
-                  <p className="text-xs text-gray-500 mt-1">Where users will be redirected when they click this button</p>
                 </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Button Style</label>
-                    <select 
-                      value={cta.style || 'primary'} 
-                      onChange={e => {
-                        const ctas = [...content.ctas];
-                        ctas[idx].style = e.target.value;
-                        onChange({ ...section, contentJson: JSON.stringify({ ...content, ctas }) });
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    >
-                      <option value="primary">🎯 Primary (Filled)</option>
-                      <option value="secondary">🔲 Secondary (Outlined)</option>
-                      <option value="ghost">👻 Ghost (Text Only)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Open In</label>
-                    <select 
-                      value={cta.target || '_self'} 
-                      onChange={e => {
-                        const ctas = [...content.ctas];
-                        ctas[idx].target = e.target.value;
-                        onChange({ ...section, contentJson: JSON.stringify({ ...content, ctas }) });
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    >
-                      <option value="_self">🔄 Same Tab</option>
-                      <option value="_blank">🆕 New Tab</option>
-                    </select>
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cta.style === 'primary' ? '#3B82F6' : cta.style === 'secondary' ? 'transparent' : '#6B7280', border: cta.style === 'secondary' ? '2px solid #3B82F6' : 'none' }}></div>
-                    <span className="text-xs text-gray-600">Preview Color</span>
-                  </div>
-                  <button 
-                    onClick={() => {
-                      const ctas = content.ctas.filter((_, i) => i !== idx);
-                      onChange({ ...section, contentJson: JSON.stringify({ ...content, ctas }) });
-                    }} 
-                    className="flex items-center gap-1 px-3 py-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium"
-                    title="Remove CTA Button"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    Remove
-                  </button>
-                </div>
+                <select 
+                  value={cta.type || 'startup'} 
+                  onChange={e => {
+                    const ctas = [...content.ctas];
+                    ctas[idx].type = e.target.value;
+                    onChange({ ...section, contentJson: JSON.stringify({ ...content, ctas }) });
+                  }}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="startup">Startup</option>
+                  <option value="mentor">Mentor</option>
+                </select>
+                <button 
+                  onClick={() => {
+                    const ctas = content.ctas.filter((_, i) => i !== idx);
+                    onChange({ ...section, contentJson: JSON.stringify({ ...content, ctas }) });
+                  }} 
+                  className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Remove CTA"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
               </div>
             ))}
-            
             <button 
               onClick={() => {
-                const ctas = [...(content.ctas || []), { 
-                  label: '', 
-                  type: 'startup', 
-                  url: '', 
-                  style: 'primary',
-                  target: '_self'
-                }];
+                const ctas = [...(content.ctas || []), { label: '', type: 'startup' }];
                 onChange({ ...section, contentJson: JSON.stringify({ ...content, ctas }) });
               }} 
-              className="w-full bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-dashed border-blue-300 text-blue-700 px-6 py-4 rounded-xl font-semibold hover:from-blue-100 hover:to-indigo-100 hover:border-blue-400 transition-all duration-200 flex items-center justify-center gap-3 group"
+              className="w-full bg-blue-50 text-blue-700 px-4 py-2 rounded-lg font-medium hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
             >
-              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-              </div>
-              <span>Add New CTA Button</span>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              Add CTA Button
             </button>
           </div>
         </div>
@@ -1118,10 +586,6 @@ function SectionEditor({ section, onChange, tenantId }) {
     );
   }
   if (section.type === 'NEWS') {
-    return <NewsEditor section={section} onChange={onChange} tenantId={tenantId} />;
-  }
-
-  if (section.type === 'CUSTOM') {
     return (
       <div className="space-y-6">
         {/* Section Title */}
@@ -1131,257 +595,146 @@ function SectionEditor({ section, onChange, tenantId }) {
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
             value={content.title || ''} 
             onChange={e => onChange({ ...section, contentJson: JSON.stringify({ ...content, title: e.target.value }) })}
-            placeholder="Custom Section Title"
+            placeholder="Latest News & Updates"
           />
         </div>
 
-        {/* Content Type Selection */}
+        {/* Section Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-3">Content Type</label>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <button
-              onClick={() => onChange({ ...section, contentJson: JSON.stringify({ ...content, contentType: 'html' }) })}
-              className={`p-4 rounded-lg border-2 transition-all ${
-                (content.contentType || 'html') === 'html'
-                  ? 'border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              <div className="text-center">
-                <div className="text-2xl mb-2">🔧</div>
-                <div className="font-medium">Custom HTML</div>
-                <div className="text-xs text-gray-500 mt-1">Full HTML control</div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Section Description</label>
+          <textarea 
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+            rows="3"
+            value={content.description || ''} 
+            onChange={e => onChange({ ...section, contentJson: JSON.stringify({ ...content, description: e.target.value }) })}
+            placeholder="Stay updated with our latest news, announcements, and opportunities"
+          />
+        </div>
+
+        {/* News Items */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-3">News Items</label>
+          <div className="space-y-4">
+            {(content.news || []).map((item, idx) => (
+              <div key={idx} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">News Title</label>
+                    <input 
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                      value={item.title || ''} 
+                      onChange={e => {
+                        const news = [...content.news];
+                        news[idx].title = e.target.value;
+                        onChange({ ...section, contentJson: JSON.stringify({ ...content, news }) });
+                      }}
+                      placeholder="News title"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                    <input 
+                      type="date"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                      value={item.date || ''} 
+                      onChange={e => {
+                        const news = [...content.news];
+                        news[idx].date = e.target.value;
+                        onChange({ ...section, contentJson: JSON.stringify({ ...content, news }) });
+                      }}
+                    />
+                  </div>
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Content</label>
+                  <textarea 
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                    rows="3"
+                    value={item.content || ''} 
+                    onChange={e => {
+                      const news = [...content.news];
+                      news[idx].content = e.target.value;
+                      onChange({ ...section, contentJson: JSON.stringify({ ...content, news }) });
+                    }}
+                    placeholder="News content"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Image</label>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={e => handleImage('image', e, idx, 'news')}
+                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                    {uploading && <p className="text-sm text-blue-600 mt-1">Uploading image...</p>}
+                    {uploadError && <p className="text-sm text-red-500 mt-1">{uploadError}</p>}
+                    {item.image && (
+                      <div className="w-full h-32 rounded-lg border-2 border-gray-200 overflow-hidden mt-2">
+                        <img src={getImageUrl(item.image)} alt="news" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Link URL (Optional)</label>
+                    <input 
+                      type="url"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                      value={item.link || ''} 
+                      onChange={e => {
+                        const news = [...content.news];
+                        news[idx].link = e.target.value;
+                        onChange({ ...section, contentJson: JSON.stringify({ ...content, news }) });
+                      }}
+                      placeholder="https://example.com/news-article"
+                    />
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => {
+                    const news = content.news.filter((_, i) => i !== idx);
+                    onChange({ ...section, contentJson: JSON.stringify({ ...content, news }) });
+                  }} 
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1 rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Remove News Item
+                </button>
               </div>
-            </button>
-            <button
-              onClick={() => onChange({ ...section, contentJson: JSON.stringify({ ...content, contentType: 'rich' }) })}
-              className={`p-4 rounded-lg border-2 transition-all ${
-                content.contentType === 'rich'
-                  ? 'border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
+            ))}
+            
+            <button 
+              onClick={() => {
+                const news = [...(content.news || []), { title: '', content: '', date: '', image: '', link: '' }];
+                onChange({ ...section, contentJson: JSON.stringify({ ...content, news }) });
+              }} 
+              className="w-full bg-blue-50 text-blue-700 px-4 py-3 rounded-lg font-medium hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
             >
-              <div className="text-center">
-                <div className="text-2xl mb-2">📝</div>
-                <div className="font-medium">Rich Content</div>
-                <div className="text-xs text-gray-500 mt-1">Text + Images</div>
-              </div>
-            </button>
-            <button
-              onClick={() => onChange({ ...section, contentJson: JSON.stringify({ ...content, contentType: 'embed' }) })}
-              className={`p-4 rounded-lg border-2 transition-all ${
-                content.contentType === 'embed'
-                  ? 'border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              <div className="text-center">
-                <div className="text-2xl mb-2">🎬</div>
-                <div className="font-medium">Embed</div>
-                <div className="text-xs text-gray-500 mt-1">Video/iFrame</div>
-              </div>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              Add News Item
             </button>
           </div>
         </div>
-
-        {/* HTML Content */}
-        {(content.contentType || 'html') === 'html' && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Custom HTML Code</label>
-            <div className="relative">
-              <textarea 
-                className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm" 
-                rows="12"
-                value={content.html || ''} 
-                onChange={e => onChange({ ...section, contentJson: JSON.stringify({ ...content, html: e.target.value }) })}
-                placeholder={`<!-- Enter your custom HTML here -->
-<div class="custom-section">
-  <h2>Your Custom Content</h2>
-  <p>Add any HTML, CSS, or JavaScript here.</p>
-  <div class="features">
-    <div class="feature">
-      <h3>Feature 1</h3>
-      <p>Description here</p>
-    </div>
-  </div>
-</div>
-
-<style>
-.custom-section {
-  padding: 2rem;
-  text-align: center;
-}
-.features {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1rem;
-  margin-top: 2rem;
-}
-</style>`}
-              />
-              <div className="absolute top-2 right-2">
-                <div className="bg-gray-800 text-white px-2 py-1 rounded text-xs font-mono">
-                  HTML
-                </div>
-              </div>
-            </div>
-            <div className="mt-2 text-xs text-gray-600">
-              💡 <strong>Tip:</strong> You can include CSS styles and JavaScript. Use theme colors: <code>var(--theme-color-1)</code>, <code>var(--theme-color-2)</code>, <code>var(--theme-color-3)</code>
-            </div>
-          </div>
-        )}
-
-        {/* Rich Content */}
-        {content.contentType === 'rich' && (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Content</label>
-              <textarea 
-                className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-                rows="6"
-                value={content.richContent || ''} 
-                onChange={e => onChange({ ...section, contentJson: JSON.stringify({ ...content, richContent: e.target.value }) })}
-                placeholder="Enter your content here. You can use basic HTML tags like <strong>, <em>, <a>, <br>, etc."
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Background Image (Optional)</label>
-              <input 
-                type="file" 
-                accept="image/*" 
-                onChange={e => handleImage('backgroundImage', e)}
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-              />
-              {uploading && <p className="text-sm text-blue-600 mt-1">Uploading background image...</p>}
-              {uploadError && <p className="text-sm text-red-500 mt-1">{uploadError}</p>}
-              {content.backgroundImage && (
-                <div className="w-full h-32 rounded-lg border-2 border-gray-200 overflow-hidden mt-2">
-                  <SafeImage src={getImageUrl(content.backgroundImage)} alt="background" className="w-full h-full object-cover" />
-                </div>
-              )}
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Text Alignment</label>
-                <select 
-                  value={content.textAlign || 'center'} 
-                  onChange={e => onChange({ ...section, contentJson: JSON.stringify({ ...content, textAlign: e.target.value }) })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="left">⬅️ Left</option>
-                  <option value="center">↔️ Center</option>
-                  <option value="right">➡️ Right</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Background Style</label>
-                <select 
-                  value={content.backgroundStyle || 'none'} 
-                  onChange={e => onChange({ ...section, contentJson: JSON.stringify({ ...content, backgroundStyle: e.target.value }) })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="none">🚫 None</option>
-                  <option value="gradient">🌈 Gradient</option>
-                  <option value="solid">🎨 Solid Color</option>
-                  <option value="pattern">📐 Pattern</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Embed Content */}
-        {content.contentType === 'embed' && (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Embed Type</label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {[
-                  { value: 'youtube', label: 'YouTube', icon: '🎥' },
-                  { value: 'vimeo', label: 'Vimeo', icon: '📹' },
-                  { value: 'iframe', label: 'Custom iFrame', icon: '🖼️' },
-                  { value: 'code', label: 'Code Embed', icon: '💻' }
-                ].map(type => (
-                  <button
-                    key={type.value}
-                    onClick={() => onChange({ ...section, contentJson: JSON.stringify({ ...content, embedType: type.value }) })}
-                    className={`p-3 rounded-lg border-2 transition-all text-center ${
-                      (content.embedType || 'youtube') === type.value
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="text-xl mb-1">{type.icon}</div>
-                    <div className="text-xs font-medium">{type.label}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {content.embedType === 'youtube' ? 'YouTube URL' : 
-                 content.embedType === 'vimeo' ? 'Vimeo URL' :
-                 content.embedType === 'iframe' ? 'iFrame URL' : 'Embed Code'}
-              </label>
-              {content.embedType === 'code' ? (
-                <textarea 
-                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm" 
-                  rows="6"
-                  value={content.embedCode || ''} 
-                  onChange={e => onChange({ ...section, contentJson: JSON.stringify({ ...content, embedCode: e.target.value }) })}
-                  placeholder="<iframe src='...' width='100%' height='400'></iframe>"
-                />
-              ) : (
-                <input 
-                  type="url"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-                  value={content.embedUrl || ''} 
-                  onChange={e => onChange({ ...section, contentJson: JSON.stringify({ ...content, embedUrl: e.target.value }) })}
-                  placeholder={
-                    content.embedType === 'youtube' ? 'https://www.youtube.com/watch?v=...' :
-                    content.embedType === 'vimeo' ? 'https://vimeo.com/...' :
-                    'https://example.com/embed'
-                  }
-                />
-              )}
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Width</label>
-                <select 
-                  value={content.embedWidth || '100%'} 
-                  onChange={e => onChange({ ...section, contentJson: JSON.stringify({ ...content, embedWidth: e.target.value }) })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="100%">📏 Full Width</option>
-                  <option value="75%">📐 75% Width</option>
-                  <option value="50%">📏 50% Width</option>
-                  <option value="400px">📐 400px</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Height</label>
-                <select 
-                  value={content.embedHeight || '400px'} 
-                  onChange={e => onChange({ ...section, contentJson: JSON.stringify({ ...content, embedHeight: e.target.value }) })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="300px">📏 300px</option>
-                  <option value="400px">📐 400px</option>
-                  <option value="500px">📏 500px</option>
-                  <option value="600px">📐 600px</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     );
   }
+
+  if (section.type === 'CUSTOM') {
+  return (
+      <div>
+        <label className="block font-semibold">Custom HTML:</label>
+        <textarea className="w-full border rounded p-1 mb-2" value={content.html} onChange={e => onChange({ ...section, contentJson: JSON.stringify({ ...content, html: e.target.value }) })} />
+    </div>
+  );
+}
   return null;
 }
 
@@ -1423,58 +776,28 @@ function SectionEditor({ section, onChange, tenantId }) {
               <h2 className="text-2xl md:text-3xl mb-10 text-center" style={{ color: '#fff', fontWeight: 400, maxWidth: 800 }}>{content.subtitle}</h2>
             )}
             <div className="flex flex-wrap gap-6 justify-center mt-2">
-              {content.ctas && content.ctas.map((cta, idx) => {
-                // Prioritize CTA's own URL, then fallback to type-based URLs, then default
-                const ctaUrl = cta.url || 
-                  (cta.type === 'startup' ? (buttonUrls?.startupSignup || '#') : 
-                   cta.type === 'mentor' ? (buttonUrls?.mentorSignup || '#') : 
-                   cta.type === 'custom' ? (cta.url || '#') : '#');
-                const ctaTarget = cta.target || '_self';
-                
-                // Style based on button style and theme colors
-                let buttonStyle = {};
-                let buttonClasses = "px-8 py-4 rounded-xl text-lg font-bold shadow-lg focus:ring-4 transition inline-block";
-                
-                if (cta.style === 'primary' || !cta.style) {
-                  buttonStyle = { 
-                    background: `linear-gradient(135deg, ${themeColor}, ${themeColor2})`, 
-                    color: '#fff', 
-                    border: 'none', 
-                    textDecoration: 'none',
-                    boxShadow: `0 4px 20px ${themeColor}33`
-                  };
-                } else if (cta.style === 'secondary') {
-                  buttonStyle = { 
-                    background: 'transparent', 
-                    color: themeColor, 
-                    border: `2px solid ${themeColor}`, 
-                    textDecoration: 'none' 
-                  };
-                  buttonClasses += " hover:bg-opacity-10";
-                } else if (cta.style === 'ghost') {
-                  buttonStyle = { 
-                    background: 'transparent', 
-                    color: themeColor2, 
-                    border: 'none', 
-                    textDecoration: 'underline',
-                    textDecorationColor: themeColor3
-                  };
-                  buttonClasses = "px-4 py-2 text-lg font-bold transition inline-block";
-                }
-                
-                return (
-                  <a
-                    key={idx}
-                    href={ctaUrl}
-                    target={ctaTarget}
-                    rel={ctaTarget === '_blank' ? 'noopener noreferrer' : undefined}
-                    className={buttonClasses}
-                    style={buttonStyle}
-                  >
-                    {cta.label || `CTA ${idx + 1}`}
-                  </a>
-                );
-              })}
+              {content.ctas && content.ctas[0] && (
+                <a
+                  href={content.ctas[0].type === 'startup' ? buttonUrls.startupSignup : buttonUrls.mentorSignup}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-8 py-4 rounded-xl text-lg font-bold shadow-lg focus:ring-4 transition inline-block"
+                  style={{ background: themeColor2, color: '#111', border: 'none', textDecoration: 'none' }}
+                >
+                  {content.ctas[0].label}
+                </a>
+              )}
+              {content.ctas && content.ctas[1] && (
+                <a
+                  href={content.ctas[1].type === 'startup' ? buttonUrls.startupSignup : buttonUrls.mentorSignup}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-8 py-4 rounded-xl text-lg font-bold border-2 focus:ring-4 transition inline-block"
+                  style={{ background: 'transparent', color: themeColor2, borderColor: themeColor2, textDecoration: 'none' }}
+                >
+                  {content.ctas[1].label}
+                </a>
+              )}
             </div>
           </div>
         </section>
@@ -1624,153 +947,11 @@ function SectionEditor({ section, onChange, tenantId }) {
         </section>
       );
     case 'CUSTOM':
-      const renderCustomContent = () => {
-        if (content.contentType === 'rich') {
-          const backgroundStyle = {
-            background: content.backgroundStyle === 'gradient' 
-              ? `linear-gradient(135deg, ${themeColor}15, ${themeColor2}15, ${themeColor3}15)`
-              : content.backgroundStyle === 'solid'
-              ? `${themeColor}08`
-              : content.backgroundStyle === 'pattern'
-              ? `url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="${encodeURIComponent(themeColor)}" opacity="0.1"/></svg>') repeat`
-              : 'transparent'
-          };
-          
-          return (
-            <div 
-              className="relative py-16 px-8 rounded-2xl"
-              style={{
-                ...backgroundStyle,
-                textAlign: content.textAlign || 'center'
-              }}
-            >
-              {content.backgroundImage && (
-                <div className="absolute inset-0 rounded-2xl overflow-hidden">
-                  <SafeImage 
-                    src={getImageUrl(content.backgroundImage)} 
-                    alt="background" 
-                    className="w-full h-full object-cover opacity-20" 
-                  />
-                </div>
-              )}
-              <div className="relative z-10">
-                <div 
-                  className="prose max-w-full text-lg leading-relaxed"
-                  style={{ color: '#333' }}
-                  dangerouslySetInnerHTML={{ __html: content.richContent || 'Add your rich content here...' }}
-                />
-              </div>
-            </div>
-          );
-        } else if (content.contentType === 'embed') {
-          const getEmbedContent = () => {
-            if (content.embedType === 'youtube' && content.embedUrl) {
-              const videoId = content.embedUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
-              if (videoId) {
-                return (
-                  <iframe
-                    width={content.embedWidth || '100%'}
-                    height={content.embedHeight || '400px'}
-                    src={`https://www.youtube.com/embed/${videoId[1]}`}
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    className="rounded-lg shadow-lg"
-                  />
-                );
-              }
-            } else if (content.embedType === 'vimeo' && content.embedUrl) {
-              const videoId = content.embedUrl.match(/vimeo\.com\/(\d+)/);
-              if (videoId) {
-                return (
-                  <iframe
-                    width={content.embedWidth || '100%'}
-                    height={content.embedHeight || '400px'}
-                    src={`https://player.vimeo.com/video/${videoId[1]}`}
-                    frameBorder="0"
-                    allow="autoplay; fullscreen; picture-in-picture"
-                    allowFullScreen
-                    className="rounded-lg shadow-lg"
-                  />
-                );
-              }
-            } else if (content.embedType === 'iframe' && content.embedUrl) {
-              return (
-                <iframe
-                  width={content.embedWidth || '100%'}
-                  height={content.embedHeight || '400px'}
-                  src={content.embedUrl}
-                  frameBorder="0"
-                  className="rounded-lg shadow-lg"
-                />
-              );
-            } else if (content.embedType === 'code' && content.embedCode) {
-              return (
-                <div 
-                  className="rounded-lg shadow-lg overflow-hidden"
-                  style={{ width: content.embedWidth || '100%', height: content.embedHeight || '400px' }}
-                  dangerouslySetInnerHTML={{ __html: content.embedCode }}
-                />
-              );
-            }
-            
-            return (
-              <div 
-                className="bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300"
-                style={{ width: content.embedWidth || '100%', height: content.embedHeight || '400px' }}
-              >
-                <div className="text-center text-gray-500">
-                  <div className="text-4xl mb-2">🎬</div>
-                  <div>Embed content will appear here</div>
-                  <div className="text-sm mt-1">Add a valid URL or embed code</div>
-                </div>
-              </div>
-            );
-          };
-          
-          return (
-            <div className="flex justify-center">
-              {getEmbedContent()}
-            </div>
-          );
-        } else {
-          // HTML content type
-          return (
-            <div 
-              className="prose max-w-full animate-fade-in-up custom-html-content"
-              style={{ 
-                color: '#111',
-                '--theme-color-1': themeColor,
-                '--theme-color-2': themeColor2,
-                '--theme-color-3': themeColor3
-              }} 
-              dangerouslySetInnerHTML={{ __html: content.html || '<div class="text-center py-8 text-gray-500"><div class="text-4xl mb-2">🔧</div><div>Add your custom HTML content</div></div>' }} 
-            />
-          );
-        }
-      };
-      
       return (
-        <section 
-          className="w-full py-20 border-b" 
-          style={{ 
-            fontFamily: 'Inter, sans-serif', 
-            background: `linear-gradient(135deg, ${themeColor}05, ${themeColor2}05)` 
-          }}
-        >
-          <div className="max-w-6xl mx-auto px-4">
-            {content.title && (
-              <h2 
-                className="text-3xl font-bold mb-10 flex items-center gap-2 text-center" 
-                style={{ color: themeColor2 }}
-              >
-                <span className="inline-block w-8 h-8 rounded-full flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor2})` }}>
-                  <span className="text-white text-sm">⚙️</span>
-                </span>
-                {content.title}
-              </h2>
-            )}
-            {renderCustomContent()}
+        <section className="w-full py-20 border-b" style={{ fontFamily: 'Inter, sans-serif', background: '#fff' }}>
+          <div className="max-w-4xl mx-auto px-4">
+            <h2 className="text-3xl font-bold mb-10 flex items-center gap-2" style={{ color: themeColor2 }}>⚙️ Custom Section</h2>
+            <div className="prose max-w-full animate-fade-in-up" style={{ color: '#111' }} dangerouslySetInnerHTML={{ __html: content.html || '' }} />
           </div>
         </section>
       );
@@ -1811,8 +992,6 @@ function SectionEditor({ section, onChange, tenantId }) {
 export default function LandingPageManagement() {
   const { user, token } = useAuth();
   const tenantId = user?.tenantId;
-  const userRole = user?.role;
-  const userId = user?.id;
   const [themeColors, setThemeColors] = useState(['#1976d2', '#43a047', '#fbc02d']);
   const [sections, setSections] = useState([]);
   const [socialLinks, setSocialLinks] = useState({});
@@ -1821,9 +1000,6 @@ export default function LandingPageManagement() {
   const [preview, setPreview] = useState(false);
   const [publicUrl, setPublicUrl] = useState("");
   const [error, setError] = useState(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [publishedUrl, setPublishedUrl] = useState('');
 
   // Debug logging
   console.log('LandingPageManagement - User:', user);
@@ -1845,7 +1021,7 @@ useEffect(() => {
     setLoading(false);
     return;
   }
-  if (userRole !== 'TENANT_ADMIN') {
+  if (user?.role !== 'TENANT_ADMIN') {
     console.log('LandingPageManagement - User does not have TENANT_ADMIN role');
     setError('Access denied. You must be a tenant admin to access this page.');
     setLoading(false);
@@ -1873,7 +1049,7 @@ useEffect(() => {
       }
     })
     .finally(() => setLoading(false));
-}, [tenantId, token, userRole, userId]);
+}, [tenantId, token, user?.role]);
 // ...existing code...
 
   const handleSectionChange = (idx, newSection) => {
@@ -1895,30 +1071,19 @@ useEffect(() => {
     setSections(newSections.map((s, i) => ({ ...s, sectionOrder: i })));
   };
 
-  const handleSave = async () => {
-    if (isSaving) return; // Prevent multiple saves
-    
-    setIsSaving(true);
-    try {
-      await saveLandingPage(tenantId, {
-          themeColor: themeColors[0],
-          themeColor2: themeColors[1],
-          themeColor3: themeColors[2],
-          sections,
-          socialLinks,
-          buttonUrls
-      }, token);
-      
+  const handleSave = () => {
+    saveLandingPage(tenantId, {
+        themeColor: themeColors[0],
+        themeColor2: themeColors[1],
+        themeColor3: themeColors[2],
+        sections,
+        socialLinks,
+        buttonUrls
+    }, token).then(() => {
       const url = `/public-landing/${tenantId}`;
       setPublicUrl(url);
-      setPublishedUrl(`${window.location.origin}${url}`);
-      setShowSuccessModal(true);
-    } catch (error) {
-      console.error('Error saving landing page:', error);
-      alert('Error saving landing page. Please try again.');
-    } finally {
-      setIsSaving(false);
-    }
+      alert(`Landing page saved!\nPublic URL: ${window.location.origin}${url}`);
+    });
   };
 
   if (loading) return (
@@ -1949,134 +1114,48 @@ useEffect(() => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
-      {/* Enhanced Header */}
-      <div className="bg-white shadow-lg border-b border-gray-200">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4">
               <Link
                 to="/tenant-admin/dashboard"
-                className="group flex items-center gap-2 text-gray-600 hover:text-gray-800 font-medium transition-all duration-200 hover:bg-gray-50 px-3 py-2 rounded-lg"
+                className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium transition-colors"
               >
-                <FaHome className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                <span>Dashboard</span>
+                <FaHome className="w-5 h-5" />
+                Back to Dashboard
               </Link>
-              <div className="h-8 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent"></div>
-              <div className="flex items-center gap-4">
-                <div 
-                  className="w-12 h-12 rounded-xl shadow-md flex items-center justify-center"
-                  style={{ background: `linear-gradient(135deg, ${themeColors[0]}, ${themeColors[1]})` }}
-                >
-                  <FaCogs className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900">Landing Page Builder</h1>
-                  <p className="text-gray-600 mt-1 flex items-center gap-2">
-                    <span>Create and customize your landing page</span>
-                    <div className="flex gap-1">
-                      {themeColors.map((color, idx) => (
-                        <div key={idx} className="w-3 h-3 rounded-full border border-white shadow-sm" style={{ backgroundColor: color }}></div>
-                      ))}
-                    </div>
-                  </p>
-                </div>
+              <div className="h-6 w-px bg-gray-300"></div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Landing Page Builder</h1>
+                <p className="text-gray-600 mt-1">Create and customize your landing page</p>
               </div>
             </div>
-            
-            {/* Action Buttons */}
             <div className="flex items-center gap-3">
-              {/* Preview Toggle */}
               <button 
                 onClick={() => setPreview(p => !p)} 
-                className={`group relative px-6 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center gap-2 ${
+                className={`px-6 py-3 rounded-lg font-semibold transition-all duration-200 flex items-center gap-2 ${
                   preview 
-                    ? 'text-white shadow-lg transform scale-105' 
-                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md'
+                    ? 'bg-blue-600 text-white shadow-lg hover:bg-blue-700' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
-                style={preview ? {
-                  background: `linear-gradient(135deg, ${themeColors[1]}, ${themeColors[2]})`
-                } : {}}
               >
-                <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={preview ? "M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" : "M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"} />
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
-                <span>{preview ? 'Hide Preview' : 'Live Preview'}</span>
-                {preview && (
-                  <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2">
-                    <div className="w-2 h-2 bg-white rounded-full shadow-sm"></div>
-                  </div>
-                )}
+                {preview ? 'Hide Preview' : 'Live Preview'}
               </button>
-              
-              {/* Save & Publish Button */}
               <button 
                 onClick={handleSave} 
-                disabled={isSaving}
-                className="group relative bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none"
+                className="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 flex items-center gap-2"
               >
-                {isSaving ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Saving...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Save & Publish</span>
-                  </>
-                )}
-                
-                {/* Success Indicator */}
-                {!isSaving && (
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-white rounded-full flex items-center justify-center">
-                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                  </div>
-                )}
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Save & Publish
               </button>
-            </div>
-          </div>
-          
-          {/* Status Bar */}
-          <div className="border-t border-gray-100 mt-6 pt-4">
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-6 text-gray-600">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                  <span>Auto-save enabled</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>Last saved: {new Date().toLocaleTimeString()}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <span>Sections: <span className="font-semibold text-gray-800">{sections.length}</span></span>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-600">Theme Colors:</span>
-                  <div className="flex gap-1">
-                    {themeColors.map((color, idx) => (
-                      <div key={idx} className="w-5 h-5 rounded-full border-2 border-white shadow-md hover:scale-110 transition-transform cursor-pointer" style={{ backgroundColor: color }} title={color}></div>
-                    ))}
-                  </div>
-                </div>
-                {publicUrl && (
-                  <div className="flex items-center gap-2 text-green-600">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span className="font-medium">Published</span>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         </div>
@@ -2130,132 +1209,54 @@ useEffect(() => {
               {/* Theme Colors */}
               <div className="mb-8">
                 <div className="flex items-center gap-2 mb-4">
-                  <div 
-                    className="w-6 h-6 rounded-full shadow-sm" 
-                    style={{ background: `linear-gradient(135deg, ${themeColors[0]}, ${themeColors[1]}, ${themeColors[2]})` }}
-                  ></div>
+                  <div className="w-5 h-5 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"></div>
                   <h4 className="font-semibold text-gray-800">Theme Colors</h4>
                 </div>
-                
-                {/* Color Preview Bar */}
-                <div className="mb-6">
-                  <div className="h-4 rounded-full overflow-hidden shadow-inner bg-gray-100 flex">
-                    <div className="flex-1" style={{ backgroundColor: themeColors[0] }}></div>
-                    <div className="flex-1" style={{ backgroundColor: themeColors[1] }}></div>
-                    <div className="flex-1" style={{ backgroundColor: themeColors[2] }}></div>
-                  </div>
-                  <div className="flex justify-between text-xs text-gray-500 mt-2">
-                    <span>Primary</span>
-                    <span>Secondary</span>
-                    <span>Accent</span>
-                  </div>
-                </div>
-                
                 <div className="space-y-4">
-                  <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-4 border border-gray-200">
-                    <label className="block text-sm font-medium text-gray-700 mb-3">🎨 Primary Color</label>
-                    <div className="flex items-center gap-4">
-                      <div className="relative">
-                        <input 
-                          type="color" 
-                          value={themeColors[0]} 
-                          onChange={e => setThemeColors([e.target.value, themeColors[1], themeColors[2]])}
-                          className="w-16 h-16 rounded-xl border-3 cursor-pointer shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
-                          style={{ borderColor: themeColors[0] }}
-                        />
-                        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-white rounded-full shadow-md flex items-center justify-center">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: themeColors[0] }}></div>
-                        </div>
-                      </div>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Primary Color</label>
+                    <div className="flex items-center gap-3">
+                      <input 
+                        type="color" 
+                        value={themeColors[0]} 
+                        onChange={e => setThemeColors([e.target.value, themeColors[1], themeColors[2]])}
+                        className="w-12 h-12 rounded-lg border-2 border-gray-200 cursor-pointer shadow-sm hover:shadow-md transition-shadow"
+                      />
                       <div className="flex-1">
-                        <div className="font-medium text-gray-800">Main Brand Color</div>
-                        <div className="text-sm text-gray-600 mb-2">Used for headers, primary buttons, and key elements</div>
-                        <div className="text-xs font-mono bg-white px-2 py-1 rounded border" style={{ color: themeColors[0] }}>
-                          {themeColors[0].toUpperCase()}
-                        </div>
+                        <span className="text-sm text-gray-600">Primary</span>
+                        <div className="text-xs text-gray-500 mt-1">Main brand color</div>
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="bg-gradient-to-r from-gray-50 to-green-50 rounded-xl p-4 border border-gray-200">
-                    <label className="block text-sm font-medium text-gray-700 mb-3">✨ Secondary Color</label>
-                    <div className="flex items-center gap-4">
-                      <div className="relative">
-                        <input 
-                          type="color" 
-                          value={themeColors[1]} 
-                          onChange={e => setThemeColors([themeColors[0], e.target.value, themeColors[2]])}
-                          className="w-16 h-16 rounded-xl border-3 cursor-pointer shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
-                          style={{ borderColor: themeColors[1] }}
-                        />
-                        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-white rounded-full shadow-md flex items-center justify-center">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: themeColors[1] }}></div>
-                        </div>
-                      </div>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Secondary Color</label>
+                    <div className="flex items-center gap-3">
+                      <input 
+                        type="color" 
+                        value={themeColors[1]} 
+                        onChange={e => setThemeColors([themeColors[0], e.target.value, themeColors[2]])}
+                        className="w-12 h-12 rounded-lg border-2 border-gray-200 cursor-pointer shadow-sm hover:shadow-md transition-shadow"
+                      />
                       <div className="flex-1">
-                        <div className="font-medium text-gray-800">Secondary Accent</div>
-                        <div className="text-sm text-gray-600 mb-2">Used for highlights, secondary buttons, and accents</div>
-                        <div className="text-xs font-mono bg-white px-2 py-1 rounded border" style={{ color: themeColors[1] }}>
-                          {themeColors[1].toUpperCase()}
-                        </div>
+                        <span className="text-sm text-gray-600">Secondary</span>
+                        <div className="text-xs text-gray-500 mt-1">Accent and highlights</div>
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="bg-gradient-to-r from-gray-50 to-purple-50 rounded-xl p-4 border border-gray-200">
-                    <label className="block text-sm font-medium text-gray-700 mb-3">🌟 Accent Color</label>
-                    <div className="flex items-center gap-4">
-                      <div className="relative">
-                        <input 
-                          type="color" 
-                          value={themeColors[2]} 
-                          onChange={e => setThemeColors([themeColors[0], themeColors[1], e.target.value])}
-                          className="w-16 h-16 rounded-xl border-3 cursor-pointer shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
-                          style={{ borderColor: themeColors[2] }}
-                        />
-                        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-white rounded-full shadow-md flex items-center justify-center">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: themeColors[2] }}></div>
-                        </div>
-                      </div>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Accent Color</label>
+                    <div className="flex items-center gap-3">
+                      <input 
+                        type="color" 
+                        value={themeColors[2]} 
+                        onChange={e => setThemeColors([themeColors[0], themeColors[1], e.target.value])}
+                        className="w-12 h-12 rounded-lg border-2 border-gray-200 cursor-pointer shadow-sm hover:shadow-md transition-shadow"
+                      />
                       <div className="flex-1">
-                        <div className="font-medium text-gray-800">Special Elements</div>
-                        <div className="text-sm text-gray-600 mb-2">Used for special highlights and decorative elements</div>
-                        <div className="text-xs font-mono bg-white px-2 py-1 rounded border" style={{ color: themeColors[2] }}>
-                          {themeColors[2].toUpperCase()}
-                        </div>
+                        <span className="text-sm text-gray-600">Accent</span>
+                        <div className="text-xs text-gray-500 mt-1">Special elements</div>
                       </div>
                     </div>
-                  </div>
-                </div>
-                
-                {/* Quick Color Presets */}
-                <div className="mt-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-3">🎭 Quick Presets</label>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    {[
-                      { name: 'Ocean', colors: ['#0ea5e9', '#06b6d4', '#8b5cf6'] },
-                      { name: 'Forest', colors: ['#059669', '#10b981', '#f59e0b'] },
-                      { name: 'Sunset', colors: ['#dc2626', '#ea580c', '#f59e0b'] },
-                      { name: 'Purple', colors: ['#7c3aed', '#a855f7', '#ec4899'] },
-                      { name: 'Tech', colors: ['#1f2937', '#4f46e5', '#06b6d4'] },
-                      { name: 'Nature', colors: ['#16a34a', '#65a30d', '#ca8a04'] },
-                      { name: 'Royal', colors: ['#4338ca', '#7c3aed', '#c026d3'] },
-                      { name: 'Fire', colors: ['#dc2626', '#ea580c', '#f59e0b'] }
-                    ].map(preset => (
-                      <button
-                        key={preset.name}
-                        onClick={() => setThemeColors(preset.colors)}
-                        className="group p-2 rounded-lg border border-gray-200 hover:border-gray-300 transition-all duration-200 hover:shadow-md"
-                        title={`Apply ${preset.name} theme`}
-                      >
-                        <div className="h-3 rounded-full overflow-hidden flex mb-1">
-                          {preset.colors.map((color, idx) => (
-                            <div key={idx} className="flex-1" style={{ backgroundColor: color }}></div>
-                          ))}
-                        </div>
-                        <div className="text-xs text-gray-600 group-hover:text-gray-800 font-medium">{preset.name}</div>
-                      </button>
-                    ))}
                   </div>
                 </div>
               </div>
@@ -2524,77 +1525,6 @@ useEffect(() => {
                     © 2024 All rights reserved.
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Success Modal */}
-      {showSuccessModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all duration-300 scale-100">
-            <div className="p-6">
-              {/* Success Icon */}
-              <div className="flex items-center justify-center mb-4">
-                <div 
-                  className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg"
-                  style={{ background: `linear-gradient(135deg, ${themeColors[0]}, ${themeColors[1]})` }}
-                >
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-              </div>
-              
-              {/* Success Message */}
-              <div className="text-center mb-6">
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">🎉 Landing Page Published!</h3>
-                <p className="text-gray-600">Your landing page has been successfully saved and is now live.</p>
-              </div>
-              
-              {/* URL Display */}
-              <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Public URL:</label>
-                <div className="flex items-center gap-2">
-                  <input 
-                    type="text" 
-                    value={publishedUrl} 
-                    readOnly 
-                    className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-mono"
-                  />
-                  <button
-                    onClick={(e) => {
-                      navigator.clipboard.writeText(publishedUrl);
-                      // Show brief copy feedback
-                      const btn = e.target;
-                      const originalText = btn.textContent;
-                      btn.textContent = '✓';
-                      setTimeout(() => btn.textContent = originalText, 1000);
-                    }}
-                    className="px-3 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-sm transition-colors"
-                    title="Copy URL"
-                  >
-                    📋
-                  </button>
-                </div>
-              </div>
-              
-              {/* Action Buttons */}
-              <div className="flex gap-3">
-                <button
-                  onClick={() => window.open(publishedUrl, '_blank')}
-                  className="flex-1 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 hover:shadow-lg transform hover:scale-105"
-                  style={{ background: `linear-gradient(135deg, ${themeColors[0]}, ${themeColors[1]})` }}
-                >
-                  🚀 View Live Page
-                </button>
-                <button
-                  onClick={() => setShowSuccessModal(false)}
-                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-colors"
-                >
-                  Close
-                </button>
               </div>
             </div>
           </div>

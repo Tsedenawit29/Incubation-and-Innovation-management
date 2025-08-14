@@ -1,21 +1,30 @@
 import { useState } from "react";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "../hooks/useAuth"; // Import useAuth hook
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { loginUser } = useAuth();
+  
+  // Destructure loginUser from useAuth.
+  // The 'login' function from useAuth is now intended for internal use by AuthProvider.
+  // The external function to initiate login is loginUser.
+  const { loginUser } = useAuth(); 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
-
+    
     try {
+      // Call the loginUser function from the useAuth hook.
+      // This function already handles the API call, state updates, and redirection.
       await loginUser(email, password);
+      // No explicit redirection needed here, as loginUser in useAuth handles window.location.href
     } catch (error) {
+      console.error("Login error:", error);
+      // Display the error message from the useAuth hook or a default one
       setError(error.message || "Invalid credentials. Please try again.");
     } finally {
       setLoading(false);
@@ -23,78 +32,74 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50 px-4">
-      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md transform transition-all duration-300 hover:shadow-2xl">
-        
-        {/* Logo */}
-        <div className="flex justify-center">
-          <img
-            src="/logo.jpg"
-            alt="IIMS Logo"
-            className="h-20 w-20 rounded-full shadow-md"
-          />
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            IIMS Login
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Sign in to your account
+          </p>
         </div>
-
-        {/* Title */}
-        <h2 className="mt-6 text-center text-2xl font-bold text-gray-900">
-          Welcome Back
-        </h2>
-        <p className="mt-1 text-center text-gray-500">
-          Sign in to continue to IIMS
-        </p>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-          <div>
-            <input
-              id="email"
-              type="email"
-              placeholder="Email address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-            />
-          </div>
-          <div>
-            <input
-              id="password"
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-            />
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          <div className="rounded-md shadow-sm -space-y-px">
+            <div>
+              <label htmlFor="email" className="sr-only">
+                Email address
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                placeholder="Email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="password" className="sr-only">
+                Password
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
           </div>
 
           {error && (
-            <div className="bg-red-50 text-red-700 text-sm p-3 rounded-lg">
-              {error}
+            <div className="rounded-md bg-red-50 p-4">
+              <div className="text-sm text-red-700">{error}</div>
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 px-4 rounded-lg text-white font-medium bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-50"
-          >
-            {loading ? (
-              <div className="flex items-center justify-center">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Signing in...
-              </div>
-            ) : (
-              "Sign in"
-            )}
-          </button>
-
-          <p className="text-center text-sm text-gray-500">
-            Don’t have an account?{" "}
-            <a href="/register" className="text-blue-600 hover:underline">
-              Sign up
-            </a>
-          </p>
+          <div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Signing in...
+                </div>
+              ) : (
+                "Sign in"
+              )}
+            </button>
+          </div>
         </form>
       </div>
     </div>

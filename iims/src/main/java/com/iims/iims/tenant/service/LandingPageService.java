@@ -16,12 +16,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.UUID;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import org.springframework.web.multipart.MultipartFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,10 +60,7 @@ public class LandingPageService {
             
             landingPage.setTenant(tenant);
             landingPage.setThemeColor(dto.getThemeColor());
-            landingPage.setThemeColor2(dto.getThemeColor2());
-            landingPage.setThemeColor3(dto.getThemeColor3());
             landingPage.setSocialLinks(dto.getSocialLinks());
-            landingPage.setButtonUrls(dto.getButtonUrls());
             
             // Update sections in-place for orphanRemoval
             if (landingPage.getSections() != null) {
@@ -108,12 +99,9 @@ public class LandingPageService {
     private LandingPageDto toDto(LandingPage entity) {
         LandingPageDto dto = new LandingPageDto();
         dto.setId(entity.getId());
-        dto.setTenantId(entity.getTenant() != null ? entity.getTenant().getId() : null);
         dto.setThemeColor(entity.getThemeColor());
-        dto.setThemeColor2(entity.getThemeColor2());
-        dto.setThemeColor3(entity.getThemeColor3());
+        // Map socialLinks from entity to DTO
         dto.setSocialLinks(entity.getSocialLinks());
-        dto.setButtonUrls(entity.getButtonUrls());
         if (entity.getSections() != null) {
             dto.setSections(entity.getSections().stream().map(this::toSectionDto).collect(Collectors.toList()));
         }
@@ -127,39 +115,5 @@ public class LandingPageService {
         dto.setContentJson(section.getContentJson());
         dto.setSectionOrder(section.getSectionOrder());
         return dto;
-    }
-
-    public String uploadImage(UUID tenantId, MultipartFile file) throws IOException {
-        try {
-            logger.info("Uploading image for tenant: {}, filename: {}", tenantId, file.getOriginalFilename());
-            
-            // Create uploads directory if it doesn't exist
-            Path uploadDir = Paths.get("uploads");
-            if (!Files.exists(uploadDir)) {
-                Files.createDirectories(uploadDir);
-                logger.info("Created uploads directory: {}", uploadDir.toAbsolutePath());
-            }
-            
-            // Generate unique filename
-            String originalFilename = file.getOriginalFilename();
-            String fileExtension = "";
-            if (originalFilename != null && originalFilename.contains(".")) {
-                fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
-            }
-            String uniqueFilename = tenantId + "_" + System.currentTimeMillis() + fileExtension;
-            
-            // Save file
-            Path filePath = uploadDir.resolve(uniqueFilename);
-            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-            
-            // Return the URL path
-            String imageUrl = "/uploads/" + uniqueFilename;
-            logger.info("Image uploaded successfully: {}", imageUrl);
-            return imageUrl;
-            
-        } catch (IOException e) {
-            logger.error("Error uploading image for tenant {}: {}", tenantId, e.getMessage(), e);
-            throw e;
-        }
     }
 } 

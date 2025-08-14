@@ -48,7 +48,10 @@ export default function TenantApplicationForm() {
   };
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
   };
 
   const handleFileSelect = (fileData) => {
@@ -69,21 +72,19 @@ export default function TenantApplicationForm() {
   };
 
   return (
-
-    <div className="min-h-screen flex items-center justify-center bg-[#E6F0FF] py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-3xl bg-white rounded-3xl shadow-2xl p-10">
-        <div className="text-center mb-10">
-          <h2 className="text-4xl font-extrabold text-[#0A2D5C]">
-
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-2xl w-full space-y-8">
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Tenant Application
           </h2>
-          <p className="mt-2 text-lg text-[#299DFF]">
-            Register your organization and streamline your innovation journey.
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Apply to register your organization as a tenant
           </p>
         </div>
 
         {success && (
-          <div className="rounded-md bg-green-50 p-4 mb-6">
+          <div className="rounded-md bg-green-50 p-4">
             <div className="text-sm text-green-700">
               ✅ Application submitted successfully! We will review your application and contact you soon.
             </div>
@@ -91,82 +92,105 @@ export default function TenantApplicationForm() {
         )}
 
         {error && (
-          <div className="rounded-md bg-red-50 p-4 mb-6">
+          <div className="rounded-md bg-red-50 p-4">
             <div className="text-sm text-red-700">{error}</div>
           </div>
         )}
 
-        <form className="space-y-6" onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-[#0A2D5C]">Organization Name *</label>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                Organization Name *
+              </label>
               <input
-                type="text"
+                id="name"
                 name="name"
+                type="text"
                 required
+                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Enter organization name"
                 value={formData.name}
                 onChange={handleChange}
-                className="mt-1 block w-full px-4 py-2 border border-[#299DFF] rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#299DFF] focus:border-[#299DFF]"
               />
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-[#0A2D5C]">Email Address *</label>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                Email Address *
+              </label>
               <input
-                type="email"
+                id="email"
                 name="email"
+                type="email"
                 required
+                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Enter email address"
                 value={formData.email}
                 onChange={handleChange}
-                className="mt-1 block w-full px-4 py-2 border border-[#299DFF] rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#299DFF] focus:border-[#299DFF]"
               />
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-[#0A2D5C]">Phone Number *</label>
-              <input
-                type="tel"
-                name="phone"
-                required
-                placeholder="Enter phone number"
-                value={formData.phone}
-                onChange={handleChange}
-                className="mt-1 block w-full px-4 py-2 border border-[#299DFF] rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#299DFF] focus:border-[#299DFF]"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[#0A2D5C]">Website *</label>
-              <input
-                type="url"
-                name="website"
-                required
-                placeholder="https://example.com"
-                value={formData.website}
-                onChange={handleChange}
-                className="mt-1 block w-full px-4 py-2 border border-[#299DFF] rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#299DFF] focus:border-[#299DFF]"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-[#0A2D5C]">Address *</label>
-              <input
-                type="text"
-                name="address"
-                required
-                placeholder="Enter organization address"
-                value={formData.address}
-                onChange={handleChange}
-                className="mt-1 block w-full px-4 py-2 border border-[#299DFF] rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#299DFF] focus:border-[#299DFF]"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-[#0A2D5C]">Description</label>
+              <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                Description
+              </label>
               <textarea
+                id="description"
                 name="description"
-                rows={4}
+                rows={3}
+                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Describe your organization"
                 value={formData.description}
                 onChange={handleChange}
-                className="mt-1 block w-full px-4 py-2 border border-[#299DFF] rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#299DFF] focus:border-[#299DFF]"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="address" className="block text-sm font-medium text-gray-700">
+                Address *
+              </label>
+              <input
+                id="address"
+                name="address"
+                type="text"
+                required
+                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                placeholder="Enter organization address"
+                value={formData.address}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                Phone Number *
+              </label>
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                required
+                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                placeholder="Enter phone number"
+                value={formData.phone}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="website" className="block text-sm font-medium text-gray-700">
+                Website *
+              </label>
+              <input
+                id="website"
+                name="website"
+                type="url"
+                required
+                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                placeholder="https://example.com"
+                value={formData.website}
+                onChange={handleChange}
               />
             </div>
 
@@ -188,11 +212,11 @@ export default function TenantApplicationForm() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-[#299DFF] to-[#0A2D5C] text-white font-semibold py-4 rounded-2xl text-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
-                <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                   Submitting...
                 </div>
               ) : (
@@ -204,6 +228,4 @@ export default function TenantApplicationForm() {
       </div>
     </div>
   );
-
 }
-

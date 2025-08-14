@@ -40,12 +40,6 @@ const Navbar = () => (
       >
         Contact
       </Link>
-      <Link
-              to="/login"
-              className="bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white px-6 py-3 rounded-lg text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
-            >
-              Login
-            </Link>
     </div>
     <style>{`
       .nav-link:hover {

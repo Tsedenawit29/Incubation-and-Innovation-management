@@ -22,7 +22,6 @@ import LandingPageManagement from './pages/LandingPageManagement';
 import PublicLandingPage from './pages/PublicLandingPage';
 import StartupManagement from './pages/StartupManagement';
 import CalendarManagement from './pages/CalendarManagement';
-import NewsManagement from './pages/NewsManagement';
 import GoogleOAuthSuccess from './pages/GoogleOAuthSuccess';
 import ApplicationFormsPage from './pages/ApplicationFormsPage';
 import CreateApplicationFormPage from './pages/CreateApplicationFormPage';
@@ -32,11 +31,6 @@ import PublicApplicationFormView from './pages/PublicApplicationFormView';
 import TenantAdminChatPage from './pages/TenantAdminChatPage';
 import SuperAdminChatPage from './pages/SuperAdminChatPage';
 import './App.css';
-import Home from './pages/Home';
-import Documentation from './pages/Documentation';
-import PrivacyPolicy from './pages/PrivacyPolicy';
-import Contact from './pages/Contact';  
-import PublicLayout from './components/PublicLayout'; 
 
 // Protected Route Component
 const ProtectedRoute = ({ children, role }) => {
@@ -84,15 +78,11 @@ function App() {
         <div className="App min-h-screen bg-gray-50">
           <Routes>
             {/* Public Routes */}
-            
             <Route 
               path="/login" 
               element={
                 <PublicRoute>
-                  <PublicLayout>
                   <LoginPage />
-                  </PublicLayout>
-                  
                 </PublicRoute>
               } 
             />
@@ -147,19 +137,12 @@ function App() {
                 </ProtectedRoute>
               }
             />
-
-            <Route
-              path="/tenant-admin/news"
-              element={
-                <ProtectedRoute role="TENANT_ADMIN">
-
             {/* Tenant Admin Chat Management */}
             <Route
               path="/tenant-admin/chats"
               element={
                 <ProtectedRoute role="TENANT_ADMIN">
                   <TenantAdminChatPage />
-
                 </ProtectedRoute>
               }
             />
@@ -190,8 +173,7 @@ function App() {
               } 
             />
             {/* Public Application Routes */}
-            
-            <Route path="/apply-tenant" element={<PublicLayout><TenantApplicationForm /></PublicLayout>} />
+            <Route path="/apply-tenant" element={<TenantApplicationForm />} />
             <Route path="/register-admin" element={<AdminRegistrationForm />} />
             <Route path="/register-admin/:tenantId" element={<AdminRegistrationForm />} />
             <Route path="/apply/:id" element={<PublicApplicationFormView />} />
@@ -202,9 +184,7 @@ function App() {
             {/* Root route - redirect authenticated users to their dashboard */}
             <Route path="/" element={
               <PublicRoute>
-                <PublicLayout>
-                  <Home />
-               </PublicLayout>
+                <LandingPage />
               </PublicRoute>
             } />
             {/* Startup Dashboard */}
@@ -216,15 +196,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route 
-            path='/documentation'
-            element={<PublicLayout><Documentation /></PublicLayout>} />
-            <Route 
-            path='/privacy-policy'
-            element={<PublicLayout><PrivacyPolicy /></PublicLayout>} />  
-            <Route 
-            path='/contact'
-            element={ <PublicLayout><Contact /></PublicLayout>} />    
             {/* Startup Progress */}
             <Route
               path="/startup-progress/:id"
