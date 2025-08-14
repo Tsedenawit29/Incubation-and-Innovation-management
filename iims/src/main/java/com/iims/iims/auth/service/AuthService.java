@@ -42,7 +42,7 @@ public class AuthService {
                 user.getRole().name(),
                 user.getFullName(),
                 user.getId(),
-                user.getTenantId() // Return tenantId for all users who have one
+                user.getRole() == Role.TENANT_ADMIN ? user.getTenantId() : null
             );
         } catch (Exception e) {
             e.printStackTrace();
@@ -70,7 +70,7 @@ public class AuthService {
             user.getRole().name(),
             user.getFullName(),
             user.getId(),
-            user.getTenantId() // Return tenantId for all users who have one
+            user.getRole() == Role.TENANT_ADMIN ? user.getTenantId() : null
         );
     }
 

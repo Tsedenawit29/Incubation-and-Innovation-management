@@ -252,11 +252,11 @@ const Home = () => {
           <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4 text-center drop-shadow">Ready to take your innovation to the next level?</h2>
           <p className="text-lg text-blue-100 mb-8 text-center">Apply now to join our incubation program and turn your ideas into reality!</p>
           <Link
-                  to="/apply-tenant"
-                  className="w-full bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white font-semibold py-4 px-6 rounded-xl text-center block transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
-                >
-                  Apply for Tenant Registration
-                </Link>
+            to="/application"
+            className="inline-block bg-white text-[#0A2D5C] font-bold px-8 py-3 rounded-full shadow-md hover:bg-[#299DFF] hover:text-white transition-colors duration-200 text-lg"
+          >
+            Apply Now
+          </Link>
         </div>
       </section>
     </div>

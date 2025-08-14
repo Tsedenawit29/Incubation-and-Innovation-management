@@ -11,7 +11,6 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -19,8 +18,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.firewall.HttpFirewall;
-import org.springframework.security.web.firewall.StrictHttpFirewall;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -37,22 +34,6 @@ public class SecurityConfig {
     }
 
     @Bean
-    public HttpFirewall httpFirewall() {
-        StrictHttpFirewall firewall = new StrictHttpFirewall();
-        firewall.setAllowUrlEncodedDoubleSlash(true);
-        firewall.setAllowUrlEncodedPercent(true);
-        firewall.setAllowUrlEncodedPeriod(true);
-        firewall.setAllowBackSlash(true);
-        firewall.setAllowUrlEncodedSlash(true);
-        return firewall;
-    }
-
-    @Bean
-    public WebSecurityCustomizer webSecurityCustomizer() {
-        return (web) -> web.httpFirewall(httpFirewall());
-    }
-
-    @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter, UserService userService) throws Exception {
         System.out.println("SecurityConfig - Configuring security filter chain");
 
@@ -63,11 +44,15 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**", "/ping").permitAll()
                         .requestMatchers("/api/tenant/apply").permitAll()
                         .requestMatchers("/api/users/request-admin").permitAll()
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Allow CORS preflight
+                        // Allow SockJS/WebSocket handshake and info endpoints
+                        .requestMatchers("/ws/**").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // Applications
                         .requestMatchers("/api/v1/applications/submit").permitAll()
+                        .requestMatchers("/api/v1/public/application-forms/*").permitAll()// Allow CORS preflight
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
-                        .requestMatchers("/api/v1/news/**").permitAll()
+                        .requestMatchers("/api/v1/files/**").permitAll() // Allow file serving
                         
                         // Tenant-related endpoints
                         .requestMatchers(HttpMethod.GET, "/api/tenants/**").permitAll()
@@ -90,8 +75,6 @@ public class SecurityConfig {
                         .requestMatchers("/api/progresstracking/submissions/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/progresstracking/submission-files/upload").hasAnyRole("TENANT_ADMIN", "STARTUP", "MENTOR")
                         .requestMatchers("/api/progresstracking/**").authenticated()
-                        .requestMatchers("/api/v1/applications/submit").permitAll()
-                        .requestMatchers("/api/v1/public/application-forms/*").permitAll()
                         
                         // User management endpoints
                         .requestMatchers("/api/users/pending-admins", "/api/users/admin-requests", "/api/users/approve-admin/**", "/api/users/reject-admin/**").hasRole("SUPER_ADMIN")

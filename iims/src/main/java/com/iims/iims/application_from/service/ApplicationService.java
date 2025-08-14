@@ -25,15 +25,33 @@ public class ApplicationService {
     private final ApplicationRepository applicationRepository;
     private final ApplicationFormRepository applicationFormRepository;
     private final TenantRepository tenantRepository;
+    private final com.iims.iims.user.repository.UserRepository userRepository;
+    private final com.iims.iims.user.service.UserService userService;
+    private final com.iims.iims.notification.EmailService emailService;
+    private final com.iims.iims.profile.repository.StartupProfileRepository startupProfileRepository;
+    private final com.iims.iims.profile.repository.MentorProfileRepository mentorProfileRepository;
+    private final com.iims.iims.application_from.service.ApplicationDocumentService documentService;
 
     @Autowired
     public ApplicationService(
             ApplicationRepository applicationRepository,
             ApplicationFormRepository applicationFormRepository,
-            TenantRepository tenantRepository){
+            TenantRepository tenantRepository,
+            com.iims.iims.user.repository.UserRepository userRepository,
+            com.iims.iims.user.service.UserService userService,
+            com.iims.iims.notification.EmailService emailService,
+            com.iims.iims.profile.repository.StartupProfileRepository startupProfileRepository,
+            com.iims.iims.profile.repository.MentorProfileRepository mentorProfileRepository,
+            com.iims.iims.application_from.service.ApplicationDocumentService documentService){
         this.applicationRepository = applicationRepository;
         this.applicationFormRepository = applicationFormRepository;
         this.tenantRepository = tenantRepository;
+        this.userRepository = userRepository;
+        this.userService = userService;
+        this.emailService = emailService;
+        this.startupProfileRepository = startupProfileRepository;
+        this.mentorProfileRepository = mentorProfileRepository;
+        this.documentService = documentService;
     }
 
     /**
@@ -94,8 +112,60 @@ public class ApplicationService {
 
         application.setResponses(responses);
         Application savedApplication = applicationRepository.save(application);
+
+        // Note: Document uploads are now handled separately via submitApplicationWithFiles method
+        // This method no longer processes Base64 encoded documents to avoid encoding issues
+
         return convertToDto(savedApplication);
     }
+
+    /**
+     * Submits a new application with MultipartFile uploads.
+     * Stores actual files in uploads/applicants directory and saves file URLs in database.
+     *
+     * @param submitRequest The SubmitApplicationRequest DTO containing application details.
+     * @param files The MultipartFile objects to be stored.
+     * @return The created ApplicationResponseDto.
+     */
+    @Transactional
+    public ApplicationResponseDto submitApplicationWithFiles(
+            SubmitApplicationRequest submitRequest,
+            java.util.List<org.springframework.web.multipart.MultipartFile> files,
+            java.util.List<String> documentTypes) {
+        
+        // First, create the application using the existing method (without documents)
+        ApplicationResponseDto applicationDto = submitApplication(submitRequest);
+        
+        // If there are files to process, handle them
+        if (files != null && !files.isEmpty()) {
+            Application application = applicationRepository.findById(applicationDto.getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Application not found with ID: " + applicationDto.getId()));
+            
+            for (int i = 0; i < files.size(); i++) {
+                org.springframework.web.multipart.MultipartFile file = files.get(i);
+                if (file != null && !file.isEmpty()) {
+                    try {
+                        // Use the new uploadMultipartFile method (like progress tracking system)
+                        String documentType = documentTypes != null && i < documentTypes.size() ? documentTypes.get(i) : "SUPPORTING_DOCUMENT";
+                        documentService.uploadMultipartFile(
+                            application.getId(),
+                            file,
+                            documentType,
+                            "Uploaded via application form"
+                        );
+                        
+                    } catch (Exception e) {
+                        throw new RuntimeException("Failed to store file: " + file.getOriginalFilename(), e);
+                    }
+                }
+            }
+        }
+        
+        return applicationDto;
+    }
+
+
+
     /**
      * Retrieves a specific application by its ID and tenant ID.
      *
@@ -137,7 +207,6 @@ public class ApplicationService {
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
-
     /**
      * Retrieves all applications belonging to a specific tenant.
      *
@@ -173,6 +242,45 @@ public class ApplicationService {
 
         application.setStatus(reviewDto.getNewStatus());
         Application updatedApplication = applicationRepository.save(application);
+
+        // On approval, create user and corresponding profile, then email credentials
+        if (reviewDto.getNewStatus() == ApplicationStatus.APPROVED) {
+            // Skip if a user already exists with this email
+            if (userRepository.findByEmail(application.getEmail()).isEmpty()) {
+                // Build and create user with random password via service to ensure encoding and emailing
+                com.iims.iims.user.dto.TenantUserCreationRequest req = new com.iims.iims.user.dto.TenantUserCreationRequest();
+                req.setEmail(application.getEmail());
+                req.setFullName(application.getFirst_name() + " " + application.getLast_name());
+                // Map applicant type to role
+                com.iims.iims.user.entity.Role role = application.getApplicantType() == ApplicantType.STARTUP
+                        ? com.iims.iims.user.entity.Role.STARTUP
+                        : application.getApplicantType() == ApplicantType.MENTOR
+                          ? com.iims.iims.user.entity.Role.MENTOR
+                          : com.iims.iims.user.entity.Role.ALUMNI;
+                req.setRole(role);
+                // Create user under this tenant using a synthetic tenant admin context
+                com.iims.iims.user.entity.User tenantAdminProxy = new com.iims.iims.user.entity.User();
+                tenantAdminProxy.setTenantId(tenant.getId());
+                com.iims.iims.user.entity.User created = userService.createTenantUser(req, tenantAdminProxy);
+
+                // Create domain profile using same user id
+                if (role == com.iims.iims.user.entity.Role.STARTUP) {
+                    com.iims.iims.profile.entity.StartupProfile sp = com.iims.iims.profile.entity.StartupProfile.builder()
+                            .user(created)
+                            .startupName(application.getFirst_name() + " " + application.getLast_name())
+                            .build();
+                    startupProfileRepository.save(sp);
+                } else if (role == com.iims.iims.user.entity.Role.MENTOR) {
+                    com.iims.iims.profile.entity.MentorProfile mp = com.iims.iims.profile.entity.MentorProfile.builder()
+                            .user(created)
+                            .firstName(application.getFirst_name())
+                            .lastName(application.getLast_name())
+                            .build();
+                    mentorProfileRepository.save(mp);
+                }
+            }
+        }
+
         return convertToDto(updatedApplication);
     }
 
@@ -193,6 +301,28 @@ public class ApplicationService {
                 ))
                 .collect(Collectors.toList());
 
+        // Get documents for this application
+        List<com.iims.iims.application_from.dto.ApplicationDocumentDto> documentDtos = null;
+        if (application.getDocuments() != null && !application.getDocuments().isEmpty()) {
+            documentDtos = application.getDocuments().stream()
+                    .filter(doc -> doc.getIsActive())
+                    .map(doc -> com.iims.iims.application_from.dto.ApplicationDocumentDto.builder()
+                            .id(doc.getId())
+                            .applicationId(doc.getApplication().getId())
+                            .fileName(doc.getFileName())
+                            .originalFileName(doc.getOriginalFileName())
+                            .filePath(doc.getFilePath())
+                            .fileSize(doc.getFileSize())
+                            .contentType(doc.getContentType())
+                            .documentType(doc.getDocumentType())
+                            .description(doc.getDescription())
+                            .uploadedAt(doc.getUploadedAt())
+                            .isActive(doc.getIsActive())
+                            .downloadUrl("http://localhost:8081/api/v1/files/applicants/" + doc.getFileName())
+                            .build())
+                    .collect(Collectors.toList());
+        }
+
         return new ApplicationResponseDto(
                 application.getId(),
                 application.getForm().getId(),
@@ -203,7 +333,8 @@ public class ApplicationService {
                 application.getApplicantType(),
                 application.getStatus(),
                 application.getSubmittedAt(),
-                fieldResponseDtos
+                fieldResponseDtos,
+                documentDtos
         );
     }
 }

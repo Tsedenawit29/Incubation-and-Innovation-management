@@ -50,7 +50,30 @@ export const getSubmissions = (token) => {
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  return axios.get('/api/progresstracking/submissions', { headers }).then(res => res.data);
+  
+  console.log('🔍 API CALL DEBUG - getSubmissions');
+  console.log('- Endpoint: /api/progresstracking/submissions');
+  console.log('- Token exists:', !!token);
+  console.log('- Token preview:', token ? `${token.substring(0, 20)}...` : 'NONE');
+  console.log('- Headers:', headers);
+  
+  return axios.get('/api/progresstracking/submissions', { headers })
+    .then(res => {
+      console.log('✅ API SUCCESS - getSubmissions');
+      console.log('- Status:', res.status);
+      console.log('- Data type:', Array.isArray(res.data) ? 'array' : typeof res.data);
+      console.log('- Data length:', res.data?.length || 0);
+      console.log('- Raw response data:', res.data);
+      return res.data;
+    })
+    .catch(error => {
+      console.error('❌ API ERROR - getSubmissions');
+      console.error('- Status:', error.response?.status);
+      console.error('- Status text:', error.response?.statusText);
+      console.error('- Error data:', error.response?.data);
+      console.error('- Full error:', error);
+      throw error;
+    });
 };
 
 export const updateSubmission = async (submissionId, data, token) => {

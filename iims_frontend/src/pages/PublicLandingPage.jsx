@@ -16,7 +16,6 @@ import {
 
 // App imports
 import { getLandingPage } from '../api/landingPage';
-import { getNewsPostsByTenant } from '../api/news';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
@@ -25,220 +24,6 @@ const getImageUrl = (imagePath) => {
   if (!imagePath) return '';
   if (imagePath.startsWith('http')) return imagePath;
   return `http://localhost:8081${imagePath}`;
-};
-
-// NewsSection component with category tabs
-const NewsSection = ({ content, sectionId, sectionBg, themeColor, themeColor2, themeColor3, tenantId }) => {
-  const [newsData, setNewsData] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [activeCategory, setActiveCategory] = useState('all');
-  const [error, setError] = useState(null);
-
-  // News categories for filtering
-  const newsCategories = [
-    { key: 'all', label: 'All News', icon: FaNewspaper },
-    { key: 'FUNDING_OPPORTUNITIES', label: 'Funding', icon: FaRocket },
-    { key: 'STARTUP_SHOWCASE', label: 'Startups', icon: FaUsers },
-    { key: 'UPCOMING_EVENTS', label: 'Events', icon: FaInfoCircle },
-    { key: 'SUCCESS_STORIES', label: 'Success Stories', icon: FaQuoteLeft },
-    { key: 'MENTOR_RESOURCES', label: 'Resources', icon: FaFolderOpen },
-    { key: 'GENERAL_ANNOUNCEMENT', label: 'Announcements', icon: FaInfoCircle }
-  ];
-
-  // Fetch news data on component mount
-  useEffect(() => {
-    const fetchNews = async () => {
-      if (!tenantId) return;
-      
-      setLoading(true);
-      setError(null);
-      try {
-        // For public access, we'll need to create a public endpoint or use the existing one
-        // For now, we'll use the selected news from content or fetch if needed
-        if (content.selectedNewsIds && content.selectedNewsIds.length > 0) {
-          // If we have selected news IDs, we would fetch them
-          // For now, we'll use the static news from content
-          setNewsData(content.news || []);
-        } else {
-          setNewsData(content.news || []);
-        }
-      } catch (err) {
-        console.error('Error fetching news:', err);
-        setError('Failed to load news');
-        setNewsData(content.news || []);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchNews();
-  }, [tenantId, content]);
-
-  // Filter news by category and exclude empty items
-  const filteredNews = (activeCategory === 'all' 
-    ? newsData 
-    : newsData.filter(item => item.category === activeCategory))
-    .filter(item => item && item.title && item.title.trim() !== '');
-
-  const formatCategory = (category) => {
-    if (!category) return 'General';
-    return category.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return null;
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
-  return (
-    <section id={sectionId} className="w-full py-20 border-b" style={{ fontFamily: 'Inter, sans-serif', background: sectionBg }}>
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4 flex items-center justify-center gap-2" style={{ color: themeColor2 }}>
-            <FaNewspaper /> {content.title || 'Latest News & Updates'}
-          </h2>
-          {content.description && (
-            <p className="text-gray-600 text-lg max-w-3xl mx-auto">{content.description}</p>
-          )}
-        </div>
-
-        {/* Category Tabs */}
-        <div className="flex flex-wrap justify-center gap-2 mb-8">
-          {newsCategories.map((category) => {
-            const Icon = category.icon;
-            const isActive = activeCategory === category.key;
-            const hasNews = category.key === 'all' || newsData.some(item => item.category === category.key);
-            
-            if (!hasNews && category.key !== 'all') return null;
-            
-            return (
-              <button
-                key={category.key}
-                onClick={() => setActiveCategory(category.key)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                  isActive 
-                    ? 'text-white shadow-lg transform scale-105' 
-                    : 'text-gray-600 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300'
-                }`}
-                style={isActive ? { 
-                  background: `linear-gradient(135deg, ${themeColor} 0%, ${themeColor2} 100%)`,
-                  boxShadow: `0 4px 15px ${themeColor}33`
-                } : {}}
-              >
-                <Icon size={16} />
-                {category.label}
-                {category.key !== 'all' && (
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    isActive ? 'bg-white bg-opacity-20' : 'bg-gray-100'
-                  }`}>
-                    {newsData.filter(item => item.category === category.key).length}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Loading State */}
-        {loading && (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: themeColor }}></div>
-            <p className="text-gray-600">Loading news...</p>
-          </div>
-        )}
-
-        {/* Error State */}
-        {error && (
-          <div className="text-center py-12">
-            <p className="text-red-600 mb-4">{error}</p>
-            <button 
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-            >
-              Retry
-            </button>
-          </div>
-        )}
-
-        {/* News Grid */}
-        {!loading && !error && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredNews.map((item, idx) => (
-              <div key={idx} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border border-gray-100">
-                {item.image && (
-                  <div className="h-48 overflow-hidden">
-                    <img 
-                      src={getImageUrl(item.image)} 
-                      alt="news" 
-                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" 
-                    />
-                  </div>
-                )}
-                <div className="p-6">
-                  <div className="flex items-center gap-2 mb-3">
-                    {formatDate(item.date || item.publishedAt) && (
-                      <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                        {formatDate(item.date || item.publishedAt)}
-                      </span>
-                    )}
-                    {item.category && (
-                      <span 
-                        className="text-xs font-medium text-white px-2 py-1 rounded-full"
-                        style={{ backgroundColor: themeColor }}
-                      >
-                        {formatCategory(item.category)}
-                      </span>
-                    )}
-                  </div>
-                  <h3 className="font-bold text-lg mb-3" style={{ color: themeColor2 }}>
-                    {item.title}
-                  </h3>
-                  <p className="text-gray-600 text-sm leading-relaxed mb-4 line-clamp-3">
-                    {item.content}
-                  </p>
-                  {item.authorName && (
-                    <p className="text-xs text-gray-500 mb-3">By {item.authorName}</p>
-                  )}
-                  {item.link && (
-                    <a 
-                      href={item.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 text-sm font-medium hover:underline transition-colors"
-                      style={{ color: themeColor }}
-                    >
-                      Read More
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                      </svg>
-                    </a>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!loading && !error && filteredNews.length === 0 && (
-          <div className="text-center py-12">
-            <FaNewspaper size={48} className="mx-auto text-gray-400 mb-4" />
-            <h4 className="text-lg font-semibold text-gray-600 mb-2">No News Available</h4>
-            <p className="text-gray-500">
-              {activeCategory === 'all' 
-                ? 'No news posts have been published yet.' 
-                : `No news posts in the ${newsCategories.find(c => c.key === activeCategory)?.label} category.`
-              }
-            </p>
-          </div>
-        )}
-      </div>
-    </section>
-  );
 };
 
 // Constants
@@ -466,58 +251,28 @@ function PublicLandingPage() {
                 <h2 className="text-2xl md:text-3xl mb-10 text-center" style={{ color: '#fff', fontWeight: 400, maxWidth: 800 }}>{content.subtitle}</h2>
               )}
               <div className="flex flex-wrap gap-6 justify-center mt-2">
-                {content.ctas && content.ctas.map((cta, ctaIdx) => {
-                  // Prioritize CTA's own URL, then fallback to type-based URLs, then default
-                  const ctaUrl = cta.url || 
-                    (cta.type === 'startup' ? (data.buttonUrls?.startupSignup || '#') : 
-                     cta.type === 'mentor' ? (data.buttonUrls?.mentorSignup || '#') : 
-                     cta.type === 'custom' ? (cta.url || '#') : '#');
-                  const ctaTarget = cta.target || '_blank';
-                  
-                  // Style based on button style and theme colors
-                  let buttonStyle = {};
-                  let buttonClasses = "px-8 py-4 rounded-xl text-lg font-bold shadow-lg focus:ring-4 transition inline-block";
-                  
-                  if (cta.style === 'primary' || !cta.style || ctaIdx === 0) {
-                    buttonStyle = { 
-                      background: `linear-gradient(135deg, ${themeColor}, ${themeColor2})`, 
-                      color: '#fff', 
-                      border: 'none', 
-                      textDecoration: 'none',
-                      boxShadow: `0 4px 20px ${themeColor}33`
-                    };
-                  } else if (cta.style === 'secondary' || ctaIdx === 1) {
-                    buttonStyle = { 
-                      background: 'transparent', 
-                      color: themeColor2, 
-                      border: `2px solid ${themeColor2}`, 
-                      textDecoration: 'none' 
-                    };
-                    buttonClasses += " hover:bg-opacity-10";
-                  } else if (cta.style === 'ghost') {
-                    buttonStyle = { 
-                      background: 'transparent', 
-                      color: themeColor3, 
-                      border: 'none', 
-                      textDecoration: 'underline',
-                      textDecorationColor: themeColor2
-                    };
-                    buttonClasses = "px-4 py-2 text-lg font-bold transition inline-block";
-                  }
-                  
-                  return (
-                    <a
-                      key={ctaIdx}
-                      href={ctaUrl}
-                      target={ctaTarget}
-                      rel={ctaTarget === '_blank' ? 'noopener noreferrer' : undefined}
-                      className={buttonClasses}
-                      style={buttonStyle}
-                    >
-                      {cta.label || `CTA ${ctaIdx + 1}`}
-                    </a>
-                  );
-                })}
+                {content.ctas && content.ctas[0] && (
+                  <a
+                    href={content.ctas[0].type === 'startup' ? (data.buttonUrls?.startupSignup || '#') : (data.buttonUrls?.mentorSignup || '#')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-8 py-4 rounded-xl text-lg font-bold shadow-lg focus:ring-4 transition inline-block"
+                    style={{ background: themeColor2, color: '#111', border: 'none', textDecoration: 'none' }}
+                  >
+                    {content.ctas[0].label}
+                  </a>
+                )}
+                {content.ctas && content.ctas[1] && (
+                  <a
+                    href={content.ctas[1].type === 'startup' ? (data.buttonUrls?.startupSignup || '#') : (data.buttonUrls?.mentorSignup || '#')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-8 py-4 rounded-xl text-lg font-bold border-2 focus:ring-4 transition inline-block"
+                    style={{ background: 'transparent', color: themeColor2, borderColor: themeColor2, textDecoration: 'none' }}
+                  >
+                    {content.ctas[1].label}
+                  </a>
+                )}
               </div>
             </div>
           </section>
@@ -631,15 +386,50 @@ function PublicLandingPage() {
         );
       case 'NEWS':
         return (
-          <NewsSection 
-            content={content} 
-            sectionId={sectionId} 
-            sectionBg={sectionBg} 
-            themeColor={themeColor} 
-            themeColor2={themeColor2} 
-            themeColor3={themeColor3} 
-            tenantId={tenantId}
-          />
+          <section id={sectionId} className="w-full py-20 border-b" style={{ fontFamily: 'Inter, sans-serif', background: sectionBg }}>
+            <div className="max-w-6xl mx-auto px-4">
+              <div className="text-center mb-12">
+                <h2 className="text-3xl font-bold mb-4 flex items-center justify-center gap-2" style={{ color: themeColor2 }}><FaNewspaper /> {content.title || 'Latest News & Updates'}</h2>
+                {content.description && (
+                  <p className="text-gray-600 text-lg max-w-3xl mx-auto">{content.description}</p>
+                )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {(content.news || []).map((item, idx) => (
+                  <div key={idx} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow border border-gray-100">
+                    {item.image && (
+                      <div className="h-48 overflow-hidden">
+                        <img src={getImageUrl(item.image)} alt="news" className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                      </div>
+                    )}
+                    <div className="p-6">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                          {item.date ? new Date(item.date).toLocaleDateString() : 'Recent'}
+                        </span>
+                      </div>
+                      <h3 className="font-bold text-lg mb-3" style={{ color: themeColor2 }}>{item.title}</h3>
+                      <p className="text-gray-600 text-sm leading-relaxed mb-4 line-clamp-3">{item.content}</p>
+                      {item.link && (
+                        <a 
+                          href={item.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 text-sm font-medium hover:underline"
+                          style={{ color: themeColor }}
+                        >
+                          Read More
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
         );
       case 'CUSTOM':
         return (

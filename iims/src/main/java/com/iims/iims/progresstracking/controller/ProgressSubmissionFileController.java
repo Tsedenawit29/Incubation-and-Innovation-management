@@ -2,6 +2,7 @@ package com.iims.iims.progresstracking.controller;
 
 import com.iims.iims.progresstracking.entity.ProgressSubmissionFile;
 import com.iims.iims.progresstracking.service.ProgressSubmissionFileService;
+import com.iims.iims.progresstracking.service.ProgressSubmissionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +23,9 @@ import com.iims.iims.progresstracking.entity.ProgressSubmission;
 public class ProgressSubmissionFileController {
     @Autowired
     private ProgressSubmissionFileService fileService;
+    
+    @Autowired
+    private ProgressSubmissionService submissionService;
 
     @PostMapping
     public ResponseEntity<ProgressSubmissionFile> create(@RequestBody ProgressSubmissionFile file) {
@@ -42,22 +46,38 @@ public class ProgressSubmissionFileController {
             // Create ProgressSubmissionFile entity
             ProgressSubmissionFile psf = new ProgressSubmissionFile();
             psf.setId(UUID.randomUUID());
+            psf.setFileName(filename);
+            psf.setOriginalName(file.getOriginalFilename());
+            psf.setFileSize(file.getSize());
+            psf.setContentType(file.getContentType());
             psf.setFileUrl("/" + uploadDir + filename);
             psf.setUploadedAt(LocalDateTime.now());
-            // Link to ProgressSubmission
-            ProgressSubmission submission = new ProgressSubmission();
-            submission.setId(submissionId);
+            // Link to existing ProgressSubmission - fetch from database
+            Optional<ProgressSubmission> submissionOpt = submissionService.getSubmissionById(submissionId);
+            if (!submissionOpt.isPresent()) {
+                throw new RuntimeException("Submission not found with ID: " + submissionId);
+            }
+            ProgressSubmission submission = submissionOpt.get();
             psf.setSubmission(submission);
             ProgressSubmissionFile saved = fileService.createFile(psf);
             return ResponseEntity.ok(saved);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            System.err.println("❌ FILE UPLOAD ERROR: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(null);
         }
     }
 
     @GetMapping
     public ResponseEntity<List<ProgressSubmissionFile>> getAll() {
-        return ResponseEntity.ok(fileService.getAllFiles());
+        List<ProgressSubmissionFile> files = fileService.getAllFiles();
+        System.out.println("🔍 BACKEND FILE DEBUG - Total files in database: " + files.size());
+        for (ProgressSubmissionFile file : files) {
+            System.out.println("📁 File: " + file.getOriginalName() + " -> Submission ID: " + 
+                (file.getSubmission() != null ? file.getSubmission().getId() : "NULL"));
+        }
+        return ResponseEntity.ok(files);
     }
 
     @GetMapping("/{id}")

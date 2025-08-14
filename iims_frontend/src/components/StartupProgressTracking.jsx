@@ -8,6 +8,7 @@ import {
   Eye, 
   Download,
   MessageCircle,
+  MessageSquare,
   Star,
   TrendingUp,
   Calendar
@@ -15,15 +16,169 @@ import {
 import { getAssignedTemplatesForStartup, getPhases, getTasks, uploadSubmissionFile, createSubmission, getSubmissions, updateSubmission } from '../api/progresstracking';
 
 export default function StartupProgressTracking({ userId, token }) {
-  // State hooks
+  console.log('🔥 COMPONENT RENDER - StartupProgressTracking props:', { userId, tokenExists: !!token });
+  console.log('🔥 COMPONENT RENDER - This log should appear if component renders');
+  
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [phases, setPhases] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [submissions, setSubmissions] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState({});
   const [expandedPhases, setExpandedPhases] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // BYPASS useEffect - Direct initialization call
+  console.log('🔥 DIRECT INIT CHECK:', {
+    userId: !!userId,
+    token: !!token,
+    templatesLength: templates.length,
+    submissionsLength: submissions.length,
+    loading: loading,
+    shouldInit: userId && token && templates.length === 0 && !loading
+  });
+  
+  // FORCE SUBMISSION FETCH - Since templates are loaded but submissions are empty
+  if (userId && token && templates.length > 0 && submissions.length === 0 && !loading) {
+    console.log('🔥 FORCE SUBMISSION FETCH - Templates loaded but submissions empty');
+    setLoading(true);
+    getSubmissions(token)
+      .then(submissionsData => {
+        console.log('🔥 FORCE SUBMISSION SUCCESS:', submissionsData.length);
+        console.log('🔥 RAW SUBMISSIONS DATA:', submissionsData);
+        
+        // Show detailed raw data for debugging
+        submissionsData.forEach((sub, index) => {
+          console.log(`🔍 RAW SUBMISSION ${index + 1}:`, {
+            id: sub.id,
+            startupId: sub.startupId,
+            userId: sub.userId,
+            taskId: sub.taskId,
+            status: sub.status,
+            submittedAt: sub.submittedAt
+          });
+        });
+        
+        console.log('🔍 CURRENT USER ID FOR COMPARISON:', userId);
+        
+        // TEMPORARY FIX: Since startupId/userId are null, match by taskId against current user's tasks
+        console.log('🔧 APPLYING TEMPORARY FIX: Matching submissions by taskId since startupId/userId are null');
+        
+        // Get all task IDs for the current user (from the tasks state)
+        const currentUserTaskIds = tasks.map(task => task.id);
+        console.log('🔧 CURRENT USER TASK IDS:', currentUserTaskIds);
+        
+        const startupSubmissions = submissionsData.filter(sub => {
+          if (!sub) {
+            console.log('❌ SKIP: Null submission');
+            return false;
+          }
+          
+          // Since startupId/userId are null, match by taskId
+          const taskMatch = currentUserTaskIds.includes(sub.taskId);
+          
+          console.log(`🔍 CHECKING SUBMISSION ${sub.id?.substring(0, 8)}:`, {
+            submissionTaskId: sub.taskId?.substring(0, 8) + '...',
+            taskMatch: taskMatch,
+            status: sub.status
+          });
+          
+          if (taskMatch) {
+            console.log('✅ TASK MATCH FOUND:', {
+              submissionId: sub.id?.substring(0, 8) + '...',
+              taskId: sub.taskId?.substring(0, 8) + '...',
+              status: sub.status,
+              matchType: 'taskId'
+            });
+          } else {
+            console.log('❌ NO TASK MATCH:', {
+              submissionId: sub.id?.substring(0, 8) + '...',
+              taskId: sub.taskId?.substring(0, 8) + '...',
+              reason: 'TaskId not in current user tasks'
+            });
+          }
+          
+          return taskMatch;
+        });
+        
+        console.log('🔥 FILTERED SUBMISSIONS:', startupSubmissions.length);
+        
+        // FETCH FILES FOR EACH SUBMISSION
+        if (startupSubmissions.length > 0) {
+          console.log('🔍 FETCHING FILES for', startupSubmissions.length, 'submissions...');
+          
+          Promise.all(
+            startupSubmissions.map(async (submission) => {
+              try {
+                console.log(`🔍 Fetching files for submission: ${submission.id?.substring(0, 8)}...`);
+                
+                // Fetch files for this submission using the submission-files API
+                const response = await fetch(`/api/progresstracking/submission-files`, {
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                  }
+                });
+                
+                if (response.ok) {
+                  const allFiles = await response.json();
+                  // Filter files for this specific submission
+                  const submissionFiles = allFiles.filter(file => file.submission?.id === submission.id);
+                  
+                  console.log(`✅ Found ${submissionFiles.length} files for submission ${submission.id?.substring(0, 8)}`);
+                  
+                  return {
+                    ...submission,
+                    files: submissionFiles
+                  };
+                } else {
+                  console.warn(`❌ Failed to fetch files for submission ${submission.id}: ${response.status}`);
+                  return submission;
+                }
+              } catch (error) {
+                console.error(`❌ Error fetching files for submission ${submission.id}:`, error);
+                return submission;
+              }
+            })
+          ).then(submissionsWithFiles => {
+            console.log('🎉 SUBMISSIONS WITH FILES LOADED:', submissionsWithFiles.length);
+            setSubmissions(submissionsWithFiles);
+            setLoading(false);
+          }).catch(error => {
+            console.error('❌ FILE FETCH ERROR:', error);
+            setSubmissions(startupSubmissions);
+            setLoading(false);
+          });
+        } else {
+          setSubmissions(startupSubmissions);
+          setLoading(false);
+        }
+      })
+      .catch(error => {
+        console.error('🔥 FORCE SUBMISSION ERROR:', error);
+        setLoading(false);
+      });
+  }
+  
+  if (userId && token && templates.length === 0 && !loading) {
+    console.log('🔥 DIRECT INIT - Bypassing useEffect, calling data fetch directly');
+    setLoading(true);
+    getAssignedTemplatesForStartup(userId, token)
+      .then(data => {
+        console.log('🔥 DIRECT INIT SUCCESS:', data.length);
+        setTemplates(data);
+        if (data && data.length > 0) {
+          setSelectedTemplate(data[0]);
+          fetchPhases(data[0].id);
+        }
+        setLoading(false);
+      })
+      .catch(error => {
+        console.error('🔥 DIRECT INIT ERROR:', error);
+        setTemplates([]);
+        setLoading(false);
+      });
+  }
+  const [uploadStatus, setUploadStatus] = useState({});
   const [selectedTask, setSelectedTask] = useState(null);
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
   const [submissionFiles, setSubmissionFiles] = useState([]);
@@ -106,71 +261,219 @@ export default function StartupProgressTracking({ userId, token }) {
 
   // Main functions
   const fetchPhases = async (templateId) => {
-    if (!templateId) return;
+    if (!templateId || !token) {
+      console.log('❌ Missing templateId or token, cannot fetch phases');
+      return;
+    }
+    
     setLoading(true);
     try {
       console.log('=== STARTING PHASES FETCH ===');
       console.log('Template ID:', templateId);
       console.log('Token exists:', !!token);
+      
       const phasesData = await getPhases(token, templateId);
-      console.log('Phases fetched:', phasesData.length);
+      console.log('✅ Phases fetched successfully:', phasesData.length);
       setPhases(phasesData);
       setExpandedPhases(phasesData.map(phase => phase.id));
       
+      console.log('=== STARTING TASKS FETCH ===');
       const allTasks = [];
       for (const phase of phasesData) {
         try {
+          console.log(`Fetching tasks for phase: ${phase.id}`);
           const phaseTasks = await getTasks(token, phase.id);
+          console.log(`✅ Tasks fetched for phase ${phase.id}:`, phaseTasks.length);
           const tasksWithPhaseId = phaseTasks.map(task => ({ ...task, phaseId: phase.id }));
           allTasks.push(...tasksWithPhaseId);
         } catch (error) {
-          console.error(`Failed to fetch tasks for phase ${phase.id}:`, error);
+          console.error(`❌ Failed to fetch tasks for phase ${phase.id}:`, error);
         }
       }
+      console.log('✅ All tasks fetched successfully:', allTasks.length);
       setTasks(allTasks);
       
       try {
         console.log('=== STARTING SUBMISSION FETCH ===');
         console.log('Fetching submissions for startup:', userId);
         console.log('Token exists:', !!token);
+        console.log('Token preview:', token ? `${token.substring(0, 10)}...` : 'MISSING');
+        console.log('API call details:', {
+          endpoint: '/api/progresstracking/submissions',
+          method: 'GET',
+          headers: { Authorization: `Bearer ${token ? 'EXISTS' : 'MISSING'}` }
+        });
+        
+        if (!token) {
+          console.error('❌ NO TOKEN AVAILABLE - Cannot fetch submissions');
+          setSubmissions([]);
+          return;
+        }
+        
+        console.log('Making API call to fetch submissions...');
         const submissionsData = await getSubmissions(token);
         console.log('=== SUBMISSION FETCH COMPLETED ===');
-        console.log('Fetched submissions:', submissionsData.length);
-        console.log('All submissions data:', submissionsData);
+        console.log('Raw API response - submissions count:', submissionsData?.length || 0);
+        console.log('Raw API response - full data:', submissionsData);
+        
+        // Check if we got any data at all
+        if (!submissionsData) {
+          console.error('No submissions data received (null/undefined)');
+          setSubmissions([]);
+          return;
+        }
+        
+        if (!Array.isArray(submissionsData)) {
+          console.error('Invalid submissions data received (not array):', typeof submissionsData, submissionsData);
+          setSubmissions([]);
+          return;
+        }
+        
+        if (submissionsData.length === 0) {
+          console.warn('⚠️ API returned empty submissions array');
+          console.warn('This could mean:');
+          console.warn('1. No submissions exist in database');
+          console.warn('2. Backend filtering is excluding this user');
+          console.warn('3. Authentication/authorization issue');
+        }
         
         // Filter submissions for this startup only
-        const startupSubmissions = submissionsData.filter(sub => {
-          console.log('Checking submission:', {
-            id: sub.id,
-            startupId: sub.startupId,
-            userId: sub.userId,
-            taskId: sub.taskId,
-            status: sub.status,
-            mentorFeedback: sub.mentorFeedback,
-            feedback: sub.feedback,
-            score: sub.score
+        console.log('🔍 FILTERING', submissionsData.length, 'submissions for userId:', userId);
+        
+        // Show ALL submissions for debugging
+        if (submissionsData.length > 0) {
+          console.log('📋 ALL SUBMISSIONS:');
+          submissionsData.forEach((sub, index) => {
+            console.log(`${index + 1}:`, {
+              id: sub.id?.substring(0, 8) + '...',
+              startupId: sub.startupId,
+              userId: sub.userId,
+              taskId: sub.taskId?.substring(0, 8) + '...',
+              status: sub.status
+            });
           });
-          console.log('Current userId:', userId, typeof userId);
-          console.log('Submission startupId:', sub.startupId, typeof sub.startupId);
-          console.log('Submission userId:', sub.userId, typeof sub.userId);
-          const matches = sub.startupId === userId || sub.userId === userId;
-          console.log('Submission matches:', matches);
+        }
+        
+        const startupSubmissions = submissionsData.filter(sub => {
+          if (!sub) {
+            console.warn('Null/undefined submission found, skipping');
+            return false;
+          }
+          
+          // Convert both to strings for comparison
+          const userIdStr = String(userId).trim();
+          const startupIdStr = String(sub.startupId || '').trim();
+          const submissionUserIdStr = String(sub.userId || '').trim();
+          
+          const startupMatch = startupIdStr === userIdStr;
+          const userMatch = submissionUserIdStr === userIdStr;
+          const matches = startupMatch || userMatch;
+          
+          if (matches) {
+            console.log('✅ MATCH FOUND:', {
+              submissionId: sub.id,
+              taskId: sub.taskId,
+              status: sub.status,
+              matchType: startupMatch ? 'startupId' : 'userId'
+            });
+          }
+          
           return matches;
         });
         
-        console.log('Filtered startup submissions:', startupSubmissions.length);
-        console.log('All startup submissions:', startupSubmissions);
-        setSubmissions(startupSubmissions);
+        console.log('✅ FILTERED RESULT:', startupSubmissions.length, 'submissions found');
+        
+        if (startupSubmissions.length > 0) {
+          startupSubmissions.forEach((sub, index) => {
+            console.log(`✅ Match ${index + 1}:`, {
+              id: sub.id?.substring(0, 8) + '...',
+              taskId: sub.taskId?.substring(0, 8) + '...',
+              status: sub.status
+            });
+          });
+          
+          // FETCH FILES FOR EACH SUBMISSION
+          console.log('🔍 FETCHING FILES for', startupSubmissions.length, 'submissions...');
+          const submissionsWithFiles = await Promise.all(
+            startupSubmissions.map(async (submission) => {
+              try {
+                console.log(`🔍 Fetching files for submission: ${submission.id?.substring(0, 8)}...`);
+                
+                // Fetch files for this submission using the submission-files API
+                const response = await fetch(`/api/progresstracking/submission-files`, {
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                  }
+                });
+                
+                if (response.ok) {
+                  const allFiles = await response.json();
+                  // Filter files for this specific submission
+                  const submissionFiles = allFiles.filter(file => file.submission?.id === submission.id);
+                  
+                  console.log(`✅ Found ${submissionFiles.length} files for submission ${submission.id?.substring(0, 8)}`);
+                  
+                  return {
+                    ...submission,
+                    files: submissionFiles
+                  };
+                } else {
+                  console.warn(`❌ Failed to fetch files for submission ${submission.id}: ${response.status}`);
+                  return submission;
+                }
+              } catch (error) {
+                console.error(`❌ Error fetching files for submission ${submission.id}:`, error);
+                return submission;
+              }
+            })
+          );
+          
+          console.log('🎉 SUBMISSIONS WITH FILES LOADED:', submissionsWithFiles.length);
+          setSubmissions(submissionsWithFiles);
+        } else {
+          console.log('❌ NO MATCHES FOUND - Check if submissions have correct startupId/userId');
+          setSubmissions(startupSubmissions);
+        }  
+        
+        if (submissionsData.length > 0) {
+          console.warn('- Sample submission startupIds:', submissionsData.slice(0, 5).map(s => ({ id: s.id, startupId: s.startupId, userId: s.userId })));
+        }
+        console.log('Submissions state updated with', startupSubmissions.length, 'items');
       } catch (error) {
         console.error('=== SUBMISSION FETCH ERROR ===');
         console.error('Failed to fetch submissions:', error);
-        console.error('Error details:', error.message, error.stack);
+        console.error('Error details:', {
+          message: error.message,
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          stack: error.stack
+        });
+        
+        if (error.response?.status === 403) {
+          console.error('❌ 403 FORBIDDEN - Authentication issue');
+          console.error('This usually means:');
+          console.error('1. Token is invalid or expired');
+          console.error('2. User lacks permission to access submissions');
+          console.error('3. Backend authentication is not working properly');
+        } else {
+          console.error('❌ SUBMISSION FETCH ERROR:', error);
+          console.error('Error details:', error.message);
+          console.error('Full error:', error);
+        }
         setSubmissions([]);
       }
-    } catch (e) {
-      console.error('Failed to load phases:', e);
+    } catch (error) {
+      console.error('❌ PHASES FETCH ERROR:', error);
+      console.error('Error details:', error.message);
+      console.error('Full error:', error);
+      setPhases([]);
+      setTasks([]);
+      setSubmissions([]);
     } finally {
       setLoading(false);
+      console.log('=== FETCH PHASES COMPLETED ===');
     }
   };
 
@@ -194,9 +497,21 @@ export default function StartupProgressTracking({ userId, token }) {
       // Upload all files
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        console.log(`Uploading file ${i + 1}/${files.length}:`, file.name);
+        console.log(`🔥 UPLOADING FILE ${i + 1}/${files.length}:`, {
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+          submissionId: submission.id
+        });
         setUploadStatus(prev => ({ ...prev, [taskId]: `Uploading file ${i + 1}/${files.length}: ${file.name}` }));
-        await uploadSubmissionFile(file, submission.id, token);
+        
+        try {
+          const uploadResult = await uploadSubmissionFile(file, submission.id, token);
+          console.log(`✅ FILE UPLOAD SUCCESS:`, uploadResult);
+        } catch (uploadError) {
+          console.error(`❌ FILE UPLOAD FAILED:`, uploadError);
+          throw uploadError; // Re-throw to stop the process
+        }
       }
       
       setUploadStatus(prev => ({ ...prev, [taskId]: 'Finalizing submission...' }));
@@ -287,56 +602,66 @@ export default function StartupProgressTracking({ userId, token }) {
     );
   };
 
-  // Effects
+  // Effects - FORCED: Adding immediate execution to bypass useEffect issue
   useEffect(() => {
-    console.log('=== COMPONENT INITIALIZATION ===');
-    console.log('UserId:', userId);
-    console.log('Token exists:', !!token);
+    console.log('🔍 USEEFFECT TRIGGERED - userId:', userId, 'token exists:', !!token);
     
     if (!userId || !token) {
-      console.log('Missing userId or token, skipping initialization');
+      console.log('❌ MISSING DATA - userId:', userId, 'token exists:', !!token);
       return;
     }
     
-    console.log('Fetching assigned templates...');
+    console.log('🚀 INITIALIZING StartupProgressTracking');
     getAssignedTemplatesForStartup(userId, token)
       .then(data => {
-        console.log('Templates fetched:', data.length);
         setTemplates(data);
         if (data && data.length > 0) {
-          console.log('Setting selected template:', data[0].id);
           setSelectedTemplate(data[0]);
-          console.log('About to call fetchPhases...');
           fetchPhases(data[0].id);
-        } else {
-          console.log('No templates found');
         }
       })
       .catch(error => {
-        console.error('TEMPLATE FETCH ERROR:', error);
+        console.error('❌ TEMPLATE FETCH ERROR:', error);
         setTemplates([]);
       });
   }, [userId, token]);
 
-  // Add periodic refresh to get updated feedback
+  // EMERGENCY FIX: Force data fetching if useEffect doesn't work
   useEffect(() => {
-    if (!selectedTemplate) return;
-    
-    const interval = setInterval(() => {
-      console.log('Auto-refreshing submissions for feedback updates...');
-      fetchPhases(selectedTemplate.id);
-    }, 10000); // 10 seconds for faster feedback sync
-    
-    return () => clearInterval(interval);
-  }, [selectedTemplate, token]);
+    console.log('🚨 EMERGENCY USEEFFECT - Force triggering data fetch');
+    if (userId && token && templates.length === 0) {
+      console.log('🚨 FORCING DATA FETCH');
+      getAssignedTemplatesForStartup(userId, token)
+        .then(data => {
+          console.log('🚨 EMERGENCY FETCH SUCCESS:', data.length);
+          setTemplates(data);
+          if (data && data.length > 0) {
+            setSelectedTemplate(data[0]);
+            fetchPhases(data[0].id);
+          }
+        })
+        .catch(error => {
+          console.error('🚨 EMERGENCY FETCH ERROR:', error);
+        });
+    }
+  }); // No dependency array - runs every render until data is loaded
+
+  // Manual refresh button is available if needed
+  
+  // REMOVED: Debug useEffect that was causing constant logging
+  // The issue is likely in parent component or state management
 
   // Loading state
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading progress tracking...</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center bg-white rounded-2xl shadow-xl p-12 max-w-md mx-4">
+          <div className="relative">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-100 border-t-blue-600 mx-auto mb-6"></div>
+            <div className="absolute inset-0 rounded-full bg-blue-50 opacity-20 animate-pulse"></div>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-800 mb-2">Loading Your Progress</h3>
+          <p className="text-gray-600">Fetching your latest achievements...</p>
         </div>
       </div>
     );
@@ -345,14 +670,19 @@ export default function StartupProgressTracking({ userId, token }) {
   // No templates state
   if (templates.length === 0) {
     return (
-      <div className="text-center py-12">
-        <div className="bg-gray-50 rounded-lg p-8">
-          <TrendingUp size={48} className="mx-auto text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Templates Assigned</h3>
-          <p className="text-gray-600 mb-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
+        <div className="text-center bg-white rounded-2xl shadow-xl p-12 max-w-lg">
+          <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-full p-4 w-20 h-20 mx-auto mb-6">
+            <TrendingUp size={48} className="text-white" />
+          </div>
+          <h3 className="text-2xl font-bold text-gray-900 mb-4">Ready to Start Your Journey?</h3>
+          <p className="text-gray-600 mb-6 leading-relaxed">
             No progress tracking templates have been assigned to you yet. 
-            Contact your mentor or administrator for template assignment.
+            Your mentor will assign templates to help guide your startup journey.
           </p>
+          <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+            <p className="text-blue-800 text-sm font-medium">💡 Contact your mentor for template assignment</p>
+          </div>
         </div>
       </div>
     );
@@ -360,72 +690,138 @@ export default function StartupProgressTracking({ userId, token }) {
 
   // Main render
   return (
-    <div className="space-y-6">
-      {/* Template Selection */}
-      {templates.length > 1 && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4">📋 Your Assigned Templates</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {templates.map(template => (
-              <button
-                key={template.id}
-                onClick={() => {
-                  setSelectedTemplate(template);
-                  fetchPhases(template.id);
-                }}
-                className={`p-4 rounded-lg border-2 text-left transition-all ${
-                  selectedTemplate?.id === template.id
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-blue-300 hover:shadow-md'
-                }`}
-              >
-                <h4 className="font-medium text-gray-900">{template.name}</h4>
-                <p className="text-gray-600 text-sm mt-1">{template.description}</p>
-              </button>
-            ))}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+        {/* Header Section */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mb-6 shadow-lg">
+            <TrendingUp className="w-8 h-8 text-white" />
           </div>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">Your Progress Journey</h1>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">Track your startup milestones and achievements with our comprehensive progress system</p>
         </div>
-      )}
 
-      {/* Selected Template Details */}
-      {selectedTemplate && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">{selectedTemplate.name}</h2>
-            <p className="text-gray-600">{selectedTemplate.description}</p>
+        {/* Template Selection */}
+        {templates.length > 1 && (
+          <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-8">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                <FileText className="w-5 h-5 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900">Your Assigned Templates</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {templates.map(template => (
+                <button
+                  key={template.id}
+                  onClick={() => {
+                    setSelectedTemplate(template);
+                    fetchPhases(template.id);
+                  }}
+                  className={`group relative p-6 rounded-2xl border-2 text-left transition-all duration-300 transform hover:scale-105 ${
+                    selectedTemplate?.id === template.id
+                      ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-purple-50 shadow-lg'
+                      : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-xl'
+                  }`}
+                >
+                  <div className="absolute top-4 right-4">
+                    {selectedTemplate?.id === template.id ? (
+                      <CheckCircle className="w-6 h-6 text-blue-500" />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full border-2 border-gray-300 group-hover:border-blue-400 transition-colors" />
+                    )}
+                  </div>
+                  <h4 className="font-bold text-gray-900 text-lg mb-2 pr-8">{template.name}</h4>
+                  <p className="text-gray-600 text-sm leading-relaxed">{template.description}</p>
+                  <div className="mt-4 flex items-center text-xs text-blue-600 font-medium">
+                    <span>Select Template</span>
+                    <svg className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
+        )}
 
-          {/* Progress Overview */}
-          <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-semibold text-blue-900">📊 Progress Overview</h3>
-              <button
-                onClick={handleManualRefresh}
-                className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
-                title="Refresh to see latest feedback"
-              >
-                🔄 Refresh
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div>
-                <span className="font-medium text-blue-800">Total Phases:</span>
-                <span className="ml-2 text-blue-700">{phases.length}</span>
-              </div>
-              <div>
-                <span className="font-medium text-blue-800">Total Tasks:</span>
-                <span className="ml-2 text-blue-700">{tasks.length}</span>
-              </div>
-              <div>
-                <span className="font-medium text-blue-800">Completed Tasks:</span>
-                <span className="ml-2 text-blue-700">
-                  {tasks.filter(task => 
-                    submissions.some(sub => sub.taskId === task.id && (sub.status === 'APPROVED' || sub.status === 'COMPLETED'))
-                  ).length}
-                </span>
+        {/* Selected Template Details */}
+        {selectedTemplate && (
+          <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-8">
+            <div className="mb-8">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
+                  <CheckCircle className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-3xl font-bold text-gray-900 mb-2">{selectedTemplate.name}</h2>
+                  <p className="text-gray-600 text-lg">{selectedTemplate.description}</p>
+                </div>
               </div>
             </div>
-          </div>
+
+            {/* Progress Overview */}
+            <div className="mb-8 p-6 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl border border-blue-100">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                    <TrendingUp className="w-5 h-5 text-white" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900">Progress Overview</h3>
+                </div>
+                <button
+                  onClick={handleManualRefresh}
+                  className="group px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-medium rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+                  title="Refresh to see latest feedback"
+                >
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span>Refresh</span>
+                  </div>
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-white/30">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <FileText className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Total Phases</p>
+                      <p className="text-2xl font-bold text-gray-900">{phases.length}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-white/30">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                      <Clock className="w-4 h-4 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Total Tasks</p>
+                      <p className="text-2xl font-bold text-gray-900">{tasks.length}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-white/30">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Completed</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {tasks.filter(task => 
+                          submissions.some(sub => sub.taskId === task.id && (sub.status === 'APPROVED' || sub.status === 'COMPLETED'))
+                        ).length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
           {/* Phases and Tasks */}
           {loading ? (
@@ -495,10 +891,7 @@ export default function StartupProgressTracking({ userId, token }) {
                                 console.log('=== PROCESSING TASK ===');
                                 console.log('Task ID:', task.id);
                                 console.log('Total submissions available:', submissions.length);
-                                console.log('All submissions:', submissions);
-                                
                                 const taskSubmission = submissions.find(sub => sub.taskId === task.id);
-                                console.log('Found task submission:', taskSubmission);
                                 
                                 const hasSubmitted = taskSubmission && (['SUBMITTED', 'COMPLETED', 'APPROVED', 'REJECTED', 'NEEDS_REVISION', 'UNDER_REVIEW', 'PENDING'].includes(taskSubmission.status));
                                 const isPending = taskSubmission && (['PENDING', 'IN_PROGRESS'].includes(taskSubmission.status));
@@ -511,11 +904,21 @@ export default function StartupProgressTracking({ userId, token }) {
                                   <div key={task.id} className="bg-white rounded-lg p-4 border border-gray-200">
                                     <div className="flex items-start justify-between">
                                       <div className="flex-1">
+                                        {/* Task Title - Prominent Display */}
+                                        <h4 className="text-lg font-semibold text-gray-900 mb-2">{task.taskName || task.name || 'Untitled Task'}</h4>
+                                        
                                         <div className="flex items-center gap-2 mb-2">
                                           {getStatusIcon(taskSubmission?.status || 'PENDING')}
-                                          <h5 className="font-medium text-gray-900">{task.name}</h5>
+                                          <span className="text-sm text-gray-600">Status</span>
                                         </div>
                                         <p className="text-gray-600 text-sm mb-3">{task.description}</p>
+                                        
+                                        {task.dueDate && (
+                                          <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
+                                            <Calendar size={16} />
+                                            <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+                                          </div>
+                                        )}
                                         
                                         {task.requirements && (
                                           <div className="mb-3">
@@ -528,13 +931,6 @@ export default function StartupProgressTracking({ userId, token }) {
                                           <div className="mb-3">
                                             <h6 className="font-medium text-gray-700 text-sm mb-1">Deliverables:</h6>
                                             <p className="text-gray-600 text-sm">{task.deliverables}</p>
-                                          </div>
-                                        )}
-                                        
-                                        {task.dueDate && (
-                                          <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
-                                            <Calendar size={16} />
-                                            <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
                                           </div>
                                         )}
                                       </div>
@@ -572,118 +968,253 @@ export default function StartupProgressTracking({ userId, token }) {
                                     </div>
                                     
                                     {/* Mentor Feedback - Always Visible */}
-                                     <div className="mt-4 pt-4 border-t border-gray-200">
-                                       <div className="mt-3 p-4 rounded-lg border-2 bg-gray-50 border-gray-200">
-                                         <div className="flex items-center gap-2 mb-2">
-                                           <MessageCircle className="w-4 h-4 text-gray-600" />
-                                           <span className="text-sm font-medium text-gray-900">Mentor Feedback</span>
-                                         </div>
-                                         {(() => {
-                                           // Debug logging for feedback
-                                           console.log('Task submission for feedback check:', {
-                                             taskId: task.id,
-                                             submissionId: taskSubmission?.id,
-                                             mentorFeedback: taskSubmission?.mentorFeedback,
-                                             feedback: taskSubmission?.feedback,
-                                             score: taskSubmission?.score,
-                                             status: taskSubmission?.status,
-                                             feedbackDate: taskSubmission?.feedbackDate
-                                           });
-                                           
-                                           return (taskSubmission?.mentorFeedback || taskSubmission?.feedback) ? (
-                                             <div>
-                                               <p className="text-sm text-gray-800">{taskSubmission.mentorFeedback || taskSubmission.feedback}</p>
-                                               {taskSubmission?.score && (
-                                                 <div className="flex items-center gap-2 mt-2">
-                                                   <Star className="w-4 h-4 text-yellow-500" />
-                                                   <span className="text-sm font-medium text-yellow-700">Score: {taskSubmission.score}/10</span>
-                                                 </div>
-                                               )}
-                                             </div>
-                                           ) : (
-                                             <p className="text-sm text-gray-500">No feedback provided yet</p>
-                                           );
-                                         })()}
-                                       </div>
-                                       
-                                       {taskSubmission?.feedbackDate && (
-                                         <p className="text-xs mt-2 text-gray-500">
-                                           Reviewed: {new Date(taskSubmission.feedbackDate).toLocaleDateString()}
-                                         </p>
-                                       )}
-                                     </div>
-
-                                     {/* Task Submission Status */}
-                                     {taskSubmission && (
-                                       <div className="mt-4 pt-4 border-t border-gray-200">
-                                         <div className="flex items-center justify-between mb-2">
-                                           <div className="flex items-center gap-2">
-                                             {getStatusIcon(taskSubmission.status)}
-                                             <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(taskSubmission.status)}`}>
-                                               {getStatusText(taskSubmission.status)}
-                                             </span>
-                                           </div>
-                                           {taskSubmission.submissionDate && (
-                                             <span className="text-xs text-gray-500">
-                                               Submitted: {new Date(taskSubmission.submissionDate).toLocaleDateString()}
-                                             </span>
-                                           )}
-                                         </div>
-                                        
-                                        {/* Submission Files */}
-                                        {taskSubmission && (taskSubmission.files && taskSubmission.files.length > 0 || taskSubmission.submissionFileUrl) && (
-                                          <div className="mt-3">
-                                            <h6 className="text-sm font-medium text-gray-700 mb-2">Submitted Files:</h6>
-                                            <div className="space-y-1">
-                                              {taskSubmission.files && taskSubmission.files.map((file, index) => (
-                                                <div key={index} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded">
-                                                  <FileText className="w-4 h-4" />
-                                                  <span className="flex-1">{file.name}</span>
-                                                  <span className="text-xs text-gray-500">
-                                                    {file.size ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : ''}
+                                    <div className="mt-4 pt-4 border-t border-gray-200">
+                                      <div className="mt-3 p-4 rounded-lg border-2 bg-gray-50 border-gray-200">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <MessageCircle className="w-4 h-4 text-gray-600" />
+                                          <span className="text-sm font-medium text-gray-900">Mentor Feedback</span>
+                                        </div>
+                                        {(() => {
+                                          // Enhanced debug logging for feedback
+                                          console.log('=== FEEDBACK DEBUG ===');
+                                          console.log('Task ID:', task.id);
+                                          console.log('Task submission:', taskSubmission);
+                                          console.log('All submissions for this startup:', submissions);
+                                          
+                                          // Find any submission for this task that has feedback
+                                          const submissionWithFeedback = submissions.find(sub => 
+                                            sub.taskId === task.id && 
+                                            (sub.mentorFeedback || sub.feedback)
+                                          );
+                                          
+                                          console.log('Submission with feedback:', submissionWithFeedback);
+                                          console.log('=== END FEEDBACK DEBUG ===');
+                                          
+                                          // Use the submission with feedback if available, otherwise use taskSubmission
+                                          const feedbackSubmission = submissionWithFeedback || taskSubmission;
+                                          
+                                          return (feedbackSubmission?.mentorFeedback || feedbackSubmission?.feedback) ? (
+                                            <div>
+                                              <p className="text-sm text-gray-800">
+                                                {feedbackSubmission.mentorFeedback || feedbackSubmission.feedback}
+                                              </p>
+                                              {feedbackSubmission?.score && (
+                                                <div className="flex items-center gap-2 mt-2">
+                                                  <Star className="w-4 h-4 text-yellow-500" />
+                                                  <span className="text-sm font-medium text-yellow-700">
+                                                    Score: {feedbackSubmission.score}/10
                                                   </span>
-                                                  <button 
-                                                    className="text-blue-600 hover:text-blue-800 p-1"
-                                                    title="Download file"
-                                                    onClick={() => {
-                                                      // TODO: Implement file download
-                                                      console.log('Download file:', file);
-                                                    }}
-                                                  >
-                                                    <Download className="w-4 h-4" />
-                                                  </button>
-                                                </div>
-                                              ))}
-                                              {taskSubmission.submissionFileUrl && (
-                                                <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded">
-                                                  <FileText className="w-4 h-4" />
-                                                  <span className="flex-1">Submission File</span>
-                                                  <button 
-                                                    className="text-blue-600 hover:text-blue-800 p-1"
-                                                    title="Download file"
-                                                    onClick={() => {
-                                                      window.open(taskSubmission.submissionFileUrl, '_blank');
-                                                    }}
-                                                  >
-                                                    <Download className="w-4 h-4" />
-                                                  </button>
                                                 </div>
                                               )}
+                                              {feedbackSubmission?.feedbackDate && (
+                                                <p className="text-xs mt-2 text-gray-500">
+                                                  Reviewed: {new Date(feedbackSubmission.feedbackDate).toLocaleDateString()}
+                                                </p>
+                                              )}
                                             </div>
-                                          </div>
-                                        )}
+                                          ) : (
+                                            <p className="text-sm text-gray-500">No feedback provided yet</p>
+                                          );
+                                        })()}
                                       </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                                    </div>
+
+                                    {/* Task Submission Status */}
+                                    {taskSubmission && (
+                                      <div className="mt-4 pt-4 border-t border-gray-200">
+                                        <div className="flex items-center justify-between mb-2">
+                                          <div className="flex items-center gap-2">
+                                            {getStatusIcon(taskSubmission.status)}
+                                            <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(taskSubmission.status)}`}>
+                                              {getStatusText(taskSubmission.status)}
+                                            </span>
+                                          </div>
+                                          {taskSubmission.submissionDate && (
+                                            <span className="text-xs text-gray-500">
+                                              Submitted: {new Date(taskSubmission.submissionDate).toLocaleDateString()}
+                                            </span>
+                                          )}
+                                        </div>
+                                       
+                                       {/* Submission Files - Enhanced Debug and Display */}
+                                       {taskSubmission && (
+                                        <div className="mt-3">
+                                          {(() => {
+                                            console.log('🔍 FILE DEBUG - taskSubmission:', {
+                                              id: taskSubmission.id,
+                                              files: taskSubmission.files,
+                                              submissionFileUrl: taskSubmission.submissionFileUrl,
+                                              comments: taskSubmission.comments
+                                            });
+                                            
+                                            // Display files if they exist (including files with null names)
+                                            if (taskSubmission.files && taskSubmission.files.length > 0) {
+                                              return (
+                                                <div className="mt-3">
+                                                  <h6 className="text-sm font-medium text-gray-700 mb-2">📎 Submitted Files:</h6>
+                                                  <div className="space-y-2">
+                                                    {taskSubmission.files.map((file, index) => {
+                                                      const fileName = file.originalName || file.fileName || 'Uploaded File';
+                                                      const isValidFile = fileName !== 'null' && fileName !== null;
+                                                      
+                                                      return (
+                                                        <div key={index} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded border">
+                                                          <FileText className="w-4 h-4 text-green-600" />
+                                                          <span className="flex-1 font-medium">
+                                                            {isValidFile ? fileName : 'File (name not available)'}
+                                                          </span>
+                                                          <span className="text-xs text-gray-500">
+                                                            {file.fileSize ? `${(file.fileSize / 1024 / 1024).toFixed(2)} MB` : 'Size unknown'}
+                                                          </span>
+                                                          <button 
+                                                            className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-100"
+                                                            title="Download file"
+                                                             onClick={async () => {
+                                                               if (file.fileUrl) {
+                                                                 try {
+                                                                   const token = localStorage.getItem('token');
+                                                                   const response = await fetch(file.fileUrl, {
+                                                                     headers: {
+                                                                       'Authorization': `Bearer ${token}`
+                                                                     }
+                                                                   });
+                                                                   
+                                                                   if (response.ok) {
+                                                                     const blob = await response.blob();
+                                                                     const url = window.URL.createObjectURL(blob);
+                                                                     const a = document.createElement('a');
+                                                                     a.href = url;
+                                                                     a.download = file.originalName || file.fileName || 'download';
+                                                                     document.body.appendChild(a);
+                                                                     a.click();
+                                                                     window.URL.revokeObjectURL(url);
+                                                                     document.body.removeChild(a);
+                                                                   } else {
+                                                                     alert('Failed to download file: ' + response.status);
+                                                                   }
+                                                                 } catch (error) {
+                                                                   console.error('Download error:', error);
+                                                                   alert('Error downloading file');
+                                                                 }
+                                                               } else {
+                                                                 alert('File download URL not available');
+                                                               }
+                                                             }}
+                                                          >
+                                                            <Download className="w-4 h-4" />
+                                                          </button>
+                                                        </div>
+                                                      );
+                                                    })}
+                                                  </div>
+                                                </div>
+                                              );
+                                            }
+                                            
+                                            const hasFiles = (taskSubmission.files && taskSubmission.files.length > 0) || taskSubmission.submissionFileUrl;
+                                            const hasComments = taskSubmission.comments && taskSubmission.comments.trim();
+                                            
+                                            if (hasFiles || hasComments) {
+                                              return (
+                                                <div>
+                                                  <h6 className="text-sm font-medium text-gray-700 mb-2">📎 Submission Details:</h6>
+                                                  
+                                                  {/* Submission Description/Comments */}
+                                                  {hasComments && (
+                                                    <div className="mb-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                                      <div className="flex items-center gap-2 mb-1">
+                                                        <FileText className="w-4 h-4 text-blue-600" />
+                                                        <span className="text-sm font-medium text-blue-800">Submission Description</span>
+                                                      </div>
+                                                      <p className="text-sm text-blue-700">{taskSubmission.comments}</p>
+                                                    </div>
+                                                  )}
+                                                  
+                                                  {/* Files */}
+                                                  {hasFiles && (
+                                                    <div className="space-y-1">
+                                                      {taskSubmission.files && taskSubmission.files.map((file, index) => (
+                                                        <div key={index} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded border">
+                                                          <FileText className="w-4 h-4 text-green-600" />
+                                                          <span className="flex-1 font-medium">{file.originalName || file.fileName || 'Uploaded File'}</span>
+                                                          <span className="text-xs text-gray-500">
+                                                            {file.fileSize ? `${(file.fileSize / 1024 / 1024).toFixed(2)} MB` : ''}
+                                                          </span>
+                                                          <button 
+                                                            className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-100"
+                                                            title="Download file"
+                                                            onClick={() => {
+                                                              console.log('Download file:', file);
+                                                              if (file.fileUrl) {
+                                                                window.open(file.fileUrl, '_blank');
+                                                              } else {
+                                                                alert('File download URL not available');
+                                                              }
+                                                            }}
+                                                          >
+                                                            <Download className="w-4 h-4" />
+                                                          </button>
+                                                        </div>
+                                                      ))}
+                                                      {taskSubmission.submissionFileUrl && (
+                                                        <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded border">
+                                                          <FileText className="w-4 h-4 text-green-600" />
+                                                          <span className="flex-1 font-medium">📄 Submission File</span>
+                                                          <button 
+                                                            className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-100"
+                                                            title="Download file"
+                                                            onClick={() => {
+                                                              window.open(taskSubmission.submissionFileUrl, '_blank');
+                                                            }}
+                                                          >
+                                                            <Download className="w-4 h-4" />
+                                                          </button>
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              );
+                                            } else {
+                                              return (
+                                                <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                                                  <p className="text-sm text-yellow-800">📋 Submission recorded (no files attached)</p>
+                                                </div>
+                                              );
+                                            }
+                                          })()}
+                                        </div>
+                                      )}
+                                      
+                                      {/* Mentor Feedback Display */}
+                                      {taskSubmission && (taskSubmission.mentorFeedback || taskSubmission.feedback) && (
+                                        <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                                          <div className="flex items-center gap-2 mb-2">
+                                            <MessageSquare className="w-4 h-4 text-green-600" />
+                                            <span className="text-sm font-medium text-green-800">Mentor Feedback</span>
+                                          </div>
+                                          <p className="text-sm text-green-700">
+                                            {taskSubmission.mentorFeedback || taskSubmission.feedback}
+                                          </p>
+                                          {taskSubmission.score && (
+                                            <div className="mt-2 text-sm text-green-600">
+                                              <strong>Score: {taskSubmission.score}/100</strong>
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -695,7 +1226,7 @@ export default function StartupProgressTracking({ userId, token }) {
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold text-gray-900">Submit Work: {selectedTask.name}</h3>
+                <h3 className="text-xl font-semibold text-gray-900">Submit Work: {selectedTask.taskName || selectedTask.name || 'Task'}</h3>
                 <button
                   onClick={() => {
                     setShowSubmissionModal(false);
@@ -860,6 +1391,7 @@ export default function StartupProgressTracking({ userId, token }) {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
