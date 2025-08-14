@@ -10,8 +10,8 @@ import { getMentorsForStartup } from '../api/mentorAssignment';
 import { getAssignedTemplatesForStartup, getPhases, getTasks, uploadSubmissionFile, createSubmission } from '../api/progresstracking';
 import { getNewsPostsByTenant } from '../api/news';
 import StartupProgressTracking from '../components/StartupProgressTracking';
+import ChatOverview from '../components/ChatOverview';
 import CalendarManagement from './CalendarManagement';
-
 // Import Lucide React icons
 import {
   Globe,
@@ -58,7 +58,8 @@ import {
   FileText, // For documents
   File, // Generic file icon
   Filter, // For filter dropdown
-  CalendarDays // For apply by date
+  CalendarDays, // For apply by date
+  MessageSquare // For chat functionality
 } from 'lucide-react';
 
 // Animated Counter Component (kept for potential future use, though not used in current dashboard view)
@@ -807,6 +808,7 @@ export default function StartupDashboard() {
     { name: 'Calendar', icon: Calendar, page: 'calendar' },
     { name: 'Opportunities', icon: Briefcase, page: 'opportunities' },
     { name: 'Notifications', icon: BellRing, page: 'notifications' },
+    { name: 'Chats', icon: MessageSquare, page: 'chats' }
   ];
 
   // Main component rendering
@@ -1811,7 +1813,15 @@ export default function StartupDashboard() {
               )}
             </div>
           )}
-
+          {currentPage === 'teamMembers' && (
+            <div className="animate-fade-in">
+              <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center">
+                <MessageSquare size={28} className="mr-3 text-brand-primary" /> Chats
+              </h3>
+              {user && token && (
+                <ChatOverview token={token} currentUser={user} />
+              )}
+              </div>)}
           {currentPage === 'calendar' && (
             <div className="animate-fade-in">
               <CalendarManagement />
@@ -1980,9 +1990,7 @@ export default function StartupDashboard() {
                 <CheckCircle2 size={28} className="mr-3 text-brand-primary" /> Incubation Progress
               </h3>
 
-              {console.log('🎯 StartupDashboard: Rendering incubationProgress page')}
-              {console.log('👤 StartupDashboard: userId for progress tracking:', user?.id)}
-              {console.log('🔑 StartupDashboard: token exists:', !!token)}
+              {/* Debug logs moved to useEffect to prevent constant re-rendering */}
 
               {/* Progress Tracking Component */}
               <StartupProgressTracking 
@@ -2034,7 +2042,14 @@ export default function StartupDashboard() {
             </div>
           )}
 
-
+          {currentPage === 'chats' && (
+            <div className="animate-fade-in">
+              <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center">
+                <MessageSquare size={28} className="mr-3 text-brand-primary" /> Your Chats
+              </h3>
+              <ChatOverview token={token} currentUser={user} />
+            </div>
+          )}
         </div>
       </div>
     </div>

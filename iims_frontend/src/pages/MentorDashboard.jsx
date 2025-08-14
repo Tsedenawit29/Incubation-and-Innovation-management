@@ -16,6 +16,7 @@ import { getNewsPostsByTenant } from '../api/news';
 import CalendarManagement from './CalendarManagement';
 
 import MentorProgressReview from '../components/MentorProgressReview';
+import ChatOverview from '../components/ChatOverview';
 
 
 // Import Lucide React icons
@@ -683,6 +684,7 @@ export default function MentorDashboard() {
     { name: 'Calendar', icon: Calendar, page: 'calendar' },
     { name: 'Resources', icon: BookOpen, page: 'resources' },
     { name: 'Notifications', icon: BellRing, page: 'notifications' },
+    { name: 'Chats', icon: MessageSquare, page: 'chats' }
   ];
 
   // Main component rendering
@@ -1484,6 +1486,15 @@ export default function MentorDashboard() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {currentPage === 'chats' && (
+            <div className="animate-fade-in">
+              <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center">
+                <MessageSquare size={28} className="mr-3 text-brand-primary" /> Your Chats
+              </h3>
+              <ChatOverview token={token} currentUser={user} />
             </div>
           )}
         </div>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { applyForTenant } from '../api/tenants';
+import FileUpload from './FileUpload';
 
 export default function TenantApplicationForm() {
   const [formData, setFormData] = useState({
@@ -10,6 +11,7 @@ export default function TenantApplicationForm() {
     phone: '',
     website: ''
   });
+  const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -21,7 +23,13 @@ export default function TenantApplicationForm() {
     setSuccess(false);
 
     try {
-      await applyForTenant(formData);
+      // Include documents in the application data
+      const applicationData = {
+        ...formData,
+        documents: documents
+      };
+      
+      await applyForTenant(applicationData);
       setSuccess(true);
       setFormData({
         name: '',
@@ -31,6 +39,7 @@ export default function TenantApplicationForm() {
         phone: '',
         website: ''
       });
+      setDocuments([]);
     } catch (error) {
       setError(error.message || 'Failed to submit application');
     } finally {
@@ -42,11 +51,20 @@ export default function TenantApplicationForm() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleFileSelect = (fileData) => {
+    setDocuments(prev => [...prev, fileData]);
+  };
+
+  const handleFileRemove = (fileData) => {
+    setDocuments(prev => prev.filter(doc => doc !== fileData));
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#E6F0FF] py-12 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-3xl bg-white rounded-3xl shadow-2xl p-10">
         <div className="text-center mb-10">
           <h2 className="text-4xl font-extrabold text-[#0A2D5C]">
+
             Tenant Application
           </h2>
           <p className="mt-2 text-lg text-[#299DFF]">
@@ -139,6 +157,19 @@ export default function TenantApplicationForm() {
                 value={formData.description}
                 onChange={handleChange}
                 className="mt-1 block w-full px-4 py-2 border border-[#299DFF] rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#299DFF] focus:border-[#299DFF]"
+              />
+            </div>
+
+            {/* File Upload Section */}
+            <div className="pt-4">
+              <FileUpload
+                onFileSelect={handleFileSelect}
+                onFileRemove={handleFileRemove}
+                label="Supporting Documents"
+                description="Upload pitch decks, business plans, financial statements, or other supporting documents"
+                acceptedTypes={['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png']}
+                maxFileSize={20 * 1024 * 1024} // 20MB
+                maxFiles={10}
               />
             </div>
           </div>

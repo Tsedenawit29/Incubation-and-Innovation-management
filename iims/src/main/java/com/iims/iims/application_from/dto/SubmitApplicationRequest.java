@@ -34,6 +34,9 @@ public class SubmitApplicationRequest {
     @NotNull(message = "Field responses cannot be null")
     private List<ApplicationFieldResponseRequest> fieldResponses;
 
+    // New field for file uploads
+    private List<ApplicationDocumentRequest> documents;
+
     public UUID getFormId() {
         return formId;
     }
@@ -80,5 +83,13 @@ public class SubmitApplicationRequest {
 
     public void setFieldResponses(List<ApplicationFieldResponseRequest> fieldResponses) {
         this.fieldResponses = fieldResponses;
+    }
+
+    public List<ApplicationDocumentRequest> getDocuments() {
+        return documents;
+    }
+
+    public void setDocuments(List<ApplicationDocumentRequest> documents) {
+        this.documents = documents;
     }
 }
