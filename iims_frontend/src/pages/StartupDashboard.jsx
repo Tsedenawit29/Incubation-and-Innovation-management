@@ -1811,6 +1811,22 @@ export default function StartupDashboard() {
             </div>
           )}
 
+          {currentPage === 'incubationProgress' && (
+            <div className="animate-fade-in">
+              <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center">
+                <CheckCircle2 size={28} className="mr-3 text-brand-primary" /> Incubation Progress
+              </h3>
+
+              {/* Debug logs moved to useEffect to prevent constant re-rendering */}
+
+              {/* Progress Tracking Component */}
+              <StartupProgressTracking 
+                userId={user?.id} 
+                token={token}
+              />
+            </div>
+          )}
+
           {currentPage === 'notifications' && (
             <div className="animate-fade-in">
               <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center">
