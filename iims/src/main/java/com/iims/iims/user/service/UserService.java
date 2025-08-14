@@ -140,6 +140,8 @@ public class UserService implements UserDetailsService {
             emailService.sendStartupCredentialsEmail(user.getEmail(), user.getFullName(), user.getEmail(), rawPassword, tenantName);
         } else if (user.getRole() == Role.MENTOR) {
             emailService.sendMentorCredentialsEmail(user.getEmail(), user.getFullName(), user.getEmail(), rawPassword, tenantName);
+        } else if (user.getRole() == Role.ALUMNI) {
+            emailService.sendAlumniCredentialsEmail(user.getEmail(), user.getFullName(), user.getEmail(), rawPassword, tenantName);
         }
         else {
             // Default for other roles like TENANT_ADMIN, SUPER_ADMIN, etc.

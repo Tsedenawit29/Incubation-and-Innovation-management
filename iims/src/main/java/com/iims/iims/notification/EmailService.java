@@ -200,4 +200,43 @@ public class EmailService {
         mailMessage.setText(message);
         mailSender.send(mailMessage);
     }
+
+    // --- METHOD FOR ALUMNI CREDENTIALS EMAIL ---
+    public void sendAlumniCredentialsEmail(String alumniEmail, String alumniName, String username, String password, String tenantName) {
+        String subject = "Welcome to IIMS - Your Alumni Account Credentials";
+        String message = String.format("""
+            Dear %s,
+            
+            Welcome to the IIMS platform! Your alumni account has been created for %s.
+            
+            Login Credentials:
+            - Username: %s
+            - Password: %s
+            
+            Please log in and change your password after your first login.
+            
+            Login URL: http://localhost:3000/login
+            
+            As an alumni, you'll have access to:
+            - Alumni network and community features
+            - Success story sharing platform
+            - Mentorship opportunities with current startups
+            - Industry insights and resources
+            
+            If you have any questions or need support, please contact your tenant admin or the IIMS support team.
+            
+            Best regards,
+            IIMS Team
+            """, alumniName, tenantName, username, password);
+
+        log.info("Sending alumni credentials email to: {}", alumniEmail);
+        log.info("Email subject: {}", subject);
+        log.info("Email content: {}", message);
+
+        SimpleMailMessage mailMessage = new SimpleMailMessage();
+        mailMessage.setTo(alumniEmail);
+        mailMessage.setSubject(subject);
+        mailMessage.setText(message);
+        mailSender.send(mailMessage);
+    }
 }

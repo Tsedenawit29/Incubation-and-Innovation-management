@@ -80,6 +80,11 @@ public class SecurityConfig {
                         
                         // Profile endpoints
                         .requestMatchers("/api/profile/startup/**").hasAnyRole("STARTUP", "TENANT_ADMIN", "SUPER_ADMIN")
+                        .requestMatchers("/api/profile/alumni/**").hasAnyRole("ALUMNI", "TENANT_ADMIN", "SUPER_ADMIN")
+                        
+                        // Alumni endpoints (legacy - keeping for backward compatibility)
+                        .requestMatchers("/api/alumni/**").hasAnyRole("ALUMNI", "TENANT_ADMIN", "SUPER_ADMIN")
+                        
                         .requestMatchers("/api/google/callback").permitAll()
                         .requestMatchers("/api/google/auth-url").permitAll()
                         .requestMatchers("/api/google/**").permitAll()
