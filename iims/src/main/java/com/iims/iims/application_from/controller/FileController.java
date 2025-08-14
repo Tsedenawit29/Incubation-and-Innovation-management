@@ -44,6 +44,10 @@ public class FileController {
                         .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
                         .header(HttpHeaders.PRAGMA, "no-cache")
                         .header(HttpHeaders.EXPIRES, "0")
+                        .header("X-Frame-Options", "SAMEORIGIN")
+                        .header("Access-Control-Allow-Origin", "*")
+                        .header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+                        .header("Access-Control-Allow-Headers", "*")
                         .body(resource);
             } else {
                 System.out.println("File not found or not readable: " + filePath.toString());
