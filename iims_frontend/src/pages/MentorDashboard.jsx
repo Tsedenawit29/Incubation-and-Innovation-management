@@ -236,9 +236,46 @@ export default function MentorDashboard() {
 
   // Mock data for dashboard
   const mockNotifications = [
-    { id: 1, type: "system", icon: <Info size={16} />, message: "New startup assigned to you: TechInnovators", time: "2 hours ago" },
-    { id: 2, type: "startup", icon: <Rocket size={16} />, message: "GreenTech submitted their Q2 progress report", time: "Yesterday" },
-    { id: 3, type: "admin", icon: <Building size={16} />, message: "New mentorship guidelines available", time: "3 days ago" },
+    // Recent notifications (last 24 hours)
+    { 
+      id: 1, 
+      type: "meeting", 
+      priority: "high",
+      icon: <Calendar size={16} />, 
+      title: "Upcoming Mentorship Session",
+      message: "Meeting with TechInnovators team starts in 45 minutes - MVP Review & Strategy Discussion", 
+      time: "45 minutes",
+      timestamp: new Date(Date.now() - 45 * 60 * 1000),
+      actionUrl: "/calendar",
+      actionText: "Join Meeting",
+      read: false
+    },
+    { 
+      id: 2, 
+      type: "submission", 
+      priority: "high",
+      icon: <FileText size={16} />, 
+      title: "New Progress Submission",
+      message: "GreenTech Solutions submitted their Q2 progress report and milestone documentation for review", 
+      time: "3 hours ago",
+      timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000),
+      actionUrl: "/review",
+      actionText: "Review Submission",
+      read: false
+    },
+    { 
+      id: 3, 
+      type: "startup_question", 
+      priority: "medium",
+      icon: <HelpCircle size={16} />, 
+      title: "Startup Question",
+      message: "TechInnovators asked for guidance on customer acquisition strategy and pricing models", 
+      time: "5 hours ago",
+      timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000),
+      actionUrl: "/messages",
+      actionText: "Respond",
+      read: false
+    }
   ];
 
   const mockUpcomingTask = {
@@ -1449,18 +1486,40 @@ export default function MentorDashboard() {
 
           {currentPage === 'notifications' && (
             <div className="animate-fade-in">
-              <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center">
-                <BellRing size={28} className="mr-3 text-brand-primary" /> Your Notifications
-              </h3>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-brand-dark flex items-center">
+                  <BellRing size={28} className="mr-3 text-brand-primary" /> Your Notifications
+                  <span className="ml-3 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                    {mockNotifications.filter(n => !n.read).length}
+                  </span>
+                </h3>
+                <button className="text-sm text-brand-primary hover:text-brand-dark transition-colors">
+                  Mark All as Read
+                </button>
+              </div>
 
-              {/* Filter Dropdown */}
-              <div className="mb-6 flex justify-end">
-                <div className="relative inline-block text-left">
-                  <select className="block appearance-none w-full bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg shadow-sm leading-tight focus:outline-none focus:bg-white focus:border-brand-primary transition duration-200 text-sm">
+              {/* Filter and Stats */}
+              <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+                <div className="flex gap-2 flex-wrap">
+                  <button className="px-3 py-1 bg-brand-primary text-white text-xs rounded-full hover:bg-brand-dark transition-colors">
+                    All ({mockNotifications.length})
+                  </button>
+                  <button className="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-full hover:bg-gray-200 transition-colors">
+                    Unread ({mockNotifications.filter(n => !n.read).length})
+                  </button>
+                  <button className="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-full hover:bg-gray-200 transition-colors">
+                    High Priority ({mockNotifications.filter(n => n.priority === 'high' || n.priority === 'urgent').length})
+                  </button>
+                </div>
+                
+                <div className="relative">
+                  <select className="block appearance-none bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg shadow-sm leading-tight focus:outline-none focus:bg-white focus:border-brand-primary transition duration-200 text-sm">
                     <option>All Types</option>
-                    <option>System</option>
-                    <option>Startup</option>
-                    <option>Admin</option>
+                    <option>Meetings</option>
+                    <option>Submissions</option>
+                    <option>Startup Questions</option>
+                    <option>System Updates</option>
+                    <option>Events</option>
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                     <ChevronDown size={16} />
@@ -1468,23 +1527,101 @@ export default function MentorDashboard() {
                 </div>
               </div>
 
-              {/* Notifications List (Timeline Style) */}
-              <div className="relative pl-8 border-l-2 border-gray-200 space-y-8">
-                {mockNotifications.map((notif, index) => (
-                  <div key={notif.id} className="relative">
-                    <div className="absolute -left-3.5 -top-1 w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 shadow-sm">
-                      {notif.icon}
-                    </div>
-                    <div className="ml-4 p-5 bg-white rounded-2xl shadow-lg border border-gray-100">
-                      <p className="text-sm text-gray-700 font-medium mb-1">{notif.message}</p>
-                      <p className="text-xs text-gray-500">{notif.time}</p>
-                      <div className="flex justify-end mt-3 space-x-2">
-                        <button className="text-xs text-blue-500 hover:underline">Mark as Read</button>
-                        <button className="text-xs text-red-500 hover:underline">Delete</button>
+              {/* Notifications List */}
+              <div className="space-y-4">
+                {mockNotifications.map((notif, index) => {
+                  const priorityColors = {
+                    urgent: 'border-l-red-500 bg-red-50',
+                    high: 'border-l-orange-500 bg-orange-50',
+                    medium: 'border-l-blue-500 bg-blue-50',
+                    low: 'border-l-gray-400 bg-gray-50'
+                  };
+                  
+                  const typeIcons = {
+                    meeting: { color: 'text-blue-600', bg: 'bg-blue-100' },
+                    submission: { color: 'text-green-600', bg: 'bg-green-100' },
+                    startup_question: { color: 'text-purple-600', bg: 'bg-purple-100' },
+                    feedback_request: { color: 'text-orange-600', bg: 'bg-orange-100' },
+                    system: { color: 'text-gray-600', bg: 'bg-gray-100' },
+                    admin: { color: 'text-indigo-600', bg: 'bg-indigo-100' },
+                    achievement: { color: 'text-yellow-600', bg: 'bg-yellow-100' },
+                    event: { color: 'text-pink-600', bg: 'bg-pink-100' },
+                    success_story: { color: 'text-emerald-600', bg: 'bg-emerald-100' },
+                    deadline_reminder: { color: 'text-red-600', bg: 'bg-red-100' },
+                    peer_collaboration: { color: 'text-cyan-600', bg: 'bg-cyan-100' }
+                  };
+                  
+                  const typeStyle = typeIcons[notif.type] || typeIcons.system;
+                  
+                  return (
+                    <div key={notif.id} className={`relative p-4 bg-white rounded-xl shadow-sm border-l-4 transition-all duration-200 hover:shadow-md ${
+                      priorityColors[notif.priority] || priorityColors.low
+                    } ${!notif.read ? 'ring-2 ring-blue-100' : ''}`}>
+                      
+                      {/* Priority indicator */}
+                      {(notif.priority === 'urgent' || notif.priority === 'high') && (
+                        <div className="absolute top-2 right-2">
+                          <div className={`w-2 h-2 rounded-full ${
+                            notif.priority === 'urgent' ? 'bg-red-500' : 'bg-orange-500'
+                          }`}></div>
+                        </div>
+                      )}
+                      
+                      <div className="flex items-start gap-3">
+                        {/* Icon */}
+                        <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${typeStyle.bg}`}>
+                          <span className={typeStyle.color}>
+                            {notif.icon}
+                          </span>
+                        </div>
+                        
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1">
+                              <h4 className={`text-sm font-semibold ${!notif.read ? 'text-gray-900' : 'text-gray-700'}`}>
+                                {notif.title}
+                              </h4>
+                              <p className={`text-sm mt-1 ${!notif.read ? 'text-gray-700' : 'text-gray-600'}`}>
+                                {notif.message}
+                              </p>
+                            </div>
+                            
+                            {/* Time and unread indicator */}
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <span className="text-xs text-gray-500">{notif.time}</span>
+                              {!notif.read && (
+                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Action buttons */}
+                          <div className="flex items-center gap-3 mt-3">
+                            {notif.actionUrl && (
+                              <button className="text-xs text-brand-primary hover:text-brand-dark font-medium transition-colors">
+                                {notif.actionText}
+                              </button>
+                            )}
+                            <button className="text-xs text-gray-500 hover:text-gray-700 transition-colors">
+                              {notif.read ? 'Mark as Unread' : 'Mark as Read'}
+                            </button>
+                            <button className="text-xs text-gray-400 hover:text-red-500 transition-colors">
+                              Dismiss
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
+              </div>
+              
+              {/* Load more button */}
+              <div className="text-center mt-8">
+                <button className="px-6 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium">
+                  Load More Notifications
+                </button>
               </div>
             </div>
           )}
