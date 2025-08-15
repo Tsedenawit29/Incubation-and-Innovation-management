@@ -165,8 +165,27 @@ public class UserController {
     @GetMapping("/tenant-users")
     @PreAuthorize("hasRole('TENANT_ADMIN')")
     public ResponseEntity<List<User>> getUsersByTenant(Authentication authentication) {
-        User tenantAdmin = (User) authentication.getPrincipal();
-        return ResponseEntity.ok(userService.getUsersByTenantId(tenantAdmin.getTenantId()));
+        try {
+            System.out.println("getUsersByTenant - Authentication: " + authentication);
+            System.out.println("getUsersByTenant - Principal: " + authentication.getPrincipal());
+            
+            User tenantAdmin = (User) authentication.getPrincipal();
+            System.out.println("getUsersByTenant - Tenant Admin: " + tenantAdmin.getEmail());
+            System.out.println("getUsersByTenant - Tenant ID: " + tenantAdmin.getTenantId());
+            
+            if (tenantAdmin.getTenantId() == null) {
+                throw new RuntimeException("Tenant Admin has no tenant ID assigned");
+            }
+            
+            List<User> users = userService.getUsersByTenantId(tenantAdmin.getTenantId());
+            System.out.println("getUsersByTenant - Found users: " + users.size());
+            
+            return ResponseEntity.ok(users);
+        } catch (Exception e) {
+            System.err.println("Error in getUsersByTenant: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Failed to fetch tenant users: " + e.getMessage(), e);
+        }
     }
 
     // List users for the current tenant by role

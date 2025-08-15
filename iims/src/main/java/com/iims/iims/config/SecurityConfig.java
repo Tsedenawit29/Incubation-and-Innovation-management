@@ -11,6 +11,7 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -18,6 +19,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.firewall.HttpFirewall;
+import org.springframework.security.web.firewall.StrictHttpFirewall;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -31,6 +34,22 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     public SecurityConfig() {
+    }
+
+    @Bean
+    public HttpFirewall httpFirewall() {
+        StrictHttpFirewall firewall = new StrictHttpFirewall();
+        firewall.setAllowUrlEncodedDoubleSlash(true);
+        firewall.setAllowUrlEncodedPercent(true);
+        firewall.setAllowUrlEncodedPeriod(true);
+        firewall.setAllowBackSlash(true);
+        firewall.setAllowUrlEncodedSlash(true);
+        return firewall;
+    }
+
+    @Bean
+    public WebSecurityCustomizer webSecurityCustomizer() {
+        return (web) -> web.httpFirewall(httpFirewall());
     }
 
     @Bean
@@ -53,6 +72,7 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/api/v1/files/**").permitAll() // Allow file serving
+                        .requestMatchers("/api/v1/news/**").permitAll()
                         
                         // Tenant-related endpoints
                         .requestMatchers(HttpMethod.GET, "/api/tenants/**").permitAll()
@@ -81,6 +101,16 @@ public class SecurityConfig {
                         
                         // Profile endpoints
                         .requestMatchers("/api/profile/startup/**").hasAnyRole("STARTUP", "TENANT_ADMIN", "SUPER_ADMIN")
+                        .requestMatchers("/api/profile/alumni/**").hasAnyRole("ALUMNI", "TENANT_ADMIN", "SUPER_ADMIN")
+                        .requestMatchers("/api/profile/investor/**").hasAnyRole("INVESTOR", "TENANT_ADMIN", "SUPER_ADMIN")
+                        
+                        // Alumni endpoints (legacy - keeping for backward compatibility)
+                        .requestMatchers("/api/alumni/**").hasAnyRole("ALUMNI", "TENANT_ADMIN", "SUPER_ADMIN")
+                        
+                        // Chat endpoints - allow all authenticated users
+                        .requestMatchers("/api/chat-rooms/**").authenticated()
+                        .requestMatchers("/api/chats/**").authenticated()
+                        
                         .requestMatchers("/api/google/callback").permitAll()
                         .requestMatchers("/api/google/auth-url").permitAll()
                         .requestMatchers("/api/google/**").permitAll()

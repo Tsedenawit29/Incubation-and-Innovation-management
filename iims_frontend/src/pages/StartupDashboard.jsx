@@ -8,8 +8,11 @@ import {
 } from "../api/users"; // or from startupProfile.js
 import { getMentorsForStartup } from '../api/mentorAssignment';
 import { getAssignedTemplatesForStartup, getPhases, getTasks, uploadSubmissionFile, createSubmission } from '../api/progresstracking';
+import { getNewsPostsByTenant } from '../api/news';
+import { fetchAllNotifications, markNotificationAsRead } from '../api/notifications';
 import StartupProgressTracking from '../components/StartupProgressTracking';
-
+import ChatOverview from '../components/ChatOverview';
+import CalendarManagement from './CalendarManagement';
 // Import Lucide React icons
 import {
   Globe,
@@ -56,7 +59,9 @@ import {
   FileText, // For documents
   File, // Generic file icon
   Filter, // For filter dropdown
-  CalendarDays // For apply by date
+  CalendarDays, // For apply by date
+  MessageSquare, // For chat functionality
+  Clock // For time-related icons
 } from 'lucide-react';
 
 // Animated Counter Component (kept for potential future use, though not used in current dashboard view)
@@ -186,6 +191,12 @@ export default function StartupDashboard() {
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [expandedPhases, setExpandedPhases] = useState([]);
   const [tasksByPhase, setTasksByPhase] = useState({});
+
+  // --- NEW STATES FOR NEWS/OPPORTUNITIES ---
+  const [newsOpportunities, setNewsOpportunities] = useState([]);
+  const [newsLoading, setNewsLoading] = useState(false);
+  const [selectedNewsCategory, setSelectedNewsCategory] = useState('all');
+  // --- END NEWS STATES ---
   const [uploadStatus, setUploadStatus] = useState({});
   const [progressLoading, setProgressLoading] = useState(false);
   const [progressError, setProgressError] = useState('');
@@ -230,11 +241,118 @@ export default function StartupDashboard() {
   console.log('StartupDashboard: Mentors loading:', mentorsLoading);
   console.log('StartupDashboard: Current mentor:', currentMentor);
 
-  const mockNotifications = [
-    { id: 1, type: "system", icon: <Info size={16} />, message: "Your Q2 progress report is due next week.", time: "2 hours ago" },
-    { id: 2, type: "mentor", icon: <GraduationCap size={16} />, message: "Dr. Chen left feedback on your MVP pitch deck.", time: "Yesterday" },
-    { id: 3, type: "admin", icon: <Building size={16} />, message: "New grant opportunity: 'Innovate Fund 2025' is open!", time: "3 days ago" },
-  ];
+  // Notifications state
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationsError, setNotificationsError] = useState('');
+
+  // Fetch notifications
+  const fetchNotifications = async () => {
+    if (!user?.id || !token) return;
+    
+    setNotificationsLoading(true);
+    setNotificationsError('');
+    
+    try {
+      const notificationData = await fetchAllNotifications(
+        token, 
+        'STARTUP', 
+        user.id, 
+        user.tenantId || profile?.tenantId
+      );
+      
+      // Add icons based on notification type
+      const notificationsWithIcons = notificationData.map(notif => ({
+        ...notif,
+        icon: getNotificationIcon(notif.type)
+      }));
+      
+      setNotifications(notificationsWithIcons);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      setNotificationsError('Failed to load notifications');
+      // Use mock data as fallback
+      const mockData = [
+        { 
+          id: 1, 
+          type: "meeting", 
+          priority: "high",
+          icon: <Calendar size={16} />, 
+          title: "Upcoming Meeting Reminder",
+          message: "Meeting with Dr. Sarah Chen starts in 30 minutes - MVP Review Session", 
+          time: "30 minutes",
+          timestamp: new Date(Date.now() - 30 * 60 * 1000),
+          actionUrl: "/calendar",
+          actionText: "Join Meeting",
+          read: false
+        },
+        { 
+          id: 2, 
+          type: "mentor_feedback", 
+          priority: "high",
+          icon: <GraduationCap size={16} />, 
+          title: "New Mentor Feedback",
+          message: "Dr. Chen provided detailed feedback on your MVP pitch deck with 8 actionable suggestions", 
+          time: "2 hours ago",
+          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
+          actionUrl: "/progress",
+          actionText: "View Feedback",
+          read: false
+        },
+        { 
+          id: 3, 
+          type: "task_due", 
+          priority: "urgent",
+          icon: <Clock size={16} />, 
+          title: "Task Deadline Approaching",
+          message: "Q2 Progress Report submission is due in 2 days. Complete your milestone documentation.", 
+          time: "4 hours ago",
+          timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000),
+          actionUrl: "/progress",
+          actionText: "Submit Report",
+          read: false
+        }
+      ];
+      setNotifications(mockData);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  };
+
+  // Helper function to get notification icons
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case 'meeting':
+        return <Calendar size={16} />;
+      case 'mentor_feedback':
+      case 'feedback_request':
+        return <GraduationCap size={16} />;
+      case 'task_due':
+        return <Clock size={16} />;
+      case 'message':
+        return <MessageSquare size={16} />;
+      case 'system':
+        return <Bell size={16} />;
+      case 'submission':
+        return <FileText size={16} />;
+      default:
+        return <Bell size={16} />;
+    }
+  };
+
+  // Mark notification as read
+  const handleMarkAsRead = async (notificationId) => {
+    try {
+      await markNotificationAsRead(token, notificationId);
+      setNotifications(prev => 
+        prev.map(notif => 
+          notif.id === notificationId ? { ...notif, read: true } : notif
+        )
+      );
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
+  };
 
   const mockUpcomingTask = {
     title: "Submit Q2 Progress Report",
@@ -264,6 +382,31 @@ export default function StartupDashboard() {
     return () => clearInterval(timer);
   }, []);
 
+  // Fetch news/opportunities when component mounts or when user/token changes
+  useEffect(() => {
+    if (user?.tenantId && token) {
+      fetchNewsOpportunities();
+    }
+  }, [user?.tenantId, token]);
+
+  // Fetch notifications when component mounts or when user/token changes
+  useEffect(() => {
+    if (user?.id && token) {
+      fetchNotifications();
+    }
+  }, [user?.id, token]);
+
+  // Refresh notifications every 5 minutes
+  useEffect(() => {
+    if (user?.id && token) {
+      const interval = setInterval(() => {
+        fetchNotifications();
+      }, 5 * 60 * 1000); // 5 minutes
+
+      return () => clearInterval(interval);
+    }
+  }, [user?.id, token]);
+
   // Fetch mentors for the startup
   const fetchMentors = async () => {
     if (!user?.id || !token) {
@@ -284,6 +427,51 @@ export default function StartupDashboard() {
       setMentors([]);
     } finally {
       setMentorsLoading(false);
+    }
+  };
+
+  // Fetch news opportunities for startups - using same pattern as NewsManagement
+  const fetchNewsOpportunities = async () => {
+    // Use user.tenantId first as it's more reliable, fallback to profile.tenantId
+    const tenantId = user?.tenantId || profile?.tenantId;
+    if (!tenantId || !token) {
+      console.log('fetchNewsOpportunities: Missing tenantId or token', { 
+        profileTenantId: profile?.tenantId, 
+        userTenantId: user?.tenantId, 
+        hasToken: !!token,
+        finalTenantId: tenantId 
+      });
+      return;
+    }
+    
+    setNewsLoading(true);
+    try {
+      console.log('fetchNewsOpportunities: Using tenantId:', tenantId);
+      const posts = await getNewsPostsByTenant(token, tenantId);
+      console.log('fetchNewsOpportunities: Fetched posts:', posts);
+      
+      // Filter for startup-relevant categories
+      const startupCategories = [
+        'FUNDING_OPPORTUNITIES',
+        'STARTUP_SHOWCASE', 
+        'UPCOMING_EVENTS',
+        'SUCCESS_STORIES',
+        'MARKET_INSIGHTS',
+        'GENERAL_ANNOUNCEMENT',
+        'INCUBATION_PROGRAM_NEWS'
+      ];
+      
+      const filteredPosts = posts.filter(post => 
+        startupCategories.includes(post.category)
+      );
+      
+      console.log('fetchNewsOpportunities: Filtered posts for startups:', filteredPosts);
+      setNewsOpportunities(filteredPosts);
+    } catch (err) {
+      console.error('fetchNewsOpportunities: Error:', err);
+      setNewsOpportunities([]);
+    } finally {
+      setNewsLoading(false);
     }
   };
 
@@ -411,6 +599,12 @@ export default function StartupDashboard() {
         
         // Fetch progress templates after profile is loaded
         await fetchTemplates();
+        
+        // Fetch news opportunities after profile is loaded
+        await fetchNewsOpportunities();
+        
+        // Fetch notifications after profile is loaded
+        await fetchNotifications();
       } catch (err) {
         console.error("StartupDashboard: Error fetching profile:", err);
         // Check if the error indicates profile not found or forbidden (due to backend mapping)
@@ -748,9 +942,10 @@ export default function StartupDashboard() {
     { name: 'My Profile', icon: User, page: 'myProfile' },
     { name: 'Incubation Progress', icon: CheckCircle2, page: 'incubationProgress' },
     { name: 'My Mentor', icon: GraduationCap, page: 'myMentor' },
+    { name: 'Calendar', icon: Calendar, page: 'calendar' },
     { name: 'Opportunities', icon: Briefcase, page: 'opportunities' },
     { name: 'Notifications', icon: BellRing, page: 'notifications' },
-    { name: 'Chats', icon: Users, page: 'teamMembers' }
+    { name: 'Chats', icon: MessageSquare, page: 'chats' }
   ];
 
   // Main component rendering
@@ -759,18 +954,18 @@ export default function StartupDashboard() {
       {/* Background animated shapes */}
       <div className="absolute top-1/4 left-1/4 w-48 h-48 bg-brand-primary rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slow"></div>
       <div className="absolute bottom-1/3 right-1/4 w-64 h-64 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slower"></div> {/* Changed from purple-300 */}
-      <div className="absolute top-1/2 left-1/2 w-32 h-32 bg-teal-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float"></div> {/* Changed from pink-300 */}
-      <div className="absolute top-1/10 right-1/10 w-24 h-24 bg-teal-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slow delay-1000"></div>
       <div className="absolute bottom-1/5 left-1/5 w-40 h-40 bg-orange-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float-slower delay-2000"></div>
       <div className="absolute top-3/4 left-1/10 w-56 h-56 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float delay-500"></div>
 
       {/* Main Dashboard Container */}
-<div className="flex w-full h-screen bg-white overflow-hidden">        {/* Custom CSS for animations and variables */}
+<div className="flex w-full min-h-screen bg-white"> 
+        {/* Custom CSS for animations and variables */}
         <style>
           {`
             @tailwind base;
             @tailwind components;
             @tailwind utilities;
+{{ ... }}
 
             @keyframes float {
               0% { transform: translateY(0); }
@@ -857,7 +1052,8 @@ export default function StartupDashboard() {
         </style>
 
         {/* Left Sidebar */}
-        <div className="w-64 bg-white p-6 flex flex-col justify-between border-r border-gray-100 shadow-inner">
+        <div className="w-64 bg-white p-6 flex flex-col justify-between border-r border-gray-100 shadow-inner sticky top-0 h-screen overflow-y-auto">
+
           <div>
             {/* Removed Logo and Brand Name (Pitch.io) */}
             {/* Removed Create New Pitch Button */}
@@ -895,7 +1091,8 @@ export default function StartupDashboard() {
         </div>
 
         {/* Right Main Content Area */}
-<div className="flex-1 p-8 bg-gray-50">          {/* Top Header Bar */}
+<div className="flex-1 p-8 bg-gray-50 overflow-y-auto">
+          {/* Top Header Bar */}
           <header className="flex justify-between items-center mb-8 pb-4 border-b border-gray-200">
             <div className="text-gray-600 font-medium">
               {/* Display current date and time */}
@@ -1036,7 +1233,7 @@ export default function StartupDashboard() {
                     <BellRing size={24} className="mr-3 text-orange-600" /> Recent Notifications
                   </h3>
                   <ul className="space-y-4">
-                    {mockNotifications.slice(0, 3).map(notif => (
+                    {notifications.slice(0, 3).map(notif => (
                       <li key={notif.id} className="flex items-start">
                         <div className="flex-shrink-0 mt-1 mr-3 text-gray-500">{notif.icon}</div>
                         <div>
@@ -1596,12 +1793,6 @@ export default function StartupDashboard() {
             </div>
           )}
 
-          {currentPage === 'incubationProgress' && (
-            <div className="animate-fade-in">
-              <StartupProgressTracking userId={user?.id} token={token} />
-            </div>
-          )}
-
           {currentPage === 'myMentor' && (
             <div className="animate-fade-in">
               <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center">
@@ -1759,6 +1950,20 @@ export default function StartupDashboard() {
               )}
             </div>
           )}
+          {currentPage === 'teamMembers' && (
+            <div className="animate-fade-in">
+              <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center">
+                <MessageSquare size={28} className="mr-3 text-brand-primary" /> Chats
+              </h3>
+              {user && token && (
+                <ChatOverview token={token} currentUser={user} />
+              )}
+              </div>)}
+          {currentPage === 'calendar' && (
+            <div className="animate-fade-in">
+              <CalendarManagement />
+            </div>
+          )}
 
           {currentPage === 'opportunities' && (
             <div className="animate-fade-in">
@@ -1766,14 +1971,22 @@ export default function StartupDashboard() {
                 <Briefcase size={28} className="mr-3 text-brand-primary" /> Opportunities for Your Startup
               </h3>
 
-              {/* Filter Dropdown */}
+              {/* Category Filter Dropdown */}
               <div className="mb-6 flex justify-end">
                 <div className="relative inline-block text-left">
-                  <select className="block appearance-none w-full bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg shadow-sm leading-tight focus:outline-none focus:bg-white focus:border-brand-primary transition duration-200 text-sm">
-                    <option>All</option>
-                    <option>Open</option>
-                    <option>Applied</option>
-                    <option>Closed</option>
+                  <select 
+                    value={selectedNewsCategory}
+                    onChange={(e) => setSelectedNewsCategory(e.target.value)}
+                    className="block appearance-none w-full bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg shadow-sm leading-tight focus:outline-none focus:bg-white focus:border-brand-primary transition duration-200 text-sm"
+                  >
+                    <option value="all">All Startup Categories</option>
+                    <option value="FUNDING_OPPORTUNITIES">Funding Opportunities</option>
+                    <option value="STARTUP_SHOWCASE">Startup Showcase</option>
+                    <option value="UPCOMING_EVENTS">Upcoming Events</option>
+                    <option value="SUCCESS_STORIES">Success Stories</option>
+                    <option value="MARKET_INSIGHTS">Market Insights</option>
+                    <option value="GENERAL_ANNOUNCEMENT">General Announcements</option>
+                    <option value="INCUBATION_PROGRAM_NEWS">Incubation Program News</option>
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                     <ChevronDown size={16} />
@@ -1781,33 +1994,130 @@ export default function StartupDashboard() {
                 </div>
               </div>
 
-              {/* Opportunities List */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {mockOpportunities.map(opportunity => (
-                  <div key={opportunity.id} className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
-                    <h4 className="text-lg font-bold text-brand-dark mb-2 flex items-center">
-                      <Rocket size={20} className="mr-2 text-brand-primary" /> {/* Changed from text-indigo-500 */}
-                      {opportunity.name}
-                    </h4>
-                    <p className="text-sm text-gray-700 mb-3">{opportunity.description}</p>
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center text-gray-600">
-                        <CalendarDays size={14} className="mr-2" /> Apply by: {opportunity.applyBy}
-                      </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        opportunity.status === 'Open' ? 'bg-green-100 text-green-700' :
-                        opportunity.status === 'Closed' ? 'bg-red-100 text-red-700' :
-                        'bg-gray-100 text-gray-700'
-                      }`}>
-                        {opportunity.status}
-                      </span>
-                    </div>
-                    <button className="mt-4 px-5 py-2 bg-brand-primary text-white text-sm font-semibold rounded-full shadow-md hover:bg-blue-600 transition duration-200">
-                      Apply Now
-                    </button>
-                  </div>
-                ))}
-              </div>
+              {/* Loading State */}
+              {newsLoading && (
+                <div className="flex justify-center items-center py-12">
+                  <Loader2 className="animate-spin text-brand-primary" size={32} />
+                  <span className="ml-3 text-gray-600">Loading opportunities...</span>
+                </div>
+              )}
+
+              {/* News Opportunities List */}
+              {!newsLoading && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {newsOpportunities
+                    .filter(news => selectedNewsCategory === 'all' || news.category === selectedNewsCategory)
+                    .map(news => {
+                      const getCategoryIcon = (category) => {
+                        switch(category) {
+                          case 'FUNDING_OPPORTUNITIES': return <Rocket size={20} className="mr-2 text-green-600" />;
+                          case 'STARTUP_SHOWCASE': return <Star size={20} className="mr-2 text-purple-600" />;
+                          case 'UPCOMING_EVENTS': return <Calendar size={20} className="mr-2 text-blue-600" />;
+                          case 'SUCCESS_STORIES': return <Award size={20} className="mr-2 text-yellow-600" />;
+                          case 'MARKET_INSIGHTS': return <TrendingUp size={20} className="mr-2 text-indigo-600" />;
+                          case 'INCUBATION_PROGRAM_NEWS': return <GraduationCap size={20} className="mr-2 text-brand-primary" />;
+                          default: return <Info size={20} className="mr-2 text-gray-600" />;
+                        }
+                      };
+
+                      const formatCategory = (category) => {
+                        return category.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+                      };
+
+                      const formatDate = (dateString) => {
+                        return new Date(dateString).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        });
+                      };
+
+                      return (
+                        <div key={news.id} className="bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 overflow-hidden">
+                          {/* Full-width image header */}
+                          {news.imageUrl && (
+                            <div className="relative h-48 w-full">
+                              <img 
+                                src={news.imageUrl} 
+                                alt={news.title}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                          
+                          <div className="p-6">
+                            {/* Title with category icon */}
+                            <div className="flex items-start mb-3">
+                              <h4 className="text-xl font-bold text-brand-dark flex items-center flex-1">
+                                {getCategoryIcon(news.category)}
+                                {news.title}
+                              </h4>
+                            </div>
+                            
+                            {/* Content */}
+                            <p className="text-gray-700 mb-4 line-clamp-3 leading-relaxed">{news.content}</p>
+                            
+                            {/* Meta information */}
+                            <div className="flex items-center justify-between text-sm mb-4 text-gray-600">
+                              <div className="flex items-center">
+                                <CalendarDays size={14} className="mr-2" /> 
+                                {formatDate(news.publishedAt)}
+                              </div>
+                              <span className="text-xs">By {news.authorName}</span>
+                            </div>
+                            
+                            {/* Action buttons and attachments */}
+                            <div className="flex flex-col gap-3">
+                              {/* Reference file and link buttons */}
+                              <div className="flex flex-wrap gap-2">
+                                {news.referenceFileUrl && (
+                                  <a 
+                                    href={news.referenceFileUrl.startsWith('http') ? news.referenceFileUrl : `http://localhost:8081${news.referenceFileUrl}`}
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition duration-200"
+                                  >
+                                    <FileText size={16} className="mr-2" />
+                                    Download File
+                                  </a>
+                                )}
+                                {news.linkUrl && (
+                                  <a 
+                                    href={news.linkUrl} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center px-4 py-2 bg-brand-primary text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition duration-200"
+                                  >
+                                    <ExternalLink size={16} className="mr-2" />
+                                    Learn More
+                                  </a>
+                                )}
+                              </div>
+                              
+                              {/* Default read more if no links */}
+                              {!news.linkUrl && !news.referenceFileUrl && (
+                                <button className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-600 text-sm font-medium rounded-lg cursor-default">
+                                  <Info size={16} className="mr-2" />
+                                  Read More
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  }
+                </div>
+              )}
+
+              {/* Empty State */}
+              {!newsLoading && newsOpportunities.filter(news => selectedNewsCategory === 'all' || news.category === selectedNewsCategory).length === 0 && (
+                <div className="text-center py-12">
+                  <Briefcase size={48} className="mx-auto text-gray-400 mb-4" />
+                  <h4 className="text-lg font-semibold text-gray-600 mb-2">No Opportunities Available</h4>
+                  <p className="text-gray-500">Check back later for new funding opportunities, events, and startup resources.</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -1829,18 +2139,40 @@ export default function StartupDashboard() {
 
           {currentPage === 'notifications' && (
             <div className="animate-fade-in">
-              <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center">
-                <BellRing size={28} className="mr-3 text-brand-primary" /> Your Notifications
-              </h3>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-brand-dark flex items-center">
+                  <BellRing size={28} className="mr-3 text-brand-primary" /> Your Notifications
+                  <span className="ml-3 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                    {notifications.filter(n => !n.read).length}
+                  </span>
+                </h3>
+                <button className="text-sm text-brand-primary hover:text-brand-dark transition-colors">
+                  Mark All as Read
+                </button>
+              </div>
 
-              {/* Filter Dropdown */}
-              <div className="mb-6 flex justify-end">
-                <div className="relative inline-block text-left">
-                  <select className="block appearance-none w-full bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg shadow-sm leading-tight focus:outline-none focus:bg-white focus:border-brand-primary transition duration-200 text-sm">
+              {/* Filter and Stats */}
+              <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+                <div className="flex gap-2 flex-wrap">
+                  <button className="px-3 py-1 bg-brand-primary text-white text-xs rounded-full hover:bg-brand-dark transition-colors">
+                    All ({notifications.length})
+                  </button>
+                  <button className="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-full hover:bg-gray-200 transition-colors">
+                    Unread ({notifications.filter(n => !n.read).length})
+                  </button>
+                  <button className="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-full hover:bg-gray-200 transition-colors">
+                    High Priority ({notifications.filter(n => n.priority === 'high' || n.priority === 'urgent').length})
+                  </button>
+                </div>
+                
+                <div className="relative">
+                  <select className="block appearance-none bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg shadow-sm leading-tight focus:outline-none focus:bg-white focus:border-brand-primary transition duration-200 text-sm">
                     <option>All Types</option>
-                    <option>System</option>
-                    <option>Mentor</option>
-                    <option>Admin</option>
+                    <option>Meetings</option>
+                    <option>Mentor Feedback</option>
+                    <option>Tasks & Deadlines</option>
+                    <option>Opportunities</option>
+                    <option>System Updates</option>
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                     <ChevronDown size={16} />
@@ -1848,28 +2180,110 @@ export default function StartupDashboard() {
                 </div>
               </div>
 
-              {/* Notifications List (Timeline Style) */}
-              <div className="relative pl-8 border-l-2 border-gray-200 space-y-8">
-                {mockNotifications.map((notif, index) => (
-                  <div key={notif.id} className="relative">
-                    <div className="absolute -left-3.5 -top-1 w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 shadow-sm">
-                      {notif.icon}
-                    </div>
-                    <div className="ml-4 p-5 bg-white rounded-2xl shadow-lg border border-gray-100">
-                      <p className="text-sm text-gray-700 font-medium mb-1">{notif.message}</p>
-                      <p className="text-xs text-gray-500">{notif.time}</p>
-                      <div className="flex justify-end mt-3 space-x-2">
-                        <button className="text-xs text-blue-500 hover:underline">Mark as Read</button>
-                        <button className="text-xs text-red-500 hover:underline">Delete</button>
+              {/* Notifications List */}
+              <div className="space-y-4">
+                {notifications.map((notif, index) => {
+                  const priorityColors = {
+                    urgent: 'border-l-red-500 bg-red-50',
+                    high: 'border-l-orange-500 bg-orange-50',
+                    medium: 'border-l-blue-500 bg-blue-50',
+                    low: 'border-l-gray-400 bg-gray-50'
+                  };
+                  
+                  const typeIcons = {
+                    meeting: { color: 'text-blue-600', bg: 'bg-blue-100' },
+                    mentor_feedback: { color: 'text-green-600', bg: 'bg-green-100' },
+                    task_due: { color: 'text-red-600', bg: 'bg-red-100' },
+                    opportunity: { color: 'text-purple-600', bg: 'bg-purple-100' },
+                    system: { color: 'text-gray-600', bg: 'bg-gray-100' },
+                    admin: { color: 'text-indigo-600', bg: 'bg-indigo-100' },
+                    peer: { color: 'text-yellow-600', bg: 'bg-yellow-100' },
+                    event: { color: 'text-pink-600', bg: 'bg-pink-100' }
+                  };
+                  
+                  const typeStyle = typeIcons[notif.type] || typeIcons.system;
+                  
+                  return (
+                    <div key={notif.id} className={`relative p-4 bg-white rounded-xl shadow-sm border-l-4 transition-all duration-200 hover:shadow-md ${
+                      priorityColors[notif.priority] || priorityColors.low
+                    } ${!notif.read ? 'ring-2 ring-blue-100' : ''}`}>
+                      
+                      {/* Priority indicator */}
+                      {(notif.priority === 'urgent' || notif.priority === 'high') && (
+                        <div className="absolute top-2 right-2">
+                          <div className={`w-2 h-2 rounded-full ${
+                            notif.priority === 'urgent' ? 'bg-red-500' : 'bg-orange-500'
+                          }`}></div>
+                        </div>
+                      )}
+                      
+                      <div className="flex items-start gap-3">
+                        {/* Icon */}
+                        <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${typeStyle.bg}`}>
+                          <span className={typeStyle.color}>
+                            {notif.icon}
+                          </span>
+                        </div>
+                        
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1">
+                              <h4 className={`text-sm font-semibold ${!notif.read ? 'text-gray-900' : 'text-gray-700'}`}>
+                                {notif.title}
+                              </h4>
+                              <p className={`text-sm mt-1 ${!notif.read ? 'text-gray-700' : 'text-gray-600'}`}>
+                                {notif.message}
+                              </p>
+                            </div>
+                            
+                            {/* Time and unread indicator */}
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <span className="text-xs text-gray-500">{notif.time}</span>
+                              {!notif.read && (
+                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Action buttons */}
+                          <div className="flex items-center gap-3 mt-3">
+                            {notif.actionUrl && (
+                              <button className="text-xs text-brand-primary hover:text-brand-dark font-medium transition-colors">
+                                {notif.actionText}
+                              </button>
+                            )}
+                            <button className="text-xs text-gray-500 hover:text-gray-700 transition-colors">
+                              {notif.read ? 'Mark as Unread' : 'Mark as Read'}
+                            </button>
+                            <button className="text-xs text-gray-400 hover:text-red-500 transition-colors">
+                              Dismiss
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
+              </div>
+              
+              {/* Load more button */}
+              <div className="text-center mt-8">
+                <button className="px-6 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium">
+                  Load More Notifications
+                </button>
               </div>
             </div>
           )}
 
-
+          {currentPage === 'chats' && (
+            <div className="animate-fade-in">
+              <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center">
+                <MessageSquare size={28} className="mr-3 text-brand-primary" /> Your Chats
+              </h3>
+              <ChatOverview token={token} currentUser={user} />
+            </div>
+          )}
         </div>
       </div>
     </div>

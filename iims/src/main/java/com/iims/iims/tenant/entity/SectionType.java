@@ -9,5 +9,6 @@ public enum SectionType {
     TEAM,
     FAQ,
     GALLERY,
+    NEWS,
     CUSTOM
 } 

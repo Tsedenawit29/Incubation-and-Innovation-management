@@ -13,7 +13,8 @@ import {
   FaBell,
   FaWpforms,
   FaFileAlt,
-  FaCalendarAlt
+  FaCalendarAlt,
+  FaNewspaper
 } from 'react-icons/fa';
 
 export default function TenantAdminSidebar({ user, onLogout }) {
@@ -69,10 +70,18 @@ export default function TenantAdminSidebar({ user, onLogout }) {
       description: 'Review submitted applications'
     },
     {
+
       path: '/tenant-admin/chats',
       icon: <FaUsers />,
       label: 'Chats',
       description: 'Manage and monitor chat conversations'
+    },
+    {
+      path: '/tenant-admin/news',
+      icon: <FaNewspaper />,
+      label: 'News & Updates',
+      description: 'Manage news posts and announcements'
+
     }
   ];
 
@@ -84,32 +93,36 @@ export default function TenantAdminSidebar({ user, onLogout }) {
   };
 
   return (
-    <div className="w-64 bg-white shadow-lg border-r border-gray-200 min-h-screen">
+    <div className="w-64 bg-gradient-to-b from-[#0A2D5C] to-[#299DFF] shadow-2xl border-r border-[#299DFF]/30 min-h-screen relative overflow-hidden">
+      {/* Artistic floating shapes */}
+      <div className="absolute -top-10 -left-10 w-32 h-32 bg-[#299DFF] rounded-full opacity-20 blur-2xl animate-float-slow" />
+      <div className="absolute bottom-0 right-0 w-24 h-24 bg-white rounded-full opacity-10 blur-xl animate-float-slower" />
+      
       {/* Header */}
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-6 border-b border-white/20 relative z-10">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+          <div className="w-12 h-12 bg-gradient-to-br from-white to-[#299DFF]/20 rounded-xl flex items-center justify-center shadow-lg border border-white/30">
             <FaBuilding className="text-white text-lg" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-gray-900">Tenant Admin</h2>
-            <p className="text-sm text-gray-600">{user?.tenantName || 'Organization'}</p>
+            <h2 className="text-xl font-bold text-white drop-shadow-lg">Tenant Admin</h2>
+            <p className="text-sm text-white/80">{user?.tenantName || 'Organization'}</p>
           </div>
         </div>
         
         {/* User Info */}
-        <div className="bg-gray-50 rounded-lg p-3">
+        <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 border border-white/30">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-              <span className="text-blue-600 font-semibold text-sm">
+            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg">
+              <span className="text-[#0A2D5C] font-bold text-sm">
                 {user?.fullName?.charAt(0) || 'A'}
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
+              <p className="text-sm font-medium text-white truncate">
                 {user?.fullName || 'Admin User'}
               </p>
-              <p className="text-xs text-gray-500 truncate">
+              <p className="text-xs text-white/70 truncate">
                 {user?.email || 'admin@example.com'}
               </p>
             </div>
@@ -118,31 +131,31 @@ export default function TenantAdminSidebar({ user, onLogout }) {
       </div>
 
       {/* Navigation */}
-      <nav className="p-4">
+      <nav className="p-4 relative z-10">
         <div className="space-y-2">
-          {menuItems.map((item) => (
+          {menuItems.map((item, index) => (
             <Link
-              key={item.path}
+              key={`menu-${index}-${item.path}`}
               to={item.path}
-              className={`group flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 ${
+              className={`group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 ${
                 isActive(item.path)
-                  ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
-                  : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'bg-white text-[#0A2D5C] shadow-lg border-l-4 border-[#299DFF]'
+                  : 'text-[#299DFF]/90 hover:bg-white/10 hover:text-[#299DFF] backdrop-blur-sm border border-[#299DFF]/20'
               }`}
             >
               <div className={`text-lg transition-colors ${
-                isActive(item.path) ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'
+                isActive(item.path) ? 'text-[#299DFF]' : 'text-[#299DFF] group-hover:text-white'
               }`}>
                 {item.icon}
               </div>
               <div className="flex-1 min-w-0">
                 <p className={`font-medium text-sm ${
-                  isActive(item.path) ? 'text-blue-700' : 'text-gray-900'
+                  isActive(item.path) ? 'text-[#0A2D5C]' : 'text-[#299DFF]'
                 }`}>
                   {item.label}
                 </p>
                 <p className={`text-xs ${
-                  isActive(item.path) ? 'text-blue-600' : 'text-gray-500'
+                  isActive(item.path) ? 'text-[#0A2D5C]/70' : 'text-[#299DFF]/70'
                 }`}>
                   {item.description}
                 </p>
@@ -153,17 +166,17 @@ export default function TenantAdminSidebar({ user, onLogout }) {
       </nav>
 
       {/* Quick Actions */}
-      <div className="p-4 border-t border-gray-200">
-        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+      <div className="p-4 border-t border-white/20 relative z-10">
+        <h3 className="text-xs font-semibold text-white/80 uppercase tracking-wider mb-3">
           Quick Actions
         </h3>
         <div className="space-y-2">
-          <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-            <FaClipboardList className="text-gray-400" />
+          <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-[#299DFF] hover:bg-white/10 rounded-lg transition-colors border border-[#299DFF]/20">
+            <FaClipboardList className="text-[#299DFF]" />
             <span>View Reports</span>
           </button>
-          <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-            <FaBell className="text-gray-400" />
+          <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-[#299DFF] hover:bg-white/10 rounded-lg transition-colors border border-[#299DFF]/20">
+            <FaBell className="text-[#299DFF]" />
             <span>Notifications</span>
           </button>
         </div>
