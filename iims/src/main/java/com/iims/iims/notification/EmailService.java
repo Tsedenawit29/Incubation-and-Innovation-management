@@ -239,4 +239,44 @@ public class EmailService {
         mailMessage.setText(message);
         mailSender.send(mailMessage);
     }
+
+    // --- METHOD FOR INVESTOR CREDENTIALS EMAIL ---
+    public void sendInvestorCredentialsEmail(String investorEmail, String investorName, String username, String password, String tenantName) {
+        String subject = "Welcome to IIMS - Your Investor Account Credentials";
+        String message = String.format("""
+            Dear %s,
+            
+            Welcome to the IIMS platform! Your investor account has been created for %s.
+            
+            Login Credentials:
+            - Username: %s
+            - Password: %s
+            
+            Please log in and change your password after your first login.
+            
+            Login URL: http://localhost:3000/login
+            
+            As an investor, you'll have access to:
+            - Startup portfolio and investment opportunities
+            - Due diligence tools and startup analytics
+            - Mentorship and advisory opportunities
+            - Investment tracking and portfolio management
+            - Network with other investors and industry experts
+            
+            If you have any questions or need support, please contact your tenant admin or the IIMS support team.
+            
+            Best regards,
+            IIMS Team
+            """, investorName, tenantName, username, password);
+
+        log.info("Sending investor credentials email to: {}", investorEmail);
+        log.info("Email subject: {}", subject);
+        log.info("Email content: {}", message);
+
+        SimpleMailMessage mailMessage = new SimpleMailMessage();
+        mailMessage.setTo(investorEmail);
+        mailMessage.setSubject(subject);
+        mailMessage.setText(message);
+        mailSender.send(mailMessage);
+    }
 }

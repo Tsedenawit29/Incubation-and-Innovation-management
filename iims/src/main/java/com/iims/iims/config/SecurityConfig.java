@@ -101,9 +101,14 @@ public class SecurityConfig {
                         // Profile endpoints
                         .requestMatchers("/api/profile/startup/**").hasAnyRole("STARTUP", "TENANT_ADMIN", "SUPER_ADMIN")
                         .requestMatchers("/api/profile/alumni/**").hasAnyRole("ALUMNI", "TENANT_ADMIN", "SUPER_ADMIN")
+                        .requestMatchers("/api/profile/investor/**").hasAnyRole("INVESTOR", "TENANT_ADMIN", "SUPER_ADMIN")
                         
                         // Alumni endpoints (legacy - keeping for backward compatibility)
                         .requestMatchers("/api/alumni/**").hasAnyRole("ALUMNI", "TENANT_ADMIN", "SUPER_ADMIN")
+                        
+                        // Chat endpoints - allow all authenticated users
+                        .requestMatchers("/api/chat-rooms/**").authenticated()
+                        .requestMatchers("/api/chats/**").authenticated()
                         
                         .requestMatchers("/api/google/callback").permitAll()
                         .requestMatchers("/api/google/auth-url").permitAll()
