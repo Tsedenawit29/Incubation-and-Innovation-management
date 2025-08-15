@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { Link } from "react-router-dom";
+import { ArrowLeft } from 'lucide-react';
 import {
   getUsers,
   updateUser,
@@ -192,36 +193,52 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-[#299DFF]/5 to-[#0A2D5C]/5">
+      {/* Artistic floating shapes */}
+      <div className="pointer-events-none select-none fixed inset-0">
+        <div className="absolute -top-20 -left-20 w-60 h-60 bg-[#299DFF] rounded-full opacity-10 blur-2xl animate-float-slow z-0" />
+        <div className="absolute bottom-0 right-0 w-80 h-80 bg-[#0A2D5C] rounded-full opacity-10 blur-2xl animate-float-slower z-0" />
+      </div>
+      
       {/* Header */}
-      <header className="bg-white shadow">
+      <header className="bg-gradient-to-r from-white to-[#299DFF]/5 shadow-xl border-b border-[#299DFF]/20 relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">IIMS Dashboard</h1>
-              <p className="text-sm text-gray-600">
+              {/* Back to Home */}
+              <div className="flex items-center mb-4">
+                <Link 
+                  to="/" 
+                  className="flex items-center text-[#0A2D5C] hover:text-[#299DFF] transition-colors duration-200 mr-4 group"
+                >
+                  <ArrowLeft size={24} className="mr-2 group-hover:-translate-x-1 transition-transform duration-200" />
+                  <span className="font-medium">Back to Home</span>
+                </Link>
+              </div>
+              <h1 className="text-4xl font-extrabold bg-gradient-to-r from-[#0A2D5C] to-[#299DFF] text-transparent bg-clip-text mb-2">IIMS Dashboard</h1>
+              <p className="text-[#0A2D5C]/70 text-lg">
                 Welcome, {getDisplayName()} ({user?.role || 'Unknown Role'})
               </p>
             </div>
             <div className="flex items-center space-x-4">
               {/* Navigation Links for Super Admin */}
               {user?.role === 'SUPER_ADMIN' && (
-                <div className="flex space-x-2">
+                <div className="flex space-x-3">
                   <Link
                     to="/tenant-management"
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+                    className="bg-gradient-to-r from-[#299DFF] to-[#0A2D5C] hover:from-[#0A2D5C] hover:to-[#299DFF] text-white px-6 py-3 rounded-xl text-sm font-medium shadow-lg transition-all duration-300 transform hover:scale-105"
                   >
                     Tenant Management
                   </Link>
                   <Link
                     to="/admin-requests"
-                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+                    className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white px-6 py-3 rounded-xl text-sm font-medium shadow-lg transition-all duration-300 transform hover:scale-105"
                   >
                     Admin Requests
                   </Link>
                   <Link
                     to="/super-admin/chats"
-                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+                    className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl text-sm font-medium shadow-lg transition-all duration-300 transform hover:scale-105"
                   >
                     Chat Management
                   </Link>
@@ -229,7 +246,7 @@ export default function DashboardPage() {
               )}
               <button
                 onClick={logout}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+                className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-6 py-3 rounded-xl text-sm font-medium shadow-lg transition-all duration-300 transform hover:scale-105"
               >
                 Logout
               </button>

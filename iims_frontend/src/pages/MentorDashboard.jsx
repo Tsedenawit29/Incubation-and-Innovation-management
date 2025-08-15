@@ -12,6 +12,7 @@ import {
   getTasks 
 } from '../api/progresstracking';
 import { getNewsPostsByTenant } from '../api/news';
+import { fetchAllNotifications, markNotificationAsRead } from '../api/notifications';
 
 import CalendarManagement from './CalendarManagement';
 
@@ -235,48 +236,119 @@ export default function MentorDashboard() {
   // --- END NEWS STATES ---
 
   // Mock data for dashboard
-  const mockNotifications = [
-    // Recent notifications (last 24 hours)
-    { 
-      id: 1, 
-      type: "meeting", 
-      priority: "high",
-      icon: <Calendar size={16} />, 
-      title: "Upcoming Mentorship Session",
-      message: "Meeting with TechInnovators team starts in 45 minutes - MVP Review & Strategy Discussion", 
-      time: "45 minutes",
-      timestamp: new Date(Date.now() - 45 * 60 * 1000),
-      actionUrl: "/calendar",
-      actionText: "Join Meeting",
-      read: false
-    },
-    { 
-      id: 2, 
-      type: "submission", 
-      priority: "high",
-      icon: <FileText size={16} />, 
-      title: "New Progress Submission",
-      message: "GreenTech Solutions submitted their Q2 progress report and milestone documentation for review", 
-      time: "3 hours ago",
-      timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000),
-      actionUrl: "/review",
-      actionText: "Review Submission",
-      read: false
-    },
-    { 
-      id: 3, 
-      type: "startup_question", 
-      priority: "medium",
-      icon: <HelpCircle size={16} />, 
-      title: "Startup Question",
-      message: "TechInnovators asked for guidance on customer acquisition strategy and pricing models", 
-      time: "5 hours ago",
-      timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000),
-      actionUrl: "/messages",
-      actionText: "Respond",
-      read: false
+  // Notifications state
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationsError, setNotificationsError] = useState('');
+
+  // Fetch notifications
+  const fetchNotifications = async () => {
+    if (!user?.id || !token) return;
+    
+    setNotificationsLoading(true);
+    setNotificationsError('');
+    
+    try {
+      const notificationData = await fetchAllNotifications(
+        token, 
+        'MENTOR', 
+        user.id, 
+        user.tenantId || profile?.tenantId
+      );
+      
+      // Add icons based on notification type
+      const notificationsWithIcons = notificationData.map(notif => ({
+        ...notif,
+        icon: getNotificationIcon(notif.type)
+      }));
+      
+      setNotifications(notificationsWithIcons);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      setNotificationsError('Failed to load notifications');
+      // Use mock data as fallback
+      const mockData = [
+        { 
+          id: 1, 
+          type: "meeting", 
+          priority: "high",
+          icon: <Calendar size={16} />, 
+          title: "Upcoming Mentorship Session",
+          message: "Meeting with TechInnovators team starts in 45 minutes - MVP Review & Strategy Discussion", 
+          time: "45 minutes",
+          timestamp: new Date(Date.now() - 45 * 60 * 1000),
+          actionUrl: "/calendar",
+          actionText: "Join Meeting",
+          read: false
+        },
+        { 
+          id: 2, 
+          type: "submission", 
+          priority: "high",
+          icon: <FileText size={16} />, 
+          title: "New Progress Submission",
+          message: "GreenTech Solutions submitted their Q2 progress report and milestone documentation for review", 
+          time: "3 hours ago",
+          timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000),
+          actionUrl: "/review",
+          actionText: "Review Submission",
+          read: false
+        },
+        { 
+          id: 3, 
+          type: "startup_question", 
+          priority: "medium",
+          icon: <HelpCircle size={16} />, 
+          title: "Startup Question",
+          message: "TechInnovators asked for guidance on customer acquisition strategy and pricing models", 
+          time: "5 hours ago",
+          timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000),
+          actionUrl: "/messages",
+          actionText: "Respond",
+          read: false
+        }
+      ];
+      setNotifications(mockData);
+    } finally {
+      setNotificationsLoading(false);
     }
-  ];
+  };
+
+  // Helper function to get notification icons
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case 'meeting':
+        return <Calendar size={16} />;
+      case 'submission':
+      case 'feedback_request':
+        return <FileText size={16} />;
+      case 'startup_question':
+      case 'message':
+        return <HelpCircle size={16} />;
+      case 'mentor_feedback':
+        return <GraduationCap size={16} />;
+      case 'task_due':
+        return <Clock size={16} />;
+      case 'system':
+        return <Bell size={16} />;
+      default:
+        return <Bell size={16} />;
+    }
+  };
+
+  // Mark notification as read
+  const handleMarkAsRead = async (notificationId) => {
+    try {
+      await markNotificationAsRead(token, notificationId);
+      setNotifications(prev => 
+        prev.map(notif => 
+          notif.id === notificationId ? { ...notif, read: true } : notif
+        )
+      );
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
+  };
 
   const mockUpcomingTask = {
     title: "Review TechInnovators' MVP Submission",
@@ -292,6 +364,24 @@ export default function MentorDashboard() {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Fetch notifications when component mounts or when user/token changes
+  useEffect(() => {
+    if (user?.id && token) {
+      fetchNotifications();
+    }
+  }, [user?.id, token]);
+
+  // Refresh notifications every 5 minutes
+  useEffect(() => {
+    if (user?.id && token) {
+      const interval = setInterval(() => {
+        fetchNotifications();
+      }, 5 * 60 * 1000); // 5 minutes
+
+      return () => clearInterval(interval);
+    }
+  }, [user?.id, token]);
 
   // Fetch assigned startups for the mentor
   const fetchAssignedStartups = async () => {
@@ -971,7 +1061,7 @@ export default function MentorDashboard() {
                     <BellRing size={24} className="mr-3 text-orange-600" /> Recent Notifications
                   </h3>
                   <ul className="space-y-4">
-                    {mockNotifications.slice(0, 3).map(notif => (
+                    {notifications.slice(0, 3).map(notif => (
                       <li key={notif.id} className="flex items-start">
                         <div className="flex-shrink-0 mt-1 mr-3 text-gray-500">{notif.icon}</div>
                         <div>
@@ -1490,7 +1580,7 @@ export default function MentorDashboard() {
                 <h3 className="text-2xl font-bold text-brand-dark flex items-center">
                   <BellRing size={28} className="mr-3 text-brand-primary" /> Your Notifications
                   <span className="ml-3 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                    {mockNotifications.filter(n => !n.read).length}
+                    {notifications.filter(n => !n.read).length}
                   </span>
                 </h3>
                 <button className="text-sm text-brand-primary hover:text-brand-dark transition-colors">
@@ -1502,13 +1592,13 @@ export default function MentorDashboard() {
               <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
                 <div className="flex gap-2 flex-wrap">
                   <button className="px-3 py-1 bg-brand-primary text-white text-xs rounded-full hover:bg-brand-dark transition-colors">
-                    All ({mockNotifications.length})
+                    All ({notifications.length})
                   </button>
                   <button className="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-full hover:bg-gray-200 transition-colors">
-                    Unread ({mockNotifications.filter(n => !n.read).length})
+                    Unread ({notifications.filter(n => !n.read).length})
                   </button>
                   <button className="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-full hover:bg-gray-200 transition-colors">
-                    High Priority ({mockNotifications.filter(n => n.priority === 'high' || n.priority === 'urgent').length})
+                    High Priority ({notifications.filter(n => n.priority === 'high' || n.priority === 'urgent').length})
                   </button>
                 </div>
                 
@@ -1529,7 +1619,7 @@ export default function MentorDashboard() {
 
               {/* Notifications List */}
               <div className="space-y-4">
-                {mockNotifications.map((notif, index) => {
+                {notifications.map((notif, index) => {
                   const priorityColors = {
                     urgent: 'border-l-red-500 bg-red-50',
                     high: 'border-l-orange-500 bg-orange-50',
