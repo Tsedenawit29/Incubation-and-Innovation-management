@@ -149,7 +149,9 @@ export const createSubmission = async (trackingId, taskId, token, startupId = nu
 
 export const getAssignedTemplatesForStartup = async (startupId, token) => {
   console.log('🔍 Fetching assigned templates for startup:', startupId);
-  const url = `/api/progresstracking/assignments/assigned-templates/USER/${startupId}`;
+  console.log('🔍 DEBUG: Current user ID being used:', startupId);
+  // Backend expects assignedToType to be STARTUP
+  const url = `/api/progresstracking/assignments/assigned-templates/STARTUP/${startupId}`;
   console.log('🔗 API URL:', url);
   console.log('🔑 Using token for auth:', !!token);
   

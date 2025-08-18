@@ -297,7 +297,7 @@ export const AssignmentForm = ({ templates, users, currentUser, onSubmit, onCanc
   const [form, setForm] = useState({
     templateId: '',
     assignedToId: '',
-    assignedToType: 'USER',
+    assignedToType: 'STARTUP',
     assignedById: currentUser?.id || ''
   });
 
@@ -318,6 +318,9 @@ export const AssignmentForm = ({ templates, users, currentUser, onSubmit, onCanc
       assignedToType: form.assignedToType,
       assignedById: form.assignedById
     };
+
+    console.log('🔍 ASSIGNMENT DEBUG - Selected user ID:', form.assignedToId);
+    console.log('🔍 ASSIGNMENT DEBUG - Full payload:', payload);
 
     onSubmit(payload);
   };

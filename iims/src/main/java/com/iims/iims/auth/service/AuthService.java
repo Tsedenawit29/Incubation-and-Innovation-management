@@ -81,7 +81,7 @@ public class AuthService {
             .fullName(req.getFullName())
             .role(Role.SUPER_ADMIN)
             .build();
-        userRepo.save(admin);
+        userRepo.saveAndFlush(admin);
 
         // *** FIX: This is a new user, so a direct create is fine, but for consistency,
         // you could still use the createOrUpdateRefreshToken method.

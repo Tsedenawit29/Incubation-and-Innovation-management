@@ -171,6 +171,12 @@ public class StartupProfileService {
     }
 
     public StartupProfileDto createProfile(UUID userId) {
+        // If profile already exists for this user, return it (idempotent behavior)
+        var existing = profileRepo.findByUserId(userId);
+        if (existing.isPresent()) {
+            return toDto(existing.get());
+        }
+
         User user = userRepo.findById(userId)
                 .orElseThrow(() -> new ProfileNotFoundException("User not found for ID: " + userId)); // Use custom exception
         StartupProfile profile = StartupProfile.builder()

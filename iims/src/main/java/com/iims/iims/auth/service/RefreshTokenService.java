@@ -5,7 +5,6 @@ import com.iims.iims.auth.repository.RefreshTokenRepository;
 import com.iims.iims.user.entity.User;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.Optional;
@@ -23,7 +22,7 @@ public class RefreshTokenService {
         this.refreshTokenRepository = refreshTokenRepository;
     }
      
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
 public RefreshToken createOrUpdateRefreshToken(User user) {
     // 1. Check if a token for the user already exists
     Optional<RefreshToken> existingTokenOpt = refreshTokenRepository.findByUser(user);
