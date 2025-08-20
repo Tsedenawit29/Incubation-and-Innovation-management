@@ -17,7 +17,7 @@ import EditUserModal from '../components/EditUserModal';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import ChangeRoleModal from '../components/ChangeRoleModal';
 import ChangePasswordModal from '../components/ChangePasswordModal';
-import {
+import { 
   Users,
   Download,
   BarChart3,
@@ -31,9 +31,10 @@ import {
   ArrowUp,
   ArrowDown,
   Minus,
-  ArrowLeft
+  ArrowLeft,
+  LineChart
 } from 'lucide-react';
-
+import AnalyticsDashboard from '../components/analytics/AnalyticsDashboard';
 
 const ROLES = [
   "STARTUP",
@@ -44,7 +45,7 @@ const ROLES = [
   "ALUMNI"
 ];
 
-const TABS = [...ROLES, "APPLICATIONS", "APPLICATION_FORMS"];
+const TABS = [...ROLES, "APPLICATIONS", "APPLICATION_FORMS", "ANALYTICS"];
 
 export default function TenantAdminDashboard() {
   const { user, token, logout } = useAuth();
@@ -54,7 +55,7 @@ export default function TenantAdminDashboard() {
   const [success, setSuccess] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ fullName: "", email: "", role: ROLES[0] });
-  const [activeTab, setActiveTab] = useState('ALL');
+  const [activeTab, setActiveTab] = useState("ANALYTICS");
 
   // Modal states
   const [editModal, setEditModal] = useState({ isOpen: false, user: null });

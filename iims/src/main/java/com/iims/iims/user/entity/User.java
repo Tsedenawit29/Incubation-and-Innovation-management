@@ -9,9 +9,13 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
+
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
 @Table(name = "users")
@@ -36,6 +40,15 @@ public class User implements UserDetails {
 
     @Builder.Default
     private boolean isActive = true;
+    
+    @CreationTimestamp
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
+    
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
+    
+    private LocalDateTime lastLogin;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

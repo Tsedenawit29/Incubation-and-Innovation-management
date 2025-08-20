@@ -279,4 +279,33 @@ public class EmailService {
         mailMessage.setText(message);
         mailSender.send(mailMessage);
     }
+
+    public void sendPasswordResetEmail(String email, String username, String resetLink) {
+        String subject = "Password Reset Request - IIMS";
+        String message = String.format("""
+            Dear %s,
+            
+            We received a request to reset your password for your IIMS account.
+            
+            Please click the link below to reset your password:
+            %s
+            
+            This link will expire in 24 hours. If you didn't request this, please ignore this email.
+            
+            For security reasons, do not share this link with anyone.
+            
+            Best regards,
+            IIMS Team
+            """, username, resetLink);
+
+        log.info("Sending password reset email to: {}", email);
+        log.info("Email subject: {}", subject);
+        log.info("Reset link: {}", resetLink);
+
+        SimpleMailMessage mailMessage = new SimpleMailMessage();
+        mailMessage.setTo(email);
+        mailMessage.setSubject(subject);
+        mailMessage.setText(message);
+        mailSender.send(mailMessage);
+    }
 }

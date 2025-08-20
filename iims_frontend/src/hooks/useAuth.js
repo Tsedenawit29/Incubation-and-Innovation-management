@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { login as loginApi } from "../api/users"; // Import your actual login API function
+import { login as loginApi, updateUserPassword } from "../api/users"; // Import API functions
 
 // Create the authentication context
 export const AuthContext = createContext(null);
@@ -133,6 +133,32 @@ export function AuthProvider({ children }) {
 
   const isAuthenticated = !!token && !!user; // User is authenticated if both token and user object exist
 
+  const changePassword = async (email, currentPassword, newPassword) => {
+    try {
+      // First, try to log in the user with the provided credentials
+      const loginResponse = await loginApi(email, currentPassword);
+      
+      if (!loginResponse || !loginResponse.token) {
+        throw new Error("Invalid email or current password");
+      }
+      
+      // If login is successful, update the password using the token
+      const authToken = loginResponse.token;
+      const targetUserId = loginResponse.userId;
+      
+      // Make the password change request
+      await updateUserPassword(authToken, targetUserId, currentPassword, newPassword);
+      
+      return { 
+        success: true,
+        message: "Password updated successfully. Please log in with your new password."
+      };
+    } catch (error) {
+      console.error("Password change failed:", error);
+      throw new Error(error.message || "Failed to update password. Please check your current password and try again.");
+    }
+  };
+
   const value = {
     token,
     user,
@@ -140,7 +166,8 @@ export function AuthProvider({ children }) {
     logout,
     isAuthenticated,
     loading,
-    authError // Expose authError
+    authError, // Expose authError
+    changePassword // Expose changePassword function
   };
 
   return (

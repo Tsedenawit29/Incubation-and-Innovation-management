@@ -2,6 +2,8 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import LoginPage from './pages/LoginPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import TenantAdminDashboard from './pages/TenantAdminDashboard';
 import TenantManagementPage from './pages/TenantManagementPage';
@@ -196,7 +198,6 @@ function App() {
               } 
             />
             {/* Public Application Routes */}
-            
             <Route path="/apply-tenant" element={<PublicLayout><TenantApplicationForm /></PublicLayout>} />
             <Route path="/register-admin" element={<AdminRegistrationForm />} />
             <Route path="/register-admin/:tenantId" element={<AdminRegistrationForm />} />
@@ -204,6 +205,21 @@ function App() {
             <Route path="/public-landing/:tenantId" element={<PublicLandingPage />} />
             {/* Google OAuth Success Page */}
             <Route path="/google-oauth-success" element={<GoogleOAuthSuccess />} />
+            {/* Password Reset Routes */}
+            <Route path="/forgot-password" element={
+              <PublicRoute>
+                <PublicLayout>
+                  <ForgotPasswordPage />
+                </PublicLayout>
+              </PublicRoute>
+            } />
+            <Route path="/reset-password/:token" element={
+              <PublicRoute>
+                <PublicLayout>
+                  <ResetPasswordPage />
+                </PublicLayout>
+              </PublicRoute>
+            } />
             {/* Root route - redirect authenticated users to their dashboard */}
             <Route path="/" element={
               <PublicRoute>

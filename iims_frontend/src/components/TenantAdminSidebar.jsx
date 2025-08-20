@@ -70,7 +70,6 @@ export default function TenantAdminSidebar({ user, onLogout }) {
       description: 'Review submitted applications'
     },
     {
-
       path: '/tenant-admin/chats',
       icon: <FaUsers />,
       label: 'Chats',
@@ -81,7 +80,6 @@ export default function TenantAdminSidebar({ user, onLogout }) {
       icon: <FaNewspaper />,
       label: 'News & Updates',
       description: 'Manage news posts and announcements'
-
     }
   ];
 
@@ -91,6 +89,7 @@ export default function TenantAdminSidebar({ user, onLogout }) {
     }
     return location.pathname.startsWith(path);
   };
+
 
   return (
     <div className="w-64 bg-gradient-to-b from-[#0A2D5C] to-[#299DFF] shadow-2xl border-r border-[#299DFF]/30 min-h-screen relative overflow-hidden">
@@ -130,7 +129,7 @@ export default function TenantAdminSidebar({ user, onLogout }) {
         </div>
       </div>
 
-      {/* Navigation */}
+      {/* Navigation - Updated with white text */}
       <nav className="p-4 relative z-10">
         <div className="space-y-2">
           {menuItems.map((item, index) => (
@@ -140,22 +139,22 @@ export default function TenantAdminSidebar({ user, onLogout }) {
               className={`group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 ${
                 isActive(item.path)
                   ? 'bg-white text-[#0A2D5C] shadow-lg border-l-4 border-[#299DFF]'
-                  : 'text-[#299DFF]/90 hover:bg-white/10 hover:text-[#299DFF] backdrop-blur-sm border border-[#299DFF]/20'
+                  : 'text-white hover:bg-white/10 backdrop-blur-sm border border-[#299DFF]/20'
               }`}
             >
               <div className={`text-lg transition-colors ${
-                isActive(item.path) ? 'text-[#299DFF]' : 'text-[#299DFF] group-hover:text-white'
+                isActive(item.path) ? 'text-[#299DFF]' : 'text-white'
               }`}>
                 {item.icon}
               </div>
               <div className="flex-1 min-w-0">
                 <p className={`font-medium text-sm ${
-                  isActive(item.path) ? 'text-[#0A2D5C]' : 'text-[#299DFF]'
+                  isActive(item.path) ? 'text-[#0A2D5C]' : 'text-white'
                 }`}>
                   {item.label}
                 </p>
                 <p className={`text-xs ${
-                  isActive(item.path) ? 'text-[#0A2D5C]/70' : 'text-[#299DFF]/70'
+                  isActive(item.path) ? 'text-[#0A2D5C]/70' : 'text-white/70'
                 }`}>
                   {item.description}
                 </p>
@@ -165,30 +164,31 @@ export default function TenantAdminSidebar({ user, onLogout }) {
         </div>
       </nav>
 
-      {/* Quick Actions */}
+
+      {/* Quick Actions - Updated with white text */}
       <div className="p-4 border-t border-white/20 relative z-10">
         <h3 className="text-xs font-semibold text-white/80 uppercase tracking-wider mb-3">
           Quick Actions
         </h3>
         <div className="space-y-2">
-          <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-[#299DFF] hover:bg-white/10 rounded-lg transition-colors border border-[#299DFF]/20">
-            <FaClipboardList className="text-[#299DFF]" />
+          <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-white hover:bg-white/10 rounded-lg transition-colors border border-white/20">
+            <FaClipboardList className="text-white" />
             <span>View Reports</span>
           </button>
-          <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-[#299DFF] hover:bg-white/10 rounded-lg transition-colors border border-[#299DFF]/20">
-            <FaBell className="text-[#299DFF]" />
+          <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-white hover:bg-white/10 rounded-lg transition-colors border border-white/20">
+            <FaBell className="text-white" />
             <span>Notifications</span>
           </button>
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="mt-auto p-4 border-t border-gray-200">
+      {/* Footer - Updated with white text */}
+      <div className="mt-auto p-4 border-t border-white/20">
         <button
           onClick={onLogout}
-          className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-2 text-sm text-white hover:bg-white/10 rounded-lg transition-colors"
         >
-          <FaSignOutAlt />
+          <FaSignOutAlt className="text-white" />
           <span>Sign Out</span>
         </button>
       </div>
